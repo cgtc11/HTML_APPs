@@ -64,7 +64,7 @@ sbtn{display:block;width:100%;margin-top:6px;background:#3a3a3a;border:1px solid
 
 /* ===== スマホレイアウト ===== */
 body.mobile{touch-action:none}
-body.mobile #main{display:grid;grid-template-columns:1fr 215px;grid-template-rows:120px 260px 1fr;grid-template-areas:"flrow rpanel" "lpanel rpanel" "canvas canvas"}
+body.mobile #main{display:grid;grid-template-columns:1fr 215px;grid-template-rows:120px 260px 1fr;grid-template-areas:"flrow rpanel" "lpanel rpanel" "canvas canvas";flex:1;min-height:0;overflow:hidden}
 #mobile-fl-row{display:flex;flex-direction:row;flex-shrink:0;height:120px;overflow:hidden;background:#222;border-bottom:1px solid #444;grid-area:flrow}
 #mobile-fl-row #framebar{flex:1;border-top:none;border-right:1px solid #444;display:flex;flex-direction:row;overflow:hidden;background:#1e1e1e;align-items:stretch}
 #mobile-fl-row #framebar>div:first-child{flex-shrink:0;flex-direction:column;justify-content:center;gap:4px;padding:4px 6px;border-right:1px solid #444}
@@ -105,6 +105,15 @@ body.mobile #topts{overflow-y:auto;max-height:116px}
 /* row3: canvas 全幅・残り全体 */
 body.mobile #cvcolumn{grid-area:canvas;min-height:0}
 body.mobile #cvarea{padding:0;overflow:auto;background:#111}
+body.fullcv #toolbar{display:none}
+body.fullcv #main>*:not(#cvcolumn){display:none!important}
+body.fullcv #framebar{display:none!important}
+body.fullcv #cvarea{padding:0;width:100%;box-sizing:border-box}
+body.fullcv #cvcolumn{width:100%;min-width:0}
+body.fullcv #menubar>*:not(#fullcvbtn){display:none}
+body.fullcv #menubar{justify-content:flex-end}
+body.fullcv #fullcvbtn{display:flex!important}
+body.fullcv.mobile #main{grid-template-rows:1fr;grid-template-columns:1fr;grid-template-areas:"canvas"}
 </style>
 </head>
 <body>
@@ -124,6 +133,7 @@ body.mobile #cvarea{padding:0;overflow:auto;background:#111}
   <button class="mbtn" onclick="doPaste()">貼り付け</button>
   <div style="flex:1"></div>
   <button class="mbtn" id="mobilebtn" onclick="toggleMobileMode()" title="スマホ用レイアウト切替" style="background:#2a3a2a;border:1px solid #4a7a4a;color:#8f8;border-radius:3px">PC用</button>
+  <button class="mbtn" id="fullcvbtn" onclick="toggleFullCanvas()" title="キャンバスのみ表示" style="background:#2a2a3a;border:1px solid #4a4a7a;color:#aaf;border-radius:3px">全表示</button>
   <label style="font-size:10px;color:#888">W:</label>
   <input type="number" id="wi" value="32" min="1" max="1024" style="width:48px">
   <label style="font-size:10px;color:#888">H:</label>
@@ -407,7 +417,21 @@ mc.addEventListener('touchmove',e=>{
   if(Math.abs(d-_lastPinchDist)>20){changeZoom(d>_lastPinchDist?1:-1);_lastPinchDist=d;}
 },{passive:false});
 
-// ===== スマホレイアウト切替 =====
+// ===== 全表示 =====
+function toggleFullCanvas(){
+  const on=document.body.classList.toggle('fullcv');
+  const btn=document.getElementById('fullcvbtn');
+  btn.textContent=on?'戻す':'全表示';
+  btn.style.background=on?'#3a3a5a':'#2a2a3a';
+  btn.style.borderColor=on?'#7a7aff':'#4a4a7a';
+  if(on){
+    A.zoom=Math.max(1,Math.floor(window.innerWidth/A.w));
+  } else {
+    A.zoom=document.body.classList.contains('mobile')?
+      Math.max(1,Math.floor(window.innerWidth/A.w)):8;
+  }
+  setTimeout(()=>{updateNav();initCV();},50);
+}
 function toggleMobileMode(){
   const isMobile=document.body.classList.toggle('mobile');
   const btn=document.getElementById('mobilebtn');
@@ -1274,7 +1298,7 @@ function loadPalette(input){
   reader.readAsText(f);
 }
 
-function changeZoom(d){const ZS=[1,2,3,4,6,8,10,12,16,20,24,32,48,64];const i=ZS.indexOf(A.zoom);A.zoom=ZS[Math.max(0,Math.min(ZS.length-1,i+d))];initCV();}
+function changeZoom(d){const ZS=[1,2,3,4,6,8,10,12,16,20,24,32,48,64];let i=ZS.indexOf(A.zoom);if(i===-1)i=ZS.reduce((best,v,j)=>Math.abs(v-A.zoom)<Math.abs(ZS[best]-A.zoom)?j:best,0);A.zoom=ZS[Math.max(0,Math.min(ZS.length-1,i+d))];initCV();}
 function toggleGrid(){A.grid=!A.grid;document.getElementById('tb-grid').classList.toggle('on',A.grid);renderAll();}
 function toggleSettings(e){e.stopPropagation();const d=document.getElementById('settingsdlg');d.style.display=d.style.display==='block'?'none':'block';}
 document.addEventListener('click',e=>{const d=document.getElementById('settingsdlg');if(!d.contains(e.target)&&e.target.id!=='setbtn')d.style.display='none';});
@@ -1316,7 +1340,9 @@ function refreshLayers(){
 function updateThumbs(){
   document.querySelectorAll('.li').forEach(el=>{
     const i=parseInt(el.dataset.i),l=A.layers[i];if(!l)return;
-    const th=el.querySelector('.lth');if(!th)return;const tx=th.getContext('2d');tx.clearRect(0,0,28,28);tx.imageSmoothingEnabled=false;tx.drawImage(l.canvas,0,0,28,28);
+    const th=el.querySelector('.lth');if(!th)return;const tx=th.getContext('2d');tx.clearRect(0,0,28,28);tx.imageSmoothingEnabled=false;
+    const AR=A.w/A.h,TW=AR>1?28:Math.round(28*AR),TH=AR<1?28:Math.round(28/AR);
+    tx.drawImage(l.canvas,Math.round((28-TW)/2),Math.round((28-TH)/2),TW,TH);
   });
 }
 
@@ -1336,17 +1362,17 @@ function doRedo(){if(A.hidx<A.hist.length-1){A.hidx++;restoreHist(A.hist[A.hidx]
 // ===== New / Resize / Export =====
 function doNew(){
   const w=parseInt(document.getElementById('wi').value),h=parseInt(document.getElementById('hi').value);
-  if(!w||!h)return;if(A.layers.length&&!confirm('新規作成しますか？'))return;
+  if(!w||!h)return;
   A.w=w;A.h=h;A.layers=[];A.al=0;A.sel=null;A.float=null;A.hist=[];A.hidx=-1;
   const bg=mkLayer('背景');bg.ctx.fillStyle='#fff';bg.ctx.fillRect(0,0,w,h);
   const l1=mkLayer('レイヤー 1');A.layers=[bg,l1];A.al=1;refreshLayers();initCV();pushHist();
 }
 function doResize(){
-  const nw=parseInt(prompt('新しい幅:',A.w)),nh=parseInt(prompt('新しい高さ:',A.h));
+  const nw=parseInt(document.getElementById('wi').value),nh=parseInt(document.getElementById('hi').value);
   if(!nw||!nh)return;
   A.layers.forEach(l=>{const c2=document.createElement('canvas');c2.width=nw;c2.height=nh;c2.getContext('2d').drawImage(l.canvas,0,0);l.canvas=c2;l.ctx=c2.getContext('2d');
     if(l.mask){const m2=document.createElement('canvas');m2.width=nw;m2.height=nh;m2.getContext('2d').drawImage(l.mask,0,0);l.mask=m2;}});
-  A.w=nw;A.h=nh;document.getElementById('wi').value=nw;document.getElementById('hi').value=nh;initCV();pushHist();
+  A.w=nw;A.h=nh;initCV();pushHist();
 }
 function doExport(){
   const flat=document.createElement('canvas');flat.width=A.w;flat.height=A.h;const fx=flat.getContext('2d');
@@ -1532,7 +1558,8 @@ function refreshFrameBar(){
     const tc=document.createElement('canvas');tc.width=48;tc.height=48;
     tc.style.cssText='image-rendering:pixelated;display:block;background:repeating-conic-gradient(#555 0% 25%,#333 0% 50%) 0 0/6px 6px';
     const tx=tc.getContext('2d');tx.imageSmoothingEnabled=false;
-    flattenToCtx(fr.layers,tx,48,48);
+    {const AR=A.w/A.h,TW=AR>1?48:Math.round(48*AR),TH=AR<1?48:Math.round(48/AR);
+    flattenToCtx(fr.layers,tx,TW,TH,Math.round((48-TW)/2),Math.round((48-TH)/2));}
     const num=document.createElement('div');
     num.textContent=i+1;
     num.style.cssText=`font-size:9px;color:${isCur?'#7af':'#888'}`;
@@ -1544,7 +1571,7 @@ function refreshFrameBar(){
     item.append(tc,num,di);el.appendChild(item);
   });
 }
-function flattenToCtx(layers,tx,tw,th){
+function flattenToCtx(layers,tx,tw,th,ox=0,oy=0){
   layers.forEach(l=>{
     if(!l.vis)return;tx.save();tx.globalAlpha=l.opacity;
     const bm=l.blendMode||'normal';
@@ -1552,8 +1579,8 @@ function flattenToCtx(layers,tx,tw,th){
     if(l.mask){
       const t=document.createElement('canvas');t.width=A.w;t.height=A.h;
       const ttx=t.getContext('2d');ttx.drawImage(l.canvas,0,0);ttx.globalCompositeOperation='destination-in';ttx.drawImage(l.mask,0,0);
-      tx.drawImage(t,0,0,tw,th);
-    } else tx.drawImage(l.canvas,0,0,tw,th);
+      tx.drawImage(t,ox,oy,tw,th);
+    } else tx.drawImage(l.canvas,ox,oy,tw,th);
     tx.restore();
   });
 }
@@ -1562,7 +1589,8 @@ function updateFrameThumb(){
   const items=el.children;if(!items[A.frameIdx])return;
   const tc=items[A.frameIdx].querySelector('canvas');if(!tc)return;
   const tx=tc.getContext('2d');tx.clearRect(0,0,48,48);tx.imageSmoothingEnabled=false;
-  flattenToCtx(A.layers,tx,48,48);
+  const AR=A.w/A.h,TW=AR>1?48:Math.round(48*AR),TH=AR<1?48:Math.round(48/AR);
+  flattenToCtx(A.layers,tx,TW,TH,Math.round((48-TW)/2),Math.round((48-TH)/2));
 }
 
 // ===== GIF エンコーダ =====
