@@ -1,3 +1,5 @@
+ブラウザで動くものを置いてます<br>
+<br>
 AEmini　動画編集<br>
 https://cgtc11.github.io/HTML_APPs/AEmini/AEmini.html<br>
 <br>
