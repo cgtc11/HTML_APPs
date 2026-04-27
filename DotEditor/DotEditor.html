@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ドット絵エディタ</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -60,6 +61,50 @@ sbtn{display:block;width:100%;margin-top:6px;background:#3a3a3a;border:1px solid
 .pop{padding:2px 6px;background:#333;border:1px solid #555;color:#ccc;cursor:pointer;border-radius:3px;font-size:10px;line-height:1.4}
 .pop:hover{background:#444}
 .pop.on{background:#4a5a8a;border-color:#7af;color:#fff}
+
+/* ===== スマホレイアウト ===== */
+body.mobile{touch-action:none}
+body.mobile #main{display:grid;grid-template-columns:1fr 215px;grid-template-rows:120px 260px 1fr;grid-template-areas:"flrow rpanel" "lpanel rpanel" "canvas canvas"}
+#mobile-fl-row{display:flex;flex-direction:row;flex-shrink:0;height:120px;overflow:hidden;background:#222;border-bottom:1px solid #444;grid-area:flrow}
+#mobile-fl-row #framebar{flex:1;border-top:none;border-right:1px solid #444;display:flex;flex-direction:row;overflow:hidden;background:#1e1e1e;align-items:stretch}
+#mobile-fl-row #framebar>div:first-child{flex-shrink:0;flex-direction:column;justify-content:center;gap:4px;padding:4px 6px;border-right:1px solid #444}
+#mobile-fl-row #framebar #playbtn{width:52px;height:24px;font-size:12px}
+#mobile-fl-row #framebar #framelist{flex:1;overflow-x:auto;overflow-y:hidden;padding:4px;gap:4px}
+#mobile-fl-row #rpanel{display:none}
+/* rpanel: grid area spanning lpanel+canvas rows */
+body.mobile #rpanel{grid-area:rpanel;display:flex!important;flex-direction:column;overflow:hidden;border-left:1px solid #444;width:unset;min-width:unset}
+body.mobile #rpanel>.ph{flex-shrink:0;padding:3px 6px;font-size:10px;border-bottom:1px solid #333}
+body.mobile #layers{flex:1;overflow-y:auto;min-height:0}
+body.mobile #layers .li{padding:3px 6px}
+body.mobile #layers .lth{width:28px;height:28px}
+body.mobile #rpanel>div:first-child{flex-shrink:0;overflow:hidden;border-bottom:1px solid #444}
+body.mobile #rpanel>div:last-child{flex-shrink:0;padding:4px 6px;border-top:1px solid #444}
+body.mobile #rpanel .or{margin-bottom:3px;font-size:11px}
+body.mobile #rpanel .or input[type=range]{height:14px}
+/* lpanel内のナビゲーター（JSで移動） */
+body.mobile #lpanel>div{flex-shrink:0;border-bottom:none!important;border-right:1px solid #444}
+body.mobile #lpanel .ps{padding:1px 4px}
+body.mobile #lpanel .ph{padding:2px 5px!important}
+body.mobile #lpanel #navsec{flex-shrink:0;align-self:flex-start;border:1px solid #444;margin:3px;display:flex;flex-direction:column;min-width:90px}
+body.mobile #lpanel #navsec .ph{background:#2a2a2a;padding:2px 5px!important;border-bottom:1px solid #444}
+body.mobile #lpanel #navsec>div{padding:2px!important;max-height:unset!important;overflow:hidden;height:auto!important;background:repeating-conic-gradient(#3a3a3a 0% 25%,#222 0% 50%) 0 0/8px 8px}
+body.mobile #navc{image-rendering:pixelated;display:block;max-width:100%;border:1px solid #555}
+body.mobile #navc{image-rendering:pixelated;display:block;max-width:86px;max-height:220px}
+
+/* row2: lpanel 横スクロール */
+body.mobile #lpanel{grid-area:lpanel;width:unset;min-width:unset;flex-direction:row;height:unset;flex-shrink:0;border-right:none;border-bottom:1px solid #444;overflow-x:auto;overflow-y:hidden;align-items:stretch}
+body.mobile #cs{width:44px;height:38px;margin-bottom:2px}
+body.mobile #fgb{width:22px;height:22px}
+body.mobile #bgb{width:22px;height:22px}
+body.mobile #fghex,body.mobile #bghex{width:72px;font-size:10px}
+body.mobile #palsec{min-width:195px;display:flex;flex-direction:column}
+body.mobile #palsec>div:nth-child(2){flex:1;overflow-y:auto;overflow-x:hidden;padding:1px!important}
+body.mobile #palops{overflow-x:auto;flex-wrap:nowrap!important;display:flex!important}
+body.mobile #topts{overflow-y:auto;max-height:116px}
+
+/* row3: canvas 全幅・残り全体 */
+body.mobile #cvcolumn{grid-area:canvas;min-height:0}
+body.mobile #cvarea{padding:0;overflow:auto;background:#111}
 </style>
 </head>
 <body>
@@ -78,6 +123,7 @@ sbtn{display:block;width:100%;margin-top:6px;background:#3a3a3a;border:1px solid
   <button class="mbtn" onclick="doCut()">切り取り</button>
   <button class="mbtn" onclick="doPaste()">貼り付け</button>
   <div style="flex:1"></div>
+  <button class="mbtn" id="mobilebtn" onclick="toggleMobileMode()" title="スマホ用レイアウト切替" style="background:#2a3a2a;border:1px solid #4a7a4a;color:#8f8;border-radius:3px">PC用</button>
   <label style="font-size:10px;color:#888">W:</label>
   <input type="number" id="wi" value="32" min="1" max="1024" style="width:48px">
   <label style="font-size:10px;color:#888">H:</label>
@@ -178,7 +224,7 @@ sbtn{display:block;width:100%;margin-top:6px;background:#3a3a3a;border:1px solid
     </div>
   </div>
 
-  <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
+  <div id="cvcolumn" style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden">
   <div id="cvarea">
     <div id="cvwrap">
       <canvas id="mc"></canvas>
@@ -339,6 +385,82 @@ mc.addEventListener('mouseleave',()=>{if(A.drawing&&(A.tool==='pencil'||A.tool==
 mc.addEventListener('contextmenu',e=>e.preventDefault());
 mc.addEventListener('auxclick',e=>e.preventDefault());
 mc.addEventListener('wheel',e=>{e.preventDefault();changeZoom(e.deltaY<0?1:-1);},{passive:false});
+
+// ===== タッチイベント（スマホ対応）=====
+function touchToMouse(e,type){
+  e.preventDefault();
+  const t=e.touches[0]||e.changedTouches[0];
+  const me=new MouseEvent(type,{bubbles:true,cancelable:true,clientX:t.clientX,clientY:t.clientY,button:0,buttons:type==='mouseup'?0:1});
+  mc.dispatchEvent(me);
+}
+mc.addEventListener('touchstart',e=>touchToMouse(e,'mousedown'),{passive:false});
+mc.addEventListener('touchmove',e=>touchToMouse(e,'mousemove'),{passive:false});
+mc.addEventListener('touchend',e=>touchToMouse(e,'mouseup'),{passive:false});
+// キャンバスのピンチズーム
+let _lastPinchDist=0;
+mc.addEventListener('touchstart',e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;_lastPinchDist=Math.hypot(dx,dy);}},{passive:false});
+mc.addEventListener('touchmove',e=>{
+  if(e.touches.length!==2)return;
+  e.preventDefault();
+  const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
+  const d=Math.hypot(dx,dy);
+  if(Math.abs(d-_lastPinchDist)>20){changeZoom(d>_lastPinchDist?1:-1);_lastPinchDist=d;}
+},{passive:false});
+
+// ===== スマホレイアウト切替 =====
+function toggleMobileMode(){
+  const isMobile=document.body.classList.toggle('mobile');
+  const btn=document.getElementById('mobilebtn');
+  if(isMobile){
+    btn.textContent='スマホ用';btn.classList.add('on');
+    btn.style.cssText='';
+    // framebar を #mobile-fl-row に、rpanel は main に直接
+    const row=document.createElement('div');row.id='mobile-fl-row';
+    const main=document.getElementById('main');
+    main.insertBefore(row,document.getElementById('lpanel'));
+    row.appendChild(document.getElementById('framebar'));
+    // rpanel は main の lpanel の後に（grid-area:rpanelで自動配置）
+    const lp=document.getElementById('lpanel');
+    main.insertBefore(document.getElementById('rpanel'),lp.nextSibling);
+    // ナビゲーター（rpanel内の最初のdiv）をlpanelのツールオプションの右へ移動
+    const rp=document.getElementById('rpanel');
+    const navsec=rp.querySelector(':scope>div:first-child');
+    navsec.id='navsec';
+    // inline styleを直接上書き
+    navsec.style.cssText='flex-shrink:0;align-self:flex-start;border:1px solid #444;margin:3px;display:flex;flex-direction:column;min-width:90px';
+    const navInner=navsec.querySelector('div:not(.ph)');
+    if(navInner)navInner.style.cssText='padding:2px;overflow:hidden;height:auto;flex:0 0 auto;background:repeating-conic-gradient(#3a3a3a 0% 25%,#222 0% 50%) 0 0/8px 8px';
+    const navPh=navsec.querySelector('.ph');
+    if(navPh)navPh.style.cssText='padding:2px 5px;border-bottom:1px solid #444';
+    document.getElementById('lpanel').appendChild(navsec);
+    // キャンバスを画面幅いっぱいに
+    A.zoom=Math.max(1,Math.floor(window.innerWidth/A.w));
+    initCV();
+  } else {
+    btn.textContent='PC用';btn.classList.remove('on');
+    btn.style.cssText='background:#2a3a2a;border:1px solid #4a7a4a;color:#8f8;border-radius:3px';
+    // ナビゲーターをrpanelの先頭に戻す
+    const navsec=document.getElementById('navsec');
+    if(navsec){
+      navsec.removeAttribute('id');
+      navsec.style.cssText='flex-shrink:0;border-bottom:1px solid #444';
+      const navInner=navsec.querySelector('div:not(.ph)');
+      if(navInner)navInner.style.cssText='padding:4px;overflow:auto;max-height:160px;background:repeating-conic-gradient(#3a3a3a 0% 25%,#222 0% 50%) 0 0/8px 8px';
+      const navPh=navsec.querySelector('.ph');
+      if(navPh)navPh.style.cssText='';
+      document.getElementById('rpanel').prepend(navsec);
+    }
+    // framebar → cvcolumnの末尾へ
+    const fb=document.getElementById('framebar');
+    fb.style.cssText='background:#1e1e1e;border-top:1px solid #444;flex-shrink:0;display:flex;align-items:stretch;min-height:0';
+    document.getElementById('cvcolumn').appendChild(fb);
+    // rpanel → mainの末尾へ
+    document.getElementById('main').appendChild(document.getElementById('rpanel'));
+    document.getElementById('mobile-fl-row')?.remove();
+    A.zoom=8;initCV();
+  }
+  setTimeout(updateNav,80);
+}
 
 function initCV(){
   const z=A.zoom,w=A.w,h=A.h;
