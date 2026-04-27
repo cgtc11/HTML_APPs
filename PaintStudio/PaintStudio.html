@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <title>PaintStudio 2</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
+body.fullscreen #tb{display:none;}
+body.fullscreen #rp{display:none;}
+
 :root{--bg:#13131a;--p1:#1b1b27;--p2:#22222f;--p3:#2a2a3c;--bdr:#383852;--acc:#6b8cff;--acc2:#ff6b9d;--tx:#ccd0e0;--dim:#6a6a90;--sel:rgba(107,140,255,0.16);}
 body{background:var(--bg);color:var(--tx);font-family:'Segoe UI','Hiragino Sans','Yu Gothic',sans-serif;font-size:12px;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
 #top{height:38px;background:var(--p1);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 8px;gap:5px;flex-shrink:0;}
@@ -107,6 +109,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <span style="margin-left:auto;font-size:10px;color:var(--dim)" id="zLbl">100%</span>
   <button class="tbtn" onclick="setZ(1)">1:1</button>
   <button class="tbtn" onclick="fitView()">全体</button>
+  <button class="tbtn" id="fullscreenBtn" onclick="toggleFullscreen()">全表示</button>
 </div>
 <div id="main">
 <div id="tb">
@@ -996,6 +999,11 @@ function fitView(){
   zoom=Math.min(ar.width/W,ar.height/H)*.92;
   panX=(ar.width-W*zoom)/2;panY=(ar.height-H*zoom)/2;applyVP();
 }
+function toggleFullscreen(){
+  const fs=document.body.classList.toggle('fullscreen');
+  G('fullscreenBtn').textContent=fs?'戻す':'全表示';
+  requestAnimationFrame(()=>fitView());
+}
 function cPos(e){
   const r=eC.getBoundingClientRect();
   return{x:Math.round((e.clientX-r.left)/r.width*W),y:Math.round((e.clientY-r.top)/r.height*H)};
@@ -1164,7 +1172,10 @@ document.addEventListener('keydown',e=>{
   const km={b:'brush',d:'dotpen',e:'eraser',u:'blur',g:'fill',s:'select',a:'lasso',w:'wand',v:'move',l:'line',r:'rect',o:'ellipse',t:'text'};
   if(km[e.key.toLowerCase()]){setTool(km[e.key.toLowerCase()]);return;}
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();delOp();return;}
-  if(e.key==='Escape'){clearSel();commitText();return;}
+  if(e.key==='Escape'){
+    if(document.body.classList.contains('fullscreen')){document.body.classList.remove('fullscreen');requestAnimationFrame(()=>fitView());return;}
+    clearSel();commitText();return;
+  }
   if(e.key==='+'||e.key==='=')setZ(zoom*1.15);
   if(e.key==='-')setZ(zoom/1.15);
   if(e.key==='0')setZ(1);
