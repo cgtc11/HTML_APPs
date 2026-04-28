@@ -62,58 +62,22 @@ sbtn{display:block;width:100%;margin-top:6px;background:#3a3a3a;border:1px solid
 .pop:hover{background:#444}
 .pop.on{background:#4a5a8a;border-color:#7af;color:#fff}
 
-/* ===== スマホレイアウト ===== */
-body.mobile{touch-action:none}
-body.mobile #main{display:grid;grid-template-columns:1fr 215px;grid-template-rows:120px 260px 1fr;grid-template-areas:"flrow rpanel" "lpanel rpanel" "canvas canvas";flex:1;min-height:0;overflow:hidden}
-#mobile-fl-row{display:flex;flex-direction:row;flex-shrink:0;height:120px;overflow:hidden;background:#222;border-bottom:1px solid #444;grid-area:flrow}
-#mobile-fl-row #framebar{flex:1;border-top:none;border-right:1px solid #444;display:flex;flex-direction:row;overflow:hidden;background:#1e1e1e;align-items:stretch}
-#mobile-fl-row #framebar>div:first-child{flex-shrink:0;flex-direction:column;justify-content:center;gap:4px;padding:4px 6px;border-right:1px solid #444}
-#mobile-fl-row #framebar #playbtn{width:52px;height:24px;font-size:12px}
-#mobile-fl-row #framebar #framelist{flex:1;overflow-x:auto;overflow-y:hidden;padding:4px;gap:4px}
-#mobile-fl-row #rpanel{display:none}
-/* rpanel: grid area spanning lpanel+canvas rows */
-body.mobile #rpanel{grid-area:rpanel;display:flex!important;flex-direction:column;overflow:hidden;border-left:1px solid #444;width:unset;min-width:unset}
-body.mobile #rpanel>.ph{flex-shrink:0;padding:3px 6px;font-size:10px;border-bottom:1px solid #333}
-body.mobile #layers{flex:1;overflow-y:auto;min-height:0}
-body.mobile #layers .li{padding:3px 6px}
-body.mobile #layers .lth{width:28px;height:28px}
-body.mobile #rpanel>div:first-child{flex-shrink:0;overflow:hidden;border-bottom:1px solid #444}
-body.mobile #rpanel>div:last-child{flex-shrink:0;padding:4px 6px;border-top:1px solid #444}
-body.mobile #rpanel .or{margin-bottom:3px;font-size:11px}
-body.mobile #rpanel .or input[type=range]{height:14px}
-/* lpanel内のナビゲーター（JSで移動） */
-body.mobile #lpanel>div{flex-shrink:0;border-bottom:none!important;border-right:1px solid #444}
-body.mobile #lpanel .ps{padding:1px 4px}
-body.mobile #lpanel .ph{padding:2px 5px!important}
-body.mobile #lpanel #navsec{flex-shrink:0;align-self:flex-start;border:1px solid #444;margin:3px;display:flex;flex-direction:column;min-width:90px}
-body.mobile #lpanel #navsec .ph{background:#2a2a2a;padding:2px 5px!important;border-bottom:1px solid #444}
-body.mobile #lpanel #navsec>div{padding:2px!important;max-height:unset!important;overflow:hidden;height:auto!important;background:repeating-conic-gradient(#3a3a3a 0% 25%,#222 0% 50%) 0 0/8px 8px}
-body.mobile #navc{image-rendering:pixelated;display:block;max-width:100%;border:1px solid #555}
-body.mobile #navc{image-rendering:pixelated;display:block;max-width:86px;max-height:220px}
-
-/* row2: lpanel 横スクロール */
-body.mobile #lpanel{grid-area:lpanel;width:unset;min-width:unset;flex-direction:row;height:unset;flex-shrink:0;border-right:none;border-bottom:1px solid #444;overflow-x:auto;overflow-y:hidden;align-items:stretch}
-body.mobile #cs{width:44px;height:38px;margin-bottom:2px}
-body.mobile #fgb{width:22px;height:22px}
-body.mobile #bgb{width:22px;height:22px}
-body.mobile #fghex,body.mobile #bghex{width:72px;font-size:10px}
-body.mobile #palsec{min-width:195px;display:flex;flex-direction:column}
-body.mobile #palsec>div:nth-child(2){flex:1;overflow-y:auto;overflow-x:hidden;padding:1px!important}
-body.mobile #palops{overflow-x:auto;flex-wrap:nowrap!important;display:flex!important}
-body.mobile #topts{overflow-y:auto;max-height:116px}
-
-/* row3: canvas 全幅・残り全体 */
-body.mobile #cvcolumn{grid-area:canvas;min-height:0}
-body.mobile #cvarea{padding:0;overflow:auto;background:#111}
 body.fullcv #toolbar{display:none}
 body.fullcv #main>*:not(#cvcolumn){display:none!important}
 body.fullcv #framebar{display:none!important}
 body.fullcv #cvarea{padding:0;width:100%;box-sizing:border-box}
-body.fullcv #cvcolumn{width:100%;min-width:0}
+body.fullcv #cvcolumn{width:100%;min-width:0;display:flex;flex-direction:column}
 body.fullcv #menubar>*:not(#fullcvbtn){display:none}
 body.fullcv #menubar{justify-content:flex-end}
 body.fullcv #fullcvbtn{display:flex!important}
-body.fullcv.mobile #main{grid-template-rows:1fr;grid-template-columns:1fr;grid-template-areas:"canvas"}
+/* 全画面下部パレットバー */
+#fullcv-bar{display:none;flex-shrink:0;background:#222;border-top:1px solid #444;padding:4px 6px;gap:6px;align-items:flex-start;overflow-x:auto}
+body.fullcv #fullcv-bar{display:flex}
+/* fullcv内ナビゲーターをコンパクトに */
+#fcv-navsec-slot #navsec{border:none}
+#fcv-navsec-slot #navsec>div{max-height:80px!important;overflow:hidden!important;padding:2px!important}
+#fcv-navsec-slot #navsec .ph{padding:2px 5px!important}
+#fcv-navsec-slot #navc{max-width:155px!important;max-height:76px!important}
 </style>
 </head>
 <body>
@@ -132,7 +96,6 @@ body.fullcv.mobile #main{grid-template-rows:1fr;grid-template-columns:1fr;grid-t
   <button class="mbtn" onclick="doCut()">切り取り</button>
   <button class="mbtn" onclick="doPaste()">貼り付け</button>
   <div style="flex:1"></div>
-  <button class="mbtn" id="mobilebtn" onclick="toggleMobileMode()" title="スマホ用レイアウト切替" style="background:#2a3a2a;border:1px solid #4a7a4a;color:#8f8;border-radius:3px">PC用</button>
   <button class="mbtn" id="fullcvbtn" onclick="toggleFullCanvas()" title="キャンバスのみ表示" style="background:#2a2a3a;border:1px solid #4a4a7a;color:#aaf;border-radius:3px">全表示</button>
   <label style="font-size:10px;color:#888">W:</label>
   <input type="number" id="wi" value="32" min="1" max="1024" style="width:48px">
@@ -241,6 +204,23 @@ body.fullcv.mobile #main{grid-template-rows:1fr;grid-template-columns:1fr;grid-t
       <canvas id="oc"></canvas>
     </div>
   </div>
+  <!-- 全画面下部バー -->
+  <div id="fullcv-bar">
+    <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;min-width:160px">
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative;width:36px;height:36px;flex-shrink:0">
+          <div id="fcv-bgb" style="position:absolute;left:10px;top:10px;width:22px;height:22px;border:2px solid #888;cursor:pointer;box-sizing:border-box" title="背景色" onclick="pickBg()"></div>
+          <div id="fcv-fgb" style="position:absolute;left:0;top:0;width:22px;height:22px;border:2px solid #fff;cursor:pointer;box-sizing:border-box" title="描画色" onclick="pickFg()"></div>
+        </div>
+        <div id="fcv-toggle" onclick="toggleDrawColor()" title="描画色/背景色 切替" style="cursor:pointer;font-size:18px;line-height:1;color:#fff;padding:2px 4px;border:1px solid #555;border-radius:3px;background:#333">✏</div>
+        <button class="mbtn" onclick="doExport()" style="font-size:10px;padding:2px 5px">PNG書出</button>
+        <button class="mbtn" onclick="document.getElementById('fcv-imgload').click()" style="font-size:10px;padding:2px 5px">読込</button>
+        <input type="file" id="fcv-imgload" accept="image/*" style="display:none" onchange="loadImageToLayer(this)">
+      </div>
+      <div id="fcv-navsec-slot"></div>
+    </div>
+    <div id="fcv-pgrid" style="flex-shrink:0;align-self:flex-start"></div>
+  </div>
   <!-- フレームバー -->
   <div id="framebar" style="background:#1e1e1e;border-top:1px solid #444;flex-shrink:0;display:flex;align-items:stretch;min-height:0">
     <!-- コントロール -->
@@ -260,7 +240,7 @@ body.fullcv.mobile #main{grid-template-rows:1fr;grid-template-columns:1fr;grid-t
 
   <div id="rpanel">
     <!-- Navigator -->
-    <div style="flex-shrink:0;border-bottom:1px solid #444">
+    <div id="navsec" style="flex-shrink:0;border-bottom:1px solid #444">
       <div class="ph">ナビゲーター
         <select id="navzoom" onchange="updateNav()" style="font-size:9px;padding:1px 3px">
           <option value="1">100%</option>
@@ -396,28 +376,52 @@ mc.addEventListener('contextmenu',e=>e.preventDefault());
 mc.addEventListener('auxclick',e=>e.preventDefault());
 mc.addEventListener('wheel',e=>{e.preventDefault();changeZoom(e.deltaY<0?1:-1);},{passive:false});
 
-// ===== タッチイベント（スマホ対応）=====
-function touchToMouse(e,type){
-  e.preventDefault();
-  const t=e.touches[0]||e.changedTouches[0];
-  const me=new MouseEvent(type,{bubbles:true,cancelable:true,clientX:t.clientX,clientY:t.clientY,button:0,buttons:type==='mouseup'?0:1});
-  mc.dispatchEvent(me);
-}
-mc.addEventListener('touchstart',e=>touchToMouse(e,'mousedown'),{passive:false});
-mc.addEventListener('touchmove',e=>touchToMouse(e,'mousemove'),{passive:false});
-mc.addEventListener('touchend',e=>touchToMouse(e,'mouseup'),{passive:false});
-// キャンバスのピンチズーム
-let _lastPinchDist=0;
-mc.addEventListener('touchstart',e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;_lastPinchDist=Math.hypot(dx,dy);}},{passive:false});
-mc.addEventListener('touchmove',e=>{
-  if(e.touches.length!==2)return;
-  e.preventDefault();
-  const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-  const d=Math.hypot(dx,dy);
-  if(Math.abs(d-_lastPinchDist)>20){changeZoom(d>_lastPinchDist?1:-1);_lastPinchDist=d;}
-},{passive:false});
-
 // ===== 全表示 =====
+function updateFullcvBar(){
+  const fcvPg=document.getElementById('fcv-pgrid');
+  if(!fcvPg)return;
+  fcvPg.innerHTML='';
+  if(A.cm==='256'||A.cm==='16'){
+    fcvPg.style.cssText='display:grid;grid-template-columns:repeat(16,11px);gap:0;flex-shrink:0';
+    PAL.forEach(([r,gr,b])=>{
+      const hex=r2h(r,gr,b);
+      const c=document.createElement('div');
+      c.style.cssText=`width:11px;height:11px;background:${hex};cursor:pointer;outline:1px solid #0003`;
+      c.onclick=()=>setFg(hex);
+      c.oncontextmenu=e=>{e.preventDefault();setBg(hex);};
+      fcvPg.appendChild(c);
+    });
+  } else {
+    fcvPg.style.cssText='display:none';
+  }
+  const fcvFg=document.getElementById('fcv-fgb');
+  const fcvBg=document.getElementById('fcv-bgb');
+  if(fcvFg)fcvFg.style.background=A.fg;
+  if(fcvBg)fcvBg.style.background=A.bg;
+}
+let _drawWithBg=false;
+function toggleDrawColor(){
+  _drawWithBg=!_drawWithBg;
+  const btn=document.getElementById('fcv-toggle');
+  if(btn){btn.textContent=_drawWithBg?'🔲':'✏';btn.style.color=_drawWithBg?'#fa8':'#fff';}
+  A.btnMap[0]=_drawWithBg?'bg':'draw';
+}
+function loadImageToLayer(input){
+  const f=input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const l=A.layers[A.al];
+      l.ctx.clearRect(0,0,A.w,A.h);
+      l.ctx.drawImage(img,0,0,A.w,A.h);
+      renderAll();pushHist();updateFrameThumb();refreshLayers();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(f);
+  input.value='';
+}
 function toggleFullCanvas(){
   const on=document.body.classList.toggle('fullcv');
   const btn=document.getElementById('fullcvbtn');
@@ -426,64 +430,19 @@ function toggleFullCanvas(){
   btn.style.borderColor=on?'#7a7aff':'#4a4a7a';
   if(on){
     A.zoom=Math.max(1,Math.floor(window.innerWidth/A.w));
+    // navsecをfullcv-barに移動
+    const slot=document.getElementById('fcv-navsec-slot');
+    const ns=document.getElementById('navsec');
+    if(slot&&ns)slot.appendChild(ns);
+    updateFullcvBar();
   } else {
-    A.zoom=document.body.classList.contains('mobile')?
-      Math.max(1,Math.floor(window.innerWidth/A.w)):8;
+    A.zoom=8;
+    // navsecをrpanelの先頭に戻す
+    const ns=document.getElementById('navsec');
+    const rp=document.getElementById('rpanel');
+    if(ns&&rp)rp.insertBefore(ns,rp.firstChild);
   }
   setTimeout(()=>{updateNav();initCV();},50);
-}
-function toggleMobileMode(){
-  const isMobile=document.body.classList.toggle('mobile');
-  const btn=document.getElementById('mobilebtn');
-  if(isMobile){
-    btn.textContent='スマホ用';btn.classList.add('on');
-    btn.style.cssText='';
-    // framebar を #mobile-fl-row に、rpanel は main に直接
-    const row=document.createElement('div');row.id='mobile-fl-row';
-    const main=document.getElementById('main');
-    main.insertBefore(row,document.getElementById('lpanel'));
-    row.appendChild(document.getElementById('framebar'));
-    // rpanel は main の lpanel の後に（grid-area:rpanelで自動配置）
-    const lp=document.getElementById('lpanel');
-    main.insertBefore(document.getElementById('rpanel'),lp.nextSibling);
-    // ナビゲーター（rpanel内の最初のdiv）をlpanelのツールオプションの右へ移動
-    const rp=document.getElementById('rpanel');
-    const navsec=rp.querySelector(':scope>div:first-child');
-    navsec.id='navsec';
-    // inline styleを直接上書き
-    navsec.style.cssText='flex-shrink:0;align-self:flex-start;border:1px solid #444;margin:3px;display:flex;flex-direction:column;min-width:90px';
-    const navInner=navsec.querySelector('div:not(.ph)');
-    if(navInner)navInner.style.cssText='padding:2px;overflow:hidden;height:auto;flex:0 0 auto;background:repeating-conic-gradient(#3a3a3a 0% 25%,#222 0% 50%) 0 0/8px 8px';
-    const navPh=navsec.querySelector('.ph');
-    if(navPh)navPh.style.cssText='padding:2px 5px;border-bottom:1px solid #444';
-    document.getElementById('lpanel').appendChild(navsec);
-    // キャンバスを画面幅いっぱいに
-    A.zoom=Math.max(1,Math.floor(window.innerWidth/A.w));
-    initCV();
-  } else {
-    btn.textContent='PC用';btn.classList.remove('on');
-    btn.style.cssText='background:#2a3a2a;border:1px solid #4a7a4a;color:#8f8;border-radius:3px';
-    // ナビゲーターをrpanelの先頭に戻す
-    const navsec=document.getElementById('navsec');
-    if(navsec){
-      navsec.removeAttribute('id');
-      navsec.style.cssText='flex-shrink:0;border-bottom:1px solid #444';
-      const navInner=navsec.querySelector('div:not(.ph)');
-      if(navInner)navInner.style.cssText='padding:4px;overflow:auto;max-height:160px;background:repeating-conic-gradient(#3a3a3a 0% 25%,#222 0% 50%) 0 0/8px 8px';
-      const navPh=navsec.querySelector('.ph');
-      if(navPh)navPh.style.cssText='';
-      document.getElementById('rpanel').prepend(navsec);
-    }
-    // framebar → cvcolumnの末尾へ
-    const fb=document.getElementById('framebar');
-    fb.style.cssText='background:#1e1e1e;border-top:1px solid #444;flex-shrink:0;display:flex;align-items:stretch;min-height:0';
-    document.getElementById('cvcolumn').appendChild(fb);
-    // rpanel → mainの末尾へ
-    document.getElementById('main').appendChild(document.getElementById('rpanel'));
-    document.getElementById('mobile-fl-row')?.remove();
-    A.zoom=8;initCV();
-  }
-  setTimeout(updateNav,80);
 }
 
 function initCV(){
@@ -953,6 +912,7 @@ function setFg(hex){
   document.getElementById('fgb').style.background=q;
   document.getElementById('fghex').value=q;
   document.getElementById('fgp').value=q;
+  const f=document.getElementById('fcv-fgb');if(f)f.style.background=q;
   updatePalHighlight();
 }
 function setBg(hex){
@@ -961,10 +921,52 @@ function setBg(hex){
   document.getElementById('bgb').style.background=q;
   document.getElementById('bghex').value=q;
   document.getElementById('bgp').value=q;
+  const b=document.getElementById('fcv-bgb');if(b)b.style.background=q;
   updatePalHighlight();
 }
-function pickFg(){document.getElementById('fgp').click();}
-function pickBg(){document.getElementById('bgp').click();}
+function pickFg(){
+  if(A.cm==='256'||A.cm==='16'){showPalPicker('fg');}
+  else{document.getElementById('fgp').click();}
+}
+function pickBg(){
+  if(A.cm==='256'||A.cm==='16'){showPalPicker('bg');}
+  else{document.getElementById('bgp').click();}
+}
+// パレットから色を選ぶポップアップ
+function showPalPicker(target){
+  let pop=document.getElementById('palpicker');
+  if(pop){pop.remove();return;}
+  pop=document.createElement('div');
+  pop.id='palpicker';
+  pop.style.cssText='position:fixed;z-index:999;background:#222;border:1px solid #555;padding:6px;box-shadow:0 4px 16px #000a;border-radius:4px';
+  const g=document.createElement('div');
+  g.style.cssText='display:grid;grid-template-columns:repeat(16,18px);gap:1px';
+  PAL.forEach(([r,gr,b])=>{
+    const hex=r2h(r,gr,b);
+    const c=document.createElement('div');
+    c.style.cssText=`width:18px;height:18px;background:${hex};cursor:pointer;outline:1px solid #0004`;
+    c.title=hex;
+    c.onclick=()=>{
+      if(target==='fg')setFg(hex);else setBg(hex);
+      pop.remove();
+    };
+    g.appendChild(c);
+  });
+  pop.appendChild(g);
+  // 閉じるボタン
+  const close=document.createElement('div');
+  close.textContent='✕ 閉じる';
+  close.style.cssText='margin-top:5px;text-align:right;font-size:10px;color:#888;cursor:pointer';
+  close.onclick=()=>pop.remove();
+  pop.appendChild(close);
+  document.body.appendChild(pop);
+  // 画面中央に配置
+  const W=pop.offsetWidth||300,H=pop.offsetHeight||200;
+  pop.style.left=Math.max(0,(window.innerWidth-W)/2)+'px';
+  pop.style.top=Math.max(0,(window.innerHeight-H)/2)+'px';
+  // 外クリックで閉じる
+  setTimeout(()=>document.addEventListener('click',function h(e){if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',h);}},true),10);
+}
 function swapColors(){const t=A.fg;setFg(A.bg);setBg(t);}
 
 // パレット/カラーモード変更時に既存ピクセルも変換
@@ -1008,6 +1010,7 @@ function updatePalHighlight(){
   }
 }
 function updatePalHover(idx){
+  if(idx===palHoverIdx)return;
   const g=document.getElementById('pgrid');if(!g)return;
   const cells=g.children;
   if(palHoverIdx>=0&&palHoverIdx<cells.length)cells[palHoverIdx].classList.remove('pal-hover');
@@ -1273,7 +1276,10 @@ function replacePalColor(oldHex,newHex){
 function savePalette(){
   const data={mode:A.cm,colors:PAL.map(([r,g,b])=>r2h(r,g,b))};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.download='palette.json';a.href=URL.createObjectURL(blob);a.click();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.download='palette.json';a.href=url;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},200);
 }
 
 // パレット読込（JSON）
@@ -1379,7 +1385,12 @@ function doExport(){
   A.layers.forEach(l=>{if(!l.vis)return;fx.save();fx.globalAlpha=l.opacity;
     if(l.mask){const t=document.createElement('canvas');t.width=A.w;t.height=A.h;const tx=t.getContext('2d');tx.drawImage(l.canvas,0,0);tx.globalCompositeOperation='destination-in';tx.drawImage(l.mask,0,0);fx.drawImage(t,0,0);}
     else fx.drawImage(l.canvas,0,0);fx.restore();});
-  const a=document.createElement('a');a.download='pixel_art.png';a.href=flat.toDataURL('image/png');a.click();
+  flat.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='pixel_art.png';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},200);
+  },'image/png');
 }
 
 // ===== プロジェクト保存 (.dotpix / JSON) =====
@@ -1402,9 +1413,10 @@ function doSaveProject(){
     layers:layerData
   };
   const blob=new Blob([JSON.stringify(proj)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.download='project.dotpix';
-  a.href=URL.createObjectURL(blob);a.click();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.download='project.dotpix';a.href=url;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},200);
 }
 
 function doLoadProject(input){
@@ -1663,7 +1675,10 @@ function doExportGIF(){
   const delays=A.frames.map(fr=>fr.delay||100);
   const gif=buildGIF(framePixels,A.w,A.h,gifPal,delays);
   const blob=new Blob([gif],{type:'image/gif'});
-  const a=document.createElement('a');a.download='animation.gif';a.href=URL.createObjectURL(blob);a.click();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.download='animation.gif';a.href=url;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},200);
 }
 
 document.addEventListener('keydown',e=>{
