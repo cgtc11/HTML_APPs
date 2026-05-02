@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"><title>Poly Editor Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#111;overflow:hidden;font-family:'Courier New',monospace;font-size:11px;color:#bbb}
+#pe{display:flex;flex-direction:column;height:100vh;background:#1c1c1c}
+#tb{height:28px;background:#282828;border-bottom:1px solid #383838;display:flex;align-items:center;padding:0 5px;gap:1px;flex-shrink:0;overflow:hidden}
+.ts{width:1px;height:14px;background:#444;margin:0 3px;flex-shrink:0}
+.tb{height:21px;padding:0 6px;background:#2d2d2d;border:1px solid #404040;color:#888;cursor:pointer;font-size:10px;font-family:inherit;border-radius:2px;white-space:nowrap;flex-shrink:0}
+.tb:hover{background:#383838;color:#ccc}.tb.on{background:#1a4a8a;border-color:#3a7fd5;color:#fff}
+#ws{flex:1;display:flex;min-height:0}
+#vp{flex:1;position:relative;background:#1a1a1a;overflow:hidden}
+#vp canvas{display:block;width:100%;height:100%}
+#vc-cv{width:88px!important;height:88px!important;display:block}
+.vlbl{position:absolute;font-size:10px;pointer-events:none;user-select:none}
+#lbl-i{top:5px;left:7px;color:#555}
+#lbl-h{bottom:5px;left:7px;color:#343434;line-height:2}
+#sel-rc{position:absolute;border:1px dashed #4a9fd5;background:rgba(74,159,213,.07);pointer-events:none;display:none}
+#kn-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+#rp{width:185px;background:#222;border-left:1px solid #333;overflow-y:auto;flex-shrink:0}
+.sh{background:#2c2c2c;padding:2px 7px;color:#999;font-size:10px;border-bottom:1px solid #353535;user-select:none}
+.sp{padding:4px 7px}
+.rw{display:flex;align-items:center;gap:3px;margin-bottom:2px}
+.rl{color:#666;font-size:10px;min-width:35px;flex-shrink:0}.rv{color:#4a9fd5;font-size:10px}
+.mg{display:flex;gap:2px;margin-bottom:3px}
+.mb{flex:1;height:17px;background:#2a2a2a;border:1px solid #3a3a3a;color:#777;cursor:pointer;font-size:10px;font-family:inherit;border-radius:2px}
+.mb:hover{background:#333;color:#bbb}.mb.on{background:#1a4a8a;border-color:#3a7fd5;color:#fff}
+.ab{width:100%;height:17px;background:#252525;border:1px solid #3a3a3a;color:#777;cursor:pointer;font-size:10px;font-family:inherit;margin-bottom:2px;border-radius:2px}
+.ab:hover{background:#333;color:#bbb}.ab.wr{border-color:#773333}.ab.wr:hover{background:#331515;color:#f88}
+input[type=number]{background:#111;border:1px solid #444;color:#4a9fd5;font-size:10px;font-family:inherit;padding:0 2px;height:15px}
+input[type=range]{width:78px;accent-color:#3a7fd5;vertical-align:middle}
+select{background:#111;border:1px solid #444;color:#999;font-size:10px;font-family:inherit;height:16px}
+#sb{height:19px;background:#191919;border-top:1px solid #2c2c2c;display:flex;align-items:center;padding:0 8px;gap:10px;flex-shrink:0;font-size:9px}
+#sb .v{color:#666}#sb-st{color:#3a7fd5;margin-left:auto}
+#file-in{display:none}
+/* ── Mobile mode ─────────────────────────────── */
+#title-logo{cursor:pointer;user-select:none;padding:2px 5px;border-radius:3px;transition:background .15s}
+#title-logo:hover{background:#1a3a6a}
+#m-panel-btn{display:none;position:absolute;top:5px;left:5px;z-index:10;background:#1a4a8a99;border:1px solid #3a7fd5;color:#fff;width:30px;height:30px;border-radius:6px;font-size:17px;cursor:pointer;line-height:30px;text-align:center}
+#lbl-h-mob{display:none;position:absolute;bottom:5px;left:7px;color:#343434;font-size:10px;pointer-events:none;line-height:2}
+.mobile #m-panel-btn{display:block}
+.mobile #lbl-h{display:none}
+.mobile #lbl-h-mob{display:block}
+.mobile #tb{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mobile .tb{height:26px;padding:0 9px;font-size:11px}
+.mobile .mb{height:22px;font-size:11px}
+.mobile #rp{position:fixed;top:0;right:0;bottom:0;width:200px;z-index:30;transform:translateX(105%);transition:transform .22s cubic-bezier(.4,0,.2,1);box-shadow:-6px 0 18px rgba(0,0,0,.6)}
+.mobile #rp.open{transform:translateX(0)}
+#mob-overlay{display:none;position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.35)}
+.mobile #mob-overlay.open{display:block}
+</style>
+</head>
+<body>
+<div id="pe">
+<div id="tb">
+  <span id="title-logo" style="color:#3a7fd5;font-size:10px;margin-right:3px;flex-shrink:0" onclick="toggleMobileUI()" title="クリックでスマホ/PC切替">■POLY</span>
+  <button class="tb on" id="m-vertex" onclick="setMode('vertex')">頂点</button>
+  <button class="tb" id="m-edge" onclick="setMode('edge')">エッジ</button>
+  <button class="tb" id="m-polygon" onclick="setMode('polygon')">面</button>
+  <button class="tb" id="m-object" onclick="setMode('object')">OBJ</button>
+  <div class="ts"></div>
+  <button class="tb" id="t-select" onclick="setTool('select')" title="ボックス選択">□選択</button>
+  <button class="tb on" id="t-move" onclick="setTool('move')" title="移動">↕移動</button>
+  <button class="tb" id="t-rotate" onclick="setTool('rotate')" title="回転">↺回転</button>
+  <button class="tb" id="t-scale" onclick="setTool('scale')" title="拡縮">⇲拡縮</button>
+  <button class="tb" id="t-knife" onclick="setTool('knife')" title="カッター">✂カット</button>
+  <button class="tb" id="t-edgecr" onclick="setTool('edgecr')" title="エッジ作成(頂点を2つ順にクリック)">＋辺</button>
+  <button class="tb" id="t-extrude" onclick="setTool('extrude')" title="インタラクティブ押し出し">⬆押出</button>
+  <div class="ts"></div>
+  <button class="tb" id="btn-undo" onclick="do_undo()" style="opacity:.4">↩Undo</button>
+  <div class="ts"></div>
+  <button class="tb on" id="t-wire" onclick="toggleWire()" title="ワイヤーフレーム表示切替">Wire</button>
+  <button class="tb on" id="t-grid" onclick="toggleGrid()" title="グリッド表示切替">Grid</button>
+  <div class="ts"></div>
+  <button class="tb" onclick="do_export_obj()">OBJ保存</button>
+  <button class="tb" onclick="$('file-in').click()">OBJ読込</button>
+  <button class="tb" onclick="doReset()">リセット</button>
+</div>
+<div id="ws">
+  <div id="vp">
+    <canvas id="cv"></canvas>
+    <button id="m-panel-btn" onclick="toggleMobilePanel()">☰</button>
+    <div class="vlbl" id="lbl-i">[パース][標準][エッジ面] — Box001</div>
+    <div class="vlbl" id="lbl-h">Alt+左ドラッグ / 中ドラッグ: 回転　右ドラッグ: パン　スクロール: ズーム<br>左クリック: 選択&amp;移動　Ctrl+クリック: 追加　Del: 削除　Ctrl+Z: Undo</div>
+    <div class="vlbl" id="lbl-h-mob">1本指: 要素ドラッグ / 空白でカメラ回転<br>2本指: ピンチズーム / パン</div>
+    <div id="sel-rc"></div>
+    <svg id="kn-svg"></svg>
+  </div>
+<div id="mob-overlay" onclick="toggleMobilePanel()"></div>
+  <div id="rp">
+    <div class="sh">▼ 情報</div>
+    <div class="sp">
+      <div class="rw"><span class="rl">頂点:</span><span class="rv" id="ic-v">0</span><span class="rl" style="margin-left:6px">辺:</span><span class="rv" id="ic-e">0</span></div>
+      <div class="rw"><span class="rl">面:</span><span class="rv" id="ic-f">0</span><span class="rl" style="margin-left:6px">選択:</span><span class="rv" id="ic-s">0</span></div>
+    </div>
+    <div class="sh">▼ 選択</div>
+    <div class="sp">
+      <button class="ab" onclick="selAll()">すべて選択</button>
+      <button class="ab" onclick="selNone()">選択解除</button>
+      <button class="ab" onclick="selInvert()">選択反転</button>
+    </div>
+    <div class="sh">▼ 頂点</div>
+    <div class="sp">
+      <div class="rw"><span class="rl">X:</span><input type="number" id="inp-x" step="0.1" style="width:48px" onchange="setPos('x',this.value)"><span class="rl">Y:</span><input type="number" id="inp-y" step="0.1" style="width:48px" onchange="setPos('y',this.value)"></div>
+      <div class="rw"><span class="rl">Z:</span><input type="number" id="inp-z" step="0.1" style="width:48px" onchange="setPos('z',this.value)"></div>
+      <button class="ab wr" onclick="op_del_verts()">頂点削除 (Del)</button>
+      <button class="ab" onclick="op_weld()">ウェルド</button>
+      <div class="rw" style="margin-top:1px"><span class="rl" style="min-width:52px">結合距離:</span><input type="number" id="merge-dist" step="0.001" value="0.01" min="0.0001" style="width:80px;flex:1"></div>
+      <button class="ab" onclick="op_merge_by_dist(parseFloat($('merge-dist').value)||0.01)">近接頂点結合</button>
+      <button class="ab" onclick="op_smooth()">スムーズ</button>
+      <button class="ab" onclick="op_create_face()">面作成 (CCW選択順)</button>
+    </div>
+    <div class="sh">▼ エッジ</div>
+    <div class="sp">
+      <button class="ab" onclick="op_split_edge()">エッジ分割</button>
+      <button class="ab" onclick="op_loop_cut()">ループカット</button>
+      <button class="ab wr" onclick="op_del_edges()">エッジ削除</button>
+    </div>
+    <div class="sh">▼ 面</div>
+    <div class="sp">
+      <button class="ab" onclick="setTool('extrude')" id="btn-ext">押し出し(ツール選択)</button>
+      <button class="ab" onclick="op_split_face()">面分割</button>
+      <button class="ab" onclick="op_subdiv()">サブディビジョン</button>
+      <button class="ab" onclick="op_flip_normals()">法線反転</button>
+      <button class="ab wr" onclick="op_del_faces()">面削除 (Del)</button>
+    </div>
+    <div class="sh">▼ シンメトリ</div>
+    <div class="sp">
+      <div class="rw">
+        <button class="mb" id="sym-btn" onclick="toggleSym()">OFF</button>
+        <span class="rl">軸:</span>
+        <select id="sym-axis" onchange="SYM_AXIS=this.value;setStatus('シンメトリ軸: '+SYM_AXIS)">
+          <option value="x">X軸</option>
+          <option value="y">Y軸</option>
+          <option value="z">Z軸</option>
+        </select>
+      </div>
+      <button class="ab" onclick="apply_sym_full()">シンメトリ適用</button>
+    </div>
+    <div class="sh">▼ 設定</div>
+    <div class="sp">
+      <div class="rw"><span class="rl" style="min-width:50px">頂点サイズ:</span><input type="range" id="vsize" min="1" max="30" value="4" oninput="setVSize(this.value)"><span class="rv" id="vsize-v" style="margin-left:2px">4</span></div>
+      <div class="rw" style="margin-top:2px"><span class="rl" style="min-width:50px">BOX分割:</span><input type="range" id="segs" min="1" max="6" value="2" oninput="setSegs(this.value)"><span class="rv" id="segs-v" style="margin-left:2px">2</span></div>
+      <div class="rw" style="margin-top:2px"><span class="rl" style="min-width:50px">Sym閾値:</span><input type="range" id="sym-thr" min="1" max="50" value="10" oninput="SYM_THRESH=this.value/100;$('sym-thr-v').textContent=(this.value/100).toFixed(2)"><span class="rv" id="sym-thr-v" style="margin-left:2px">0.10</span></div>
+    </div>
+  </div>
+</div>
+<div id="sb">
+  <span>Mode:<span class="v" id="sb-m">頂点</span></span>
+  <span>Tool:<span class="v" id="sb-t">移動</span></span>
+  <span>Sel:<span class="v" id="sb-s">0</span></span>
+  <span id="sb-st"></span>
+</div>
+</div>
+<input type="file" id="file-in" accept=".obj" onchange="load_obj_file(this)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const CV=$('cv'),VP=$('vp');
+
+// ─── THREE.JS SETUP ───────────────────────────────────────────────────────────
+const R=new THREE.WebGLRenderer({canvas:CV,antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.setClearColor(0x1a1a1a);
+const SC=new THREE.Scene();
+const CAM=new THREE.PerspectiveCamera(45,1,0.01,1000);
+SC.add(new THREE.AmbientLight(0xffffff,.55));
+const DL=new THREE.DirectionalLight(0xffffff,.75);DL.position.set(3,5,4);SC.add(DL);
+const DL2=new THREE.DirectionalLight(0x5577dd,.35);DL2.position.set(-2,-1,-3);SC.add(DL2);
+const GRID_OBJ=new THREE.GridHelper(12,24,0x2a2a2a,0x222222);SC.add(GRID_OBJ);
+const RC=new THREE.Raycaster();RC.params.Line={threshold:.08};
+
+const oc={th:.6,ph:1.05,r:5.5,tx:0,ty:0,tz:0};
+function camU(){
+  CAM.position.set(oc.tx+oc.r*Math.sin(oc.ph)*Math.sin(oc.th),oc.ty+oc.r*Math.cos(oc.ph),oc.tz+oc.r*Math.sin(oc.ph)*Math.cos(oc.th));
+  CAM.lookAt(oc.tx,oc.ty,oc.tz);
+}camU();
+
+// ─── VIEW CUBE ────────────────────────────────────────────────────────────────
+const VC_SZ=88,VC_DPR=Math.min(devicePixelRatio,2);
+const VC_CV=document.createElement('canvas');
+VC_CV.id='vc-cv';VC_CV.width=VC_CV.height=VC_SZ*VC_DPR;
+VC_CV.style.cssText=`position:absolute;top:5px;right:5px;width:${VC_SZ}px;height:${VC_SZ}px;cursor:grab;border-radius:10px;z-index:5;`;
+VP.appendChild(VC_CV);
+const VC_CTX=VC_CV.getContext('2d');VC_CTX.scale(VC_DPR,VC_DPR);
+
+// 8頂点 (単位キューブ)
+const VC_VERTS=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+// 6面 [頂点インデックス, 色, ラベル]
+const VC_FACES=[
+  {vi:[4,5,6,7],col:'#1e4d8c',lbl:'前'},  // +Z
+  {vi:[1,0,3,2],col:'#0e2a50',lbl:'後'},  // -Z
+  {vi:[5,1,2,6],col:'#8c1e1e',lbl:'右'},  // +X
+  {vi:[0,4,7,3],col:'#501010',lbl:'左'},  // -X
+  {vi:[3,7,6,2],col:'#1e7a4a',lbl:'上'},  // +Y
+  {vi:[0,1,5,4],col:'#0e3d22',lbl:'下'},  // -Y
+];
+
+function vc_proj(vx,vy,vz){
+  const sT=Math.sin(oc.th),cT=Math.cos(oc.th),sP=Math.sin(oc.ph),cP=Math.cos(oc.ph);
+  // カメラ基底ベクトルに射影 (Right, Up, Back)
+  const cx= vx*cT          +vz*(-sT);
+  const cy= vx*(-cP*sT)+vy*sP+vz*(-cP*cT);
+  const cz= vx*(sP*sT) +vy*cP+vz*(sP*cT);
+  const d=3.8,sc=VC_SZ*0.33;
+  return{px:cx/(cz+d)*sc+VC_SZ/2,py:-cy/(cz+d)*sc+VC_SZ/2,z:cz};
+}
+
+function vc_draw(){
+  const ctx=VC_CTX,SZ=VC_SZ;
+  ctx.clearRect(0,0,SZ,SZ);
+  // 背景 (border-radiusでクリップされる)
+  ctx.fillStyle='rgba(8,12,22,0.82)';ctx.fillRect(0,0,SZ,SZ);
+
+  // 頂点射影
+  const pv=VC_VERTS.map(v=>vc_proj(v[0],v[1],v[2]));
+
+  // 奥→手前ソート
+  const sf=VC_FACES.map(f=>({...f,avgZ:f.vi.reduce((s,i)=>s+pv[i].z,0)/4})).sort((a,b)=>a.avgZ-b.avgZ);
+
+  sf.forEach(f=>{
+    const pts=f.vi.map(i=>pv[i]);
+    ctx.beginPath();ctx.moveTo(pts[0].px,pts[0].py);
+    pts.slice(1).forEach(p=>ctx.lineTo(p.px,p.py));ctx.closePath();
+    ctx.globalAlpha=f.avgZ<0?0.45:1;
+    ctx.fillStyle=f.col;ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=0.8;ctx.stroke();
+    // 手前の面だけラベル表示
+    if(f.avgZ>0.05){
+      const fcx=pts.reduce((s,p)=>s+p.px,0)/4;
+      const fcy=pts.reduce((s,p)=>s+p.py,0)/4;
+      ctx.globalAlpha=Math.min(1,f.avgZ*1.2+0.3);
+      ctx.fillStyle='#fff';
+      ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(f.lbl,fcx,fcy);
+      ctx.globalAlpha=1;
+    }
+  });
+
+  // XYZ軸
+  const o=vc_proj(0,0,0);
+  [[1.45,0,0,'#ff5555','X'],[0,1.45,0,'#44ee55','Y'],[0,0,1.45,'#4499ff','Z']].forEach(([x,y,z,col,lbl])=>{
+    const p=vc_proj(x,y,z);
+    ctx.beginPath();ctx.moveTo(o.px,o.py);ctx.lineTo(p.px,p.py);
+    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+    // ラベル
+    const lx=p.px+(p.px-o.px)*0.22,ly=p.py+(p.py-o.py)*0.22;
+    ctx.fillStyle=col;ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(lbl,lx,ly);
+  });
+}
+
+// ViewCubeドラッグ操作
+let vc_drag=null;
+VC_CV.addEventListener('mousedown',e=>{
+  e.stopPropagation();e.preventDefault();
+  vc_drag={lx:e.clientX,ly:e.clientY,moved:false};
+  VC_CV.style.cursor='grabbing';
+});
+document.addEventListener('mousemove',e=>{
+  if(!vc_drag)return;
+  const dx=e.clientX-vc_drag.lx,dy=e.clientY-vc_drag.ly;
+  if(Math.abs(dx)>2||Math.abs(dy)>2)vc_drag.moved=true;
+  oc.th-=dx*0.013;
+  oc.ph=Math.max(0.04,Math.min(Math.PI-0.04,oc.ph-dy*0.013));
+  vc_drag.lx=e.clientX;vc_drag.ly=e.clientY;
+  camU();
+});
+document.addEventListener('mouseup',()=>{
+  if(!vc_drag)return;
+  if(!vc_drag.moved)vc_snap();
+  vc_drag=null;VC_CV.style.cursor='grab';
+});
+VC_CV.addEventListener('mouseleave',()=>{if(!vc_drag)VC_CV.style.cursor='grab';});
+
+// クリックで最寄りの正面ビューにスナップ
+function vc_snap(){
+  const views=[
+    {th:0,      ph:Math.PI/2,  name:'前'},
+    {th:Math.PI,ph:Math.PI/2,  name:'後'},
+    {th:-Math.PI/2,ph:Math.PI/2,name:'右'},
+    {th:Math.PI/2, ph:Math.PI/2,name:'左'},
+    {th:0,      ph:0.01,       name:'上'},
+    {th:0,      ph:Math.PI-0.01,name:'下'},
+    {th:-Math.PI/4,ph:Math.PI*0.3,name:'右上前'},
+    {th:Math.PI/4, ph:Math.PI*0.3,name:'左上前'},
+  ];
+  const nt=t=>{while(t>Math.PI)t-=2*Math.PI;while(t<-Math.PI)t+=2*Math.PI;return t;};
+  const ct=nt(oc.th),cp=oc.ph;
+  let best=views[0],bd=Infinity;
+  views.forEach(v=>{
+    const dt=Math.abs(nt(v.th)-ct);
+    const d=Math.min(dt,2*Math.PI-dt)+Math.abs(v.ph-cp)*0.8;
+    if(d<bd){bd=d;best=v;}
+  });
+  const[sTh,sPh]=[oc.th,oc.ph];let s=0;const STEPS=20;
+  (function tick(){
+    s++;const t=s/STEPS,es=t<0.5?2*t*t:(4-2*t)*t-1;
+    oc.th=sTh+(best.th-sTh)*es;oc.ph=sPh+(best.ph-sPh)*es;
+    camU();if(s<STEPS)requestAnimationFrame(tick);
+  })();
+  setStatus('ビュー: '+best.name);
+}
+
+
+let V=[],F=[];            // vertices (Vector3[]), faces (int[][])
+let E=[],EM=new Map(),EF=[],TR=[],T2F=[];  // derived topology
+
+function recompute(){
+  TR=[];T2F=[];E=[];EM=new Map();EF=[];
+  F.forEach((f,fi)=>{
+    for(let i=1;i<f.length-1;i++){TR.push([f[0],f[i],f[i+1]]);T2F.push(fi);}
+    for(let i=0;i<f.length;i++){
+      const a=f[i],b=f[(i+1)%f.length];
+      const k=a<b?`${a},${b}`:`${b},${a}`;
+      if(!EM.has(k)){EM.set(k,E.length);E.push([a,b]);EF.push([]);}
+      const ei=EM.get(k);if(!EF[ei].includes(fi))EF[ei].push(fi);
+    }
+  });
+}
+
+// ─── UNDO ─────────────────────────────────────────────────────────────────────
+const UNDO=[];
+function push_undo(){
+  UNDO.push({V:V.map(v=>({x:v.x,y:v.y,z:v.z})),F:F.map(f=>[...f])});
+  if(UNDO.length>50)UNDO.shift();
+  $('btn-undo').style.opacity=1;
+}
+function do_undo(){
+  if(!UNDO.length){setStatus('これ以上戻せません');return;}
+  const s=UNDO.pop();
+  V=s.V.map(v=>new THREE.Vector3(v.x,v.y,v.z));F=s.F.map(f=>[...f]);
+  SEL_V.clear();SEL_E.clear();SEL_F.clear();
+  recompute();rebuild();setStatus('Undo (残'+UNDO.length+')');
+  $('btn-undo').style.opacity=UNDO.length?1:.4;
+}
+
+// ─── BOX BUILDER ─────────────────────────────────────────────────────────────
+let CUR_SEG=2;
+function init_box(seg=2){
+  CUR_SEG=seg;V=[];F=[];
+  const vm=new Map();
+  const av=(x,y,z)=>{const k=`${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;if(!vm.has(k)){vm.set(k,V.length);V.push(new THREE.Vector3(x,y,z));}return vm.get(k);};
+  [{o:[0,0,1],u:[1,0,0],v:[0,1,0]},{o:[0,0,-1],u:[-1,0,0],v:[0,1,0]},{o:[1,0,0],u:[0,0,-1],v:[0,1,0]},{o:[-1,0,0],u:[0,0,1],v:[0,1,0]},{o:[0,1,0],u:[1,0,0],v:[0,0,-1]},{o:[0,-1,0],u:[1,0,0],v:[0,0,1]}].forEach(({o,u,v})=>{
+    for(let iv=0;iv<seg;iv++)for(let iu=0;iu<seg;iu++){
+      const u0=(iu/seg)*2-1,u1=((iu+1)/seg)*2-1,v0=(iv/seg)*2-1,v1=((iv+1)/seg)*2-1;
+      const mk=(uf,vf)=>av(o[0]+u[0]*uf+v[0]*vf,o[1]+u[1]*uf+v[1]*vf,o[2]+u[2]*uf+v[2]*vf);
+      F.push([mk(u0,v0),mk(u1,v0),mk(u1,v1),mk(u0,v1)]);
+    }
+  });
+  recompute();
+}
+
+// ─── SCENE OBJECTS ───────────────────────────────────────────────────────────
+let MESH,MESH_G,EDGE_LN,EDGE_G,VDOTS=[],FOVL=null;
+let SHOW_WIRE=true,SHOW_GRID=true,VSIZE=0.028;
+const MAT_MESH=new THREE.MeshPhongMaterial({color:0x2244bb,specular:0x334499,shininess:55,side:THREE.DoubleSide});
+const MAT_EDGE=new THREE.LineBasicMaterial({vertexColors:true});
+
+function rebuild(){
+  if(MESH){SC.remove(MESH);MESH_G.dispose();}
+  if(EDGE_LN){SC.remove(EDGE_LN);EDGE_G.dispose();}
+  VDOTS.forEach(d=>SC.remove(d));VDOTS=[];
+  if(FOVL){SC.remove(FOVL);FOVL=null;}
+  // Mesh
+  const mp=new Float32Array(V.length*3);V.forEach((v,i)=>{mp[i*3]=v.x;mp[i*3+1]=v.y;mp[i*3+2]=v.z;});
+  const mi=new Uint32Array(TR.length*3);TR.forEach(([a,b,c],i)=>{mi[i*3]=a;mi[i*3+1]=b;mi[i*3+2]=c;});
+  MESH_G=new THREE.BufferGeometry();MESH_G.setAttribute('position',new THREE.BufferAttribute(mp,3));MESH_G.setIndex(new THREE.BufferAttribute(mi,1));MESH_G.computeVertexNormals();
+  MESH=new THREE.Mesh(MESH_G,MAT_MESH);SC.add(MESH);
+  // Edges
+  const ep=[],ec=[];E.forEach(([a,b])=>{ep.push(V[a].x,V[a].y,V[a].z,V[b].x,V[b].y,V[b].z);ec.push(.45,.55,.8,.45,.55,.8);});
+  EDGE_G=new THREE.BufferGeometry();EDGE_G.setAttribute('position',new THREE.BufferAttribute(new Float32Array(ep),3));EDGE_G.setAttribute('color',new THREE.BufferAttribute(new Float32Array(ec),3));
+  EDGE_LN=new THREE.LineSegments(EDGE_G,MAT_EDGE);EDGE_LN.visible=SHOW_WIRE;EDGE_LN.renderOrder=1;SC.add(EDGE_LN);
+  // Vertex dots
+  const sG=new THREE.SphereGeometry(1,7,5);
+  V.forEach((v,i)=>{const d=new THREE.Mesh(sG,new THREE.MeshBasicMaterial({color:0xaaaaaa,depthTest:false}));d.position.copy(v);d.scale.setScalar(VSIZE);d.userData.vi=i;d.renderOrder=10;SC.add(d);VDOTS.push(d);});
+  refVDots();gz_rebuild_if_needed();upd_info();
+}
+
+function refVDots(){
+  const show=MODE==='vertex'||TOOL==='edgecr'||TOOL==='extrude';
+  VDOTS.forEach(d=>d.visible=show);
+}
+
+function upd_geo(){
+  const mp=MESH_G.attributes.position;V.forEach((v,i)=>mp.setXYZ(i,v.x,v.y,v.z));mp.needsUpdate=true;MESH_G.computeVertexNormals();
+  const ep=EDGE_G.attributes.position;E.forEach(([a,b],i)=>{ep.setXYZ(i*2,V[a].x,V[a].y,V[a].z);ep.setXYZ(i*2+1,V[b].x,V[b].y,V[b].z);});ep.needsUpdate=true;
+  VDOTS.forEach((d,i)=>d.position.copy(V[i]));
+  if(FOVL)upd_fo();
+}
+
+function upd_fo(){
+  if(FOVL){SC.remove(FOVL);FOVL=null;}
+  if(!SEL_F.size)return;
+  const fi=[];SEL_F.forEach(qi=>{const f=F[qi];for(let i=1;i<f.length-1;i++)fi.push(f[0],f[i],f[i+1]);});
+  const pa=new Float32Array(V.length*3);V.forEach((v,i)=>{pa[i*3]=v.x;pa[i*3+1]=v.y;pa[i*3+2]=v.z;});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pa,3));g.setIndex(fi);
+  FOVL=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0xff6600,transparent:true,opacity:.45,side:THREE.DoubleSide,depthTest:false}));FOVL.renderOrder=5;SC.add(FOVL);
+}
+
+function upd_vc(){VDOTS.forEach((d,i)=>d.material.color.setHex(SEL_V.has(i)?0xff6600:i===HOV_V?0xffee00:i===EC_V1?0x00ff88:0xaaaaaa));}
+function upd_ec(){
+  if(!EDGE_G?.attributes?.color)return;
+  const ca=EDGE_G.attributes.color;
+  E.forEach((_,i)=>{const c=SEL_E.has(i)?[1,.4,0]:[.45,.55,.8];ca.setXYZ(i*2,...c);ca.setXYZ(i*2+1,...c);});ca.needsUpdate=true;
+}
+
+function get_centroid(){
+  const c=new THREE.Vector3();let n=0;
+  const addV=vi=>{c.add(V[vi]);n++;};
+  if(MODE==='vertex')SEL_V.forEach(addV);
+  else if(MODE==='edge')SEL_E.forEach(ei=>E[ei].forEach(addV));
+  else if(MODE==='polygon')SEL_F.forEach(fi=>F[fi].forEach(addV));
+  else V.forEach((_,i)=>addV(i));
+  if(n>0)c.divideScalar(n);return c;
+}
+function get_sel_verts(){
+  const vs=new Set();
+  if(MODE==='vertex')SEL_V.forEach(vi=>vs.add(vi));
+  else if(MODE==='edge')SEL_E.forEach(ei=>E[ei].forEach(vi=>vs.add(vi)));
+  else if(MODE==='polygon')SEL_F.forEach(fi=>F[fi].forEach(vi=>vs.add(vi)));
+  else V.forEach((_,i)=>vs.add(i));
+  return vs;
+}
+function faceNormal(f){
+  const n=new THREE.Vector3();
+  for(let i=0;i<f.length;i++){const a=V[f[i]],b=V[f[(i+1)%f.length]];n.x+=(a.y-b.y)*(a.z+b.z);n.y+=(a.z-b.z)*(a.x+b.x);n.z+=(a.x-b.x)*(a.y+b.y);}
+  return n.normalize();
+}
+function axVec(a){return new THREE.Vector3(a==='x'?1:0,a==='y'?1:0,a==='z'?1:0);}
+function axPlane(axis,center){
+  const cd=CAM.getWorldDirection(new THREE.Vector3()),av=axVec(axis);
+  let n=cd.clone().addScaledVector(av,-cd.dot(av));
+  if(n.length()<.001)n=av.clone().cross(new THREE.Vector3(0,1,0));
+  if(n.length()<.001)n=new THREE.Vector3(0,0,1);
+  return new THREE.Plane().setFromNormalAndCoplanarPoint(n.normalize(),center);
+}
+function toScreen(v3){
+  const v=v3.clone().project(CAM),r=CV.getBoundingClientRect();
+  return new THREE.Vector2((v.x+1)/2*r.width,(-v.y+1)/2*r.height);
+}
+function ndc(e){const r=CV.getBoundingClientRect();return new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);}
+
+function upd_info(){
+  $('ic-v').textContent=V.length;$('ic-e').textContent=E.length;$('ic-f').textContent=F.length;
+  $('btn-undo').style.opacity=UNDO.length?1:.4;
+}
+function upd_ui(){
+  upd_info();
+  const cnt=MODE==='vertex'?SEL_V.size:MODE==='edge'?SEL_E.size:MODE==='polygon'?SEL_F.size:V.length;
+  $('ic-s').textContent=cnt;$('sb-s').textContent=cnt;
+  const mn={vertex:'頂点',edge:'エッジ',polygon:'面',object:'Object'};
+  $('sb-m').textContent=mn[MODE];
+  if(MODE==='vertex'&&SEL_V.size===1){const v=V[[...SEL_V][0]];['x','y','z'].forEach(a=>$('inp-'+a).value=v[a].toFixed(3));}
+  else['x','y','z'].forEach(a=>{$('inp-'+a).value='';});
+}
+function setStatus(msg){$('sb-st').textContent=msg;}
+
+// ─── GIZMO SYSTEM ────────────────────────────────────────────────────────────
+const GZ={grp:null,handles:[],type:''};
+let GZ_DRAG=null;
+
+function gz_clear(){
+  if(GZ.grp)SC.remove(GZ.grp);
+  GZ.grp=new THREE.Group();GZ.handles=[];SC.add(GZ.grp);
+}
+
+function gz_mk_hit(geo,type,axis,axes){
+  const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,side:THREE.DoubleSide}));
+  m.userData={type,axis,axes};GZ.handles.push(m);return m;
+}
+
+function gz_build_move(){
+  gz_clear();GZ.type='move';
+  const axes=[{n:'x',c:0xee3333,r:[0,0,-Math.PI/2]},{n:'y',c:0x33ee33,r:[0,0,0]},{n:'z',c:0x3355ee,r:[Math.PI/2,0,0]}];
+  axes.forEach(({n,c,r})=>{
+    const g=new THREE.Group();g.rotation.set(...r);
+    const mat=new THREE.MeshBasicMaterial({color:c,depthTest:false});
+    const sh=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.75,6),mat);sh.position.y=.375;g.add(sh);
+    const hd=new THREE.Mesh(new THREE.ConeGeometry(.085,.2,6),mat.clone());hd.position.y=.85;g.add(hd);
+    const hit=gz_mk_hit(new THREE.CylinderGeometry(.14,.14,1.1,6),'move_axis',n,null);hit.position.y=.45;g.add(hit);
+    GZ.grp.add(g);
+  });
+  // 2-axis plane handles
+  [{axes:'xy',pos:[.3,.3,0],rot:[0,0,0],c:0xffff44},{axes:'yz',pos:[0,.3,.3],rot:[0,-Math.PI/2,0],c:0x44ffff},{axes:'xz',pos:[.3,0,.3],rot:[Math.PI/2,0,0],c:0xff44ff}].forEach(({axes,pos,rot,c})=>{
+    const vis=new THREE.Mesh(new THREE.PlaneGeometry(.2,.2),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.4,side:THREE.DoubleSide,depthTest:false}));
+    vis.position.set(...pos);vis.rotation.set(...rot);GZ.grp.add(vis);
+    const hit=gz_mk_hit(new THREE.PlaneGeometry(.28,.28),'move_plane',null,axes);hit.position.set(...pos);hit.rotation.set(...rot);GZ.grp.add(hit);
+  });
+  GZ.grp.renderOrder=100;
+}
+
+function gz_build_rotate(){
+  gz_clear();GZ.type='rotate';
+  [{n:'x',c:0xee3333,q:[0,Math.PI/2,0]},{n:'y',c:0x33ee33,q:[Math.PI/2,0,0]},{n:'z',c:0x3355ee,q:[0,0,0]}].forEach(({n,c,q})=>{
+    const mat=new THREE.MeshBasicMaterial({color:c,depthTest:false});
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.82,.022,4,64),mat);ring.rotation.set(...q);GZ.grp.add(ring);
+    const hit=gz_mk_hit(new THREE.TorusGeometry(.82,.1,6,32),'rotate_axis',n,null);hit.rotation.set(...q);GZ.grp.add(hit);
+  });
+  GZ.grp.renderOrder=100;
+}
+
+function gz_build_scale(){
+  gz_clear();GZ.type='scale';
+  [{n:'x',c:0xee3333,r:[0,0,-Math.PI/2]},{n:'y',c:0x33ee33,r:[0,0,0]},{n:'z',c:0x3355ee,r:[Math.PI/2,0,0]}].forEach(({n,c,r})=>{
+    const g=new THREE.Group();g.rotation.set(...r);
+    const mat=new THREE.MeshBasicMaterial({color:c,depthTest:false});
+    const sh=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.75,5),mat);sh.position.y=.4;g.add(sh);
+    const bx=new THREE.Mesh(new THREE.BoxGeometry(.13,.13,.13),mat.clone());bx.position.y=.82;g.add(bx);
+    const hit=gz_mk_hit(new THREE.CylinderGeometry(.12,.12,1.0,6),'scale_axis',n,null);hit.position.y=.45;g.add(hit);
+    GZ.grp.add(g);
+  });
+  // Uniform scale sphere
+  const us=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false}));
+  us.userData={type:'scale_uni',axis:'xyz',axes:null};GZ.handles.push(us);GZ.grp.add(us);
+  GZ.grp.renderOrder=100;
+}
+
+function gz_rebuild_if_needed(){
+  const need={move:'move',rotate:'rotate',scale:'scale'}[TOOL];
+  if(!need){if(GZ.grp)GZ.grp.visible=false;return;}
+  if(GZ.type!==need){if(need==='move')gz_build_move();else if(need==='rotate')gz_build_rotate();else gz_build_scale();}
+  gz_place();
+}
+
+function gz_place(){
+  if(!GZ.grp)return;
+  const need=['move','rotate','scale'].includes(TOOL);
+  const hasSel=SEL_V.size+SEL_E.size+SEL_F.size>0||MODE==='object';
+  if(!need||!hasSel){GZ.grp.visible=false;return;}
+  const c=get_centroid(),dist=CAM.position.distanceTo(c);
+  GZ.grp.position.copy(c);GZ.grp.scale.setScalar(dist*.12);GZ.grp.visible=true;
+}
+
+// ─── SYMMETRY ────────────────────────────────────────────────────────────────
+let SYM_ON=false,SYM_AXIS='x',SYM_THRESH=0.1;
+function toggleSym(){
+  SYM_ON=!SYM_ON;$('sym-btn').textContent=SYM_ON?'ON':'OFF';$('sym-btn').classList.toggle('on',SYM_ON);
+  setStatus('シンメトリ: '+(SYM_ON?'ON ('+SYM_AXIS+'軸)':'OFF'));
+}
+function sym_ai(){return SYM_AXIS==='x'?0:SYM_AXIS==='y'?1:2;}
+function apply_sym_drag(averts){
+  if(!SYM_ON)return;const ai=sym_ai();
+  averts.forEach(vi=>{
+    const coord=V[vi].getComponent(ai);
+    if(coord<-SYM_THRESH)return;
+    if(Math.abs(coord)<SYM_THRESH){V[vi].setComponent(ai,0);return;}
+    const mirPos=V[vi].clone();mirPos.setComponent(ai,-coord);
+    let bestD=Infinity,bestVi=-1;
+    V.forEach((u,uj)=>{
+      if(uj===vi)return;
+      if(u.getComponent(ai)>=-SYM_THRESH)return; // 正側スキップ
+      const d=u.distanceTo(mirPos);if(d<bestD){bestD=d;bestVi=uj;}
+    });
+    if(bestVi>=0)V[bestVi].copy(mirPos);
+  });
+}
+function apply_sym_full(){
+  push_undo();const ai=sym_ai(),TH=SYM_THRESH;
+  const newV=[],oldToNew=new Map();
+  V.forEach((v,vi)=>{if(v.getComponent(ai)>=-TH){oldToNew.set(vi,newV.length);const nv=v.clone();if(Math.abs(nv.getComponent(ai))<TH)nv.setComponent(ai,0);newV.push(nv);}});
+  const newF=F.filter(f=>f.every(vi=>oldToNew.has(vi))).map(f=>f.map(vi=>oldToNew.get(vi)));
+  const mirrorMap=new Map();
+  newV.forEach((v,ni)=>{const coord=v.getComponent(ai);if(coord>TH){const mv=v.clone();mv.setComponent(ai,-coord);mirrorMap.set(ni,newV.length);newV.push(mv);}else mirrorMap.set(ni,ni);});
+  const mirF=newF.map(f=>[...f].reverse().map(vi=>mirrorMap.get(vi)));
+  V=newV;F=[...newF,...mirF];
+  SEL_V.clear();SEL_E.clear();SEL_F.clear();recompute();rebuild();setStatus('シンメトリ適用完了');
+}
+
+// ─── BOX SELECTION ───────────────────────────────────────────────────────────
+const BOX={on:false,x0:0,y0:0,x1:0,y1:0};
+const BOXRC=$('sel-rc');
+function box_upd(e){
+  const r=CV.getBoundingClientRect();
+  BOX.x1=e.clientX-r.left;BOX.y1=e.clientY-r.top;
+  const x=Math.min(BOX.x0,BOX.x1),y=Math.min(BOX.y0,BOX.y1),w=Math.abs(BOX.x1-BOX.x0),h=Math.abs(BOX.y1-BOX.y0);
+  Object.assign(BOXRC.style,{display:'block',left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+}
+function box_apply(ctrl){
+  BOXRC.style.display='none';
+  const x0=Math.min(BOX.x0,BOX.x1),x1=Math.max(BOX.x0,BOX.x1),y0=Math.min(BOX.y0,BOX.y1),y1=Math.max(BOX.y0,BOX.y1);
+  if(x1-x0<3&&y1-y0<3){BOX.on=false;return;}
+  if(!ctrl){SEL_V.clear();SEL_E.clear();SEL_F.clear();}
+  const r=CV.getBoundingClientRect();
+  const inBox=v2=>v2.x>=x0&&v2.x<=x1&&v2.y>=y0&&v2.y<=y1;
+  if(MODE==='vertex'){V.forEach((v,vi)=>{if(inBox(toScreen(v)))SEL_V.add(vi);});upd_vc();}
+  else if(MODE==='edge'){E.forEach(([a,b],ei)=>{const sa=toScreen(V[a]),sb=toScreen(V[b]);if(inBox(sa.clone().add(sb).multiplyScalar(.5)))SEL_E.add(ei);});upd_ec();}
+  else if(MODE==='polygon'){F.forEach((f,fi)=>{const c=new THREE.Vector3();f.forEach(vi=>c.add(V[vi]));c.divideScalar(f.length);if(inBox(toScreen(c)))SEL_F.add(fi);});upd_fo();}
+  BOX.on=false;gz_place();upd_ui();
+}
+
+// ─── KNIFE TOOL ──────────────────────────────────────────────────────────────
+let KN_PTS=[],KN_HOV={valid:false,sx:0,sy:0};
+function knife_click(e){
+  RC.setFromCamera(ndc(e),CAM);
+  const hits=RC.intersectObject(EDGE_LN);
+  if(!hits.length){setStatus('辺の上をクリックしてください');return;}
+  const ei=Math.floor(hits[0].index/2);
+  const [a,b]=E[ei];
+  let t=.5;
+  if(!e.ctrlKey&&!e.metaKey){
+    const pt=hits[0].point;const len=V[a].distanceTo(V[b]);
+    t=len>1e-4?Math.max(.05,Math.min(.95,V[a].distanceTo(pt)/len)):.5;
+  }
+  const pos=V[a].clone().lerp(V[b],t);
+  const sp=toScreen(pos);
+  KN_PTS.push({ei,t,pos3d:pos.clone(),sx:sp.x,sy:sp.y});
+  kn_svg_upd();
+  if(KN_PTS.length>=2){exec_knife();return;}
+  setStatus('カッター 1点目配置 — もう一点クリックで実行'+(e.ctrlKey?' [スナップ:中点]':''));
+}
+function exec_knife_pts(pts){
+  // 単一カットパスを実行（KN_PTSまたはミラーパス）
+  const edgeToNewV=new Map();
+  pts.forEach(kp=>{
+    if(!edgeToNewV.has(kp.ei)){
+      const ni=V.length;V.push(kp.pos3d.clone());edgeToNewV.set(kp.ei,ni);
+      const [a,b]=E[kp.ei];const aff=[...EF[kp.ei]];
+      aff.forEach(fi=>{
+        const f=F[fi];const ai=f.indexOf(a),bi=f.indexOf(b);if(ai<0||bi<0)return;
+        const nf=[];for(let i=0;i<f.length;i++){nf.push(f[i]);if((f[i]===a&&f[(i+1)%f.length]===b)||(f[i]===b&&f[(i+1)%f.length]===a))nf.push(ni);}
+        F[fi]=nf;
+      });
+    }
+  });
+  recompute();
+  for(let i=0;i<pts.length-1;i++){
+    const v1=edgeToNewV.get(pts[i].ei),v2=edgeToNewV.get(pts[i+1].ei);
+    if(v1===undefined||v2===undefined)continue;
+    recompute();
+    F.forEach((f,fi)=>{
+      if(!f.includes(v1)||!f.includes(v2))return;
+      const i1=f.indexOf(v1),i2=f.indexOf(v2);if(i1===i2)return;
+      const a=Math.min(i1,i2),bx=Math.max(i1,i2);
+      const fA=f.slice(a,bx+1),fB=[...f.slice(bx),...f.slice(0,a+1)];
+      if(fA.length>=3&&fB.length>=3){F[fi]=fA;F.push(fB);}
+    });
+  }
+}
+function exec_knife(){
+  if(KN_PTS.length<2){setStatus('最低2点必要');return;}
+  push_undo();
+  // シンメトリON時: カット前にミラー点を計算
+  let mirPts=null;
+  if(SYM_ON){
+    const sai=sym_ai();const mirArr=[];let ok=true;
+    for(const kp of KN_PTS){
+      const mirPos=kp.pos3d.clone();mirPos.setComponent(sai,-mirPos.getComponent(sai));
+      if(Math.abs(mirPos.getComponent(sai))<SYM_THRESH){mirArr.push(kp);continue;}
+      let bestEi=-1,bestT=0.5,bestD=Infinity;
+      E.forEach(([a,b],ei2)=>{
+        const pa=V[a],pb=V[b];
+        const ab=new THREE.Vector3().subVectors(pb,pa);const len2=ab.lengthSq();if(len2<1e-8)return;
+        const tVal=Math.max(0.05,Math.min(0.95,new THREE.Vector3().subVectors(mirPos,pa).dot(ab)/len2));
+        const pt=pa.clone().lerp(pb,tVal);const d=pt.distanceTo(mirPos);
+        if(d<bestD){bestD=d;bestEi=ei2;bestT=tVal;}
+      });
+      if(bestEi<0||bestD>0.5){ok=false;break;}
+      const[ma,mb]=E[bestEi];
+      const mirPt=V[ma].clone().lerp(V[mb],bestT);const sp=toScreen(mirPt);
+      mirArr.push({ei:bestEi,t:bestT,pos3d:mirPt.clone(),sx:sp.x,sy:sp.y});
+    }
+    if(ok&&mirArr.length>=2)mirPts=mirArr;
+  }
+  exec_knife_pts(KN_PTS);
+  if(mirPts){recompute();exec_knife_pts(mirPts);}
+  SEL_V.clear();SEL_E.clear();SEL_F.clear();KN_PTS=[];kn_svg_upd();recompute();rebuild();setStatus('カット完了'+(mirPts?' (シンメトリ適用)':''));
+}
+function kn_svg_upd(){
+  const svg=$('kn-svg');svg.innerHTML='';
+  const mk=(sx,sy,c)=>{const x=document.createElementNS('http://www.w3.org/2000/svg','circle');x.setAttribute('cx',sx);x.setAttribute('cy',sy);x.setAttribute('r',4);x.setAttribute('fill',c);x.setAttribute('stroke','#fff');x.setAttribute('stroke-width','1');return x;};
+  for(let i=0;i<KN_PTS.length-1;i++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',KN_PTS[i].sx);l.setAttribute('y1',KN_PTS[i].sy);l.setAttribute('x2',KN_PTS[i+1].sx);l.setAttribute('y2',KN_PTS[i+1].sy);l.setAttribute('stroke','#ffcc00');l.setAttribute('stroke-width','1.5');l.setAttribute('stroke-dasharray','4,3');svg.appendChild(l);}
+  if(KN_PTS.length&&KN_HOV.valid){const l=document.createElementNS('http://www.w3.org/2000/svg','line');const last=KN_PTS[KN_PTS.length-1];l.setAttribute('x1',last.sx);l.setAttribute('y1',last.sy);l.setAttribute('x2',KN_HOV.sx);l.setAttribute('y2',KN_HOV.sy);l.setAttribute('stroke','#ffcc00');l.setAttribute('stroke-width','1');l.setAttribute('stroke-dasharray','4,3');l.setAttribute('opacity','.5');svg.appendChild(l);}
+  KN_PTS.forEach((kp,i)=>svg.appendChild(mk(kp.sx,kp.sy,i===0?'#ff8800':'#ffcc00')));
+  if(KN_HOV.valid)svg.appendChild(mk(KN_HOV.sx,KN_HOV.sy,'rgba(255,200,0,.5)'));
+}
+
+// ─── EDGE CREATE TOOL ────────────────────────────────────────────────────────
+let EC_V1=-1;
+function ec_click(e){
+  RC.setFromCamera(ndc(e),CAM);
+  const hits=RC.intersectObjects(VDOTS.filter(d=>d.visible));
+  if(!hits.length){EC_V1=-1;upd_vc();setStatus('頂点をクリックしてください');return;}
+  const vi=hits[0].object.userData.vi;
+  if(EC_V1<0){EC_V1=vi;upd_vc();setStatus(`1点目: v${vi} → 次の頂点をクリック`);}
+  else if(vi===EC_V1){EC_V1=-1;upd_vc();setStatus('キャンセル');}
+  else{
+    push_undo();
+    const fi=F.findIndex(f=>f.includes(EC_V1)&&f.includes(vi));
+    if(fi<0){setStatus('共通面なし — 辺作成不可');EC_V1=-1;upd_vc();return;}
+    const f=F[fi];const i1=f.indexOf(EC_V1),i2=f.indexOf(vi);
+    const a=Math.min(i1,i2),bx=Math.max(i1,i2);
+    const adj=bx-a===1||(a===0&&bx===f.length-1);
+    if(adj){setStatus('既に隣接しています');EC_V1=-1;upd_vc();return;}
+    const fA=f.slice(a,bx+1),fB=[...f.slice(bx),...f.slice(0,a+1)];
+    if(fA.length>=3&&fB.length>=3){F[fi]=fA;F.push(fB);}
+    EC_V1=-1;SEL_V.clear();recompute();rebuild();setStatus('辺を作成しました');
+  }
+}
+
+// ─── EXTRUDE INTERACTIVE ─────────────────────────────────────────────────────
+let EXT_DRAG=null; // {topVerts, initPos, normal, startY}
+function ext_start(fi,ey){
+  if(!SEL_F.size)return;
+  push_undo();
+  const faces=[...SEL_F];
+  const n=new THREE.Vector3();faces.forEach(fi=>n.add(faceNormal(F[fi])));n.normalize();
+  const remap=new Map();const bv=new Set();faces.forEach(fi=>F[fi].forEach(vi=>bv.add(vi)));
+  bv.forEach(vi=>{remap.set(vi,V.length);V.push(V[vi].clone());});
+  faces.forEach(fi=>{
+    const f=F[fi];
+    for(let i=0;i<f.length;i++){
+      const a=f[i],b=f[(i+1)%f.length];
+      const k=a<b?`${a},${b}`:`${b},${a}`;const ei=EM.get(k);
+      if((EF[ei]||[]).filter(x=>SEL_F.has(x)).length===1){const na=remap.get(a),nb=remap.get(b);if(na!==undefined&&nb!==undefined)F.push([a,b,nb,na]);}
+    }
+    F[fi]=F[fi].map(vi=>remap.has(vi)?remap.get(vi):vi);
+  });
+  recompute();rebuild();
+  const topV=[...remap.values()];
+  EXT_DRAG={topVerts:topV,initPos:topV.map(vi=>V[vi].clone()),normal:n,startY:ey};
+  setStatus('ドラッグで押し出し量を調整');
+}
+function ext_upd(ey){
+  if(!EXT_DRAG)return;
+  const amt=(EXT_DRAG.startY-ey)*0.006*oc.r;
+  EXT_DRAG.topVerts.forEach((vi,i)=>V[vi].copy(EXT_DRAG.initPos[i]).addScaledVector(EXT_DRAG.normal,amt));
+  upd_geo();
+}
+function ext_end(){EXT_DRAG=null;setStatus('押し出し完了');}
+
+// ─── OPERATIONS ──────────────────────────────────────────────────────────────
+function splitFaceAt(f,i1,i2){
+  const a=Math.min(i1,i2),b=Math.max(i1,i2);
+  return[f.slice(a,b+1),[...f.slice(b),...f.slice(0,a+1)]];
+}
+function op_del_verts(){
+  if(!SEL_V.size){setStatus('頂点を選択してください');return;}push_undo();
+  F=F.filter(f=>!f.some(vi=>SEL_V.has(vi)));
+  const keep=V.map((_,i)=>!SEL_V.has(i));const remap=[];let ni=0;keep.forEach((k,i)=>remap[i]=k?ni++:-1);
+  V=V.filter((_,i)=>keep[i]);F=F.map(f=>f.map(vi=>remap[vi])).filter(f=>f.every(vi=>vi>=0)&&f.length>=3);
+  SEL_V.clear();recompute();rebuild();setStatus('頂点削除完了');
+}
+function op_del_edges(){
+  if(!SEL_E.size){setStatus('エッジを選択してください');return;}push_undo();
+  const badF=new Set();SEL_E.forEach(ei=>EF[ei].forEach(fi=>badF.add(fi)));
+  F=F.filter((_,i)=>!badF.has(i));SEL_E.clear();recompute();rebuild();setStatus('エッジ削除完了');
+}
+function op_del_faces(){
+  if(!SEL_F.size){setStatus('面を選択してください');return;}push_undo();
+  F=F.filter((_,i)=>!SEL_F.has(i));SEL_F.clear();recompute();rebuild();setStatus('面削除完了');
+}
+function op_weld(){
+  if(SEL_V.size<2){setStatus('2頂点以上選択');return;}push_undo();
+  const c=new THREE.Vector3();SEL_V.forEach(vi=>c.add(V[vi]));c.divideScalar(SEL_V.size);
+  const first=[...SEL_V][0];V[first].copy(c);
+  const others=new Set([...SEL_V].slice(1));
+  F=F.map(f=>f.map(vi=>others.has(vi)?first:vi));
+  F=F.filter(f=>{const s=new Set(f);return s.size>=3;});
+  const kv=new Set();F.forEach(f=>f.forEach(vi=>kv.add(vi)));
+  const rm=[];let nni=0;V.forEach((_,i)=>rm[i]=kv.has(i)?nni++:-1);
+  V=V.filter((_,i)=>kv.has(i));F=F.map(f=>f.map(vi=>rm[vi]));
+  SEL_V.clear();recompute();rebuild();setStatus('ウェルド完了');
+}
+function op_merge_by_dist(dist){
+  if(isNaN(dist)||dist<=0){setStatus('正の距離を入力してください');return;}
+  push_undo();
+  // Union-Find で近接頂点をグループ化
+  const par=V.map((_,i)=>i);
+  function find(i){while(par[i]!==i){par[i]=par[par[i]];i=par[i];}return i;}
+  function unite(a,b){par[find(a)]=find(b);}
+  for(let i=0;i<V.length;i++)for(let j=i+1;j<V.length;j++)if(V[i].distanceTo(V[j])<=dist)unite(i,j);
+  // 代表点 → 新インデックス（グループの重心）
+  const groups=new Map();
+  V.forEach((_,i)=>{const r=find(i);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(i);});
+  const newV=[];const remap=new Array(V.length);
+  groups.forEach((verts)=>{
+    const avg=new THREE.Vector3();verts.forEach(vi=>avg.add(V[vi]));avg.divideScalar(verts.length);
+    const ni=newV.length;newV.push(avg);verts.forEach(vi=>remap[vi]=ni);
+  });
+  const before=V.length;V=newV;
+  F=F.map(f=>f.map(vi=>remap[vi]));
+  // 重複頂点の除去 & 縮退面の除去
+  F=F.map(f=>{const nf=[];for(let i=0;i<f.length;i++)if(f[i]!==f[(i+1)%f.length])nf.push(f[i]);return nf;});
+  F=F.filter(f=>new Set(f).size>=3);
+  SEL_V.clear();SEL_E.clear();SEL_F.clear();
+  recompute();rebuild();setStatus(`近接結合完了: ${before}→${V.length}頂点 (${before-V.length}個結合)`);
+}
+function op_smooth(){
+  push_undo();const tgt=SEL_V.size>0?[...SEL_V]:V.map((_,i)=>i);
+  const adj=new Map();V.forEach((_,i)=>adj.set(i,[]));E.forEach(([a,b])=>{adj.get(a).push(b);adj.get(b).push(a);});
+  const np=V.map(v=>v.clone());
+  tgt.forEach(vi=>{const nb=adj.get(vi)||[];if(!nb.length)return;const avg=new THREE.Vector3();nb.forEach(n=>avg.add(V[n]));avg.divideScalar(nb.length);np[vi].lerp(avg,.5);});
+  tgt.forEach(vi=>V[vi].copy(np[vi]));upd_geo();upd_vc();setStatus('スムーズ適用');
+}
+function op_create_face(){
+  if(SEL_V.size<3){setStatus('3頂点以上選択(CCW順)');return;}push_undo();
+  F.push([...SEL_V]);SEL_V.clear();recompute();rebuild();setStatus('面作成完了');
+}
+function op_split_edge(){
+  if(!SEL_E.size){setStatus('エッジを選択してください');return;}push_undo();
+  SEL_E.forEach(ei=>{
+    const[a,b]=E[ei];const ni=V.length;V.push(V[a].clone().add(V[b]).multiplyScalar(.5));
+    EF[ei].forEach(fi=>{
+      const f=F[fi];const ai=f.indexOf(a),bi=f.indexOf(b);if(ai<0||bi<0)return;
+      const nf=[];for(let i=0;i<f.length;i++){nf.push(f[i]);if((f[i]===a&&f[(i+1)%f.length]===b)||(f[i]===b&&f[(i+1)%f.length]===a))nf.push(ni);}F[fi]=nf;
+    });recompute();
+  });SEL_E.clear();recompute();rebuild();setStatus('エッジ分割完了');
+}
+function op_loop_cut(){
+  if(!SEL_E.size){setStatus('エッジを選択してください');return;}push_undo();
+  const vis=new Set();
+  SEL_E.forEach(startEi=>{
+    if(vis.has(startEi))return;
+    const loop=[startEi];vis.add(startEi);let cur=startEi;
+    for(let it=0;it<200;it++){
+      const faces=EF[cur];if(!faces.length)break;
+      const fi=faces[0];const f=F[fi];if(f.length!==4)break;
+      const[a,b]=E[cur];const ai=f.indexOf(a),bi=f.indexOf(b);if(ai<0||bi<0)break;
+      const oa=f[(ai+2)%4],ob=f[(bi+2)%4];const ok=oa<ob?`${oa},${ob}`:`${ob},${oa}`;
+      const oppEi=EM.get(ok);if(oppEi===undefined||vis.has(oppEi))break;
+      loop.push(oppEi);vis.add(oppEi);
+      const nFi=EF[oppEi].find(x=>x!==fi);if(nFi===undefined){cur=oppEi;break;}cur=oppEi;
+      if(F[nFi].length!==4)break;
+    }
+    const vmap=new Map();
+    loop.forEach(ei=>{const[a,b]=E[ei];const ni=V.length;V.push(V[a].clone().add(V[b]).multiplyScalar(.5));vmap.set(ei,ni);
+      EF[ei].forEach(fi=>{const f=F[fi];const ai=f.indexOf(a),bi=f.indexOf(b);if(ai<0||bi<0)return;
+        const nf=[];for(let i=0;i<f.length;i++){nf.push(f[i]);if((f[i]===a&&f[(i+1)%f.length]===b)||(f[i]===b&&f[(i+1)%f.length]===a))nf.push(ni);}F[fi]=nf;});
+      recompute();
+    });
+    const newVs=[...vmap.values()];
+    for(let fi=0;fi<F.length;fi++){
+      const f=F[fi];if(f.length!==5)continue;
+      const ni1=f.findIndex(vi=>newVs.includes(vi));if(ni1<0)continue;
+      const ni2=f.findIndex((vi,i)=>i!==ni1&&newVs.includes(vi));if(ni2<0)continue;
+      const[fA,fB]=splitFaceAt(f,ni1,ni2);if(fA.length>=3&&fB.length>=3){F[fi]=fA;F.push(fB);}
+    }
+    recompute();
+  });SEL_E.clear();recompute();rebuild();setStatus('ループカット完了');
+}
+function op_extrude_static(){// called from old code path, kept for compatibility
+  if(!SEL_F.size){setStatus('面を選択してください');return;}push_undo();
+  const faces=[...SEL_F];const n=new THREE.Vector3();faces.forEach(fi=>n.add(faceNormal(F[fi])));n.normalize().multiplyScalar(.4);
+  const remap=new Map();const bv=new Set();faces.forEach(fi=>F[fi].forEach(vi=>bv.add(vi)));
+  bv.forEach(vi=>{remap.set(vi,V.length);V.push(V[vi].clone().add(n));});
+  faces.forEach(fi=>{
+    const f=F[fi];for(let i=0;i<f.length;i++){const a=f[i],b=f[(i+1)%f.length];const k=a<b?`${a},${b}`:`${b},${a}`;const ei=EM.get(k);if((EF[ei]||[]).filter(x=>SEL_F.has(x)).length===1){const na=remap.get(a),nb=remap.get(b);if(na!==undefined&&nb!==undefined)F.push([a,b,nb,na]);}}
+    F[fi]=F[fi].map(vi=>remap.has(vi)?remap.get(vi):vi);
+  });SEL_F.clear();recompute();rebuild();setStatus('押し出し完了');
+}
+function op_split_face(){
+  if(!SEL_F.size){setStatus('面を選択してください');return;}push_undo();
+  const newF=[];const rem=new Set();
+  SEL_F.forEach(fi=>{const f=F[fi];const c=new THREE.Vector3();f.forEach(vi=>c.add(V[vi]));c.divideScalar(f.length);const ci=V.length;V.push(c);
+    const mids=f.map((vi,i)=>{const vi2=f[(i+1)%f.length];const ni=V.length;V.push(V[vi].clone().add(V[vi2]).multiplyScalar(.5));return ni;});
+    f.forEach((vi,i)=>newF.push([vi,mids[i],ci,mids[(i+f.length-1)%f.length]]));rem.add(fi);
+  });
+  F=F.filter((_,i)=>!rem.has(i));F.push(...newF);SEL_F.clear();recompute();rebuild();setStatus('面分割完了');
+}
+function op_subdiv(){
+  push_undo();const tgt=SEL_F.size?[...SEL_F]:F.map((_,i)=>i);const newF=[];const rem=new Set();
+  tgt.forEach(fi=>{const f=F[fi];const c=new THREE.Vector3();f.forEach(vi=>c.add(V[vi]));c.divideScalar(f.length);const ci=V.length;V.push(c);
+    const mids=f.map((vi,i)=>{const vi2=f[(i+1)%f.length];const ni=V.length;V.push(V[vi].clone().add(V[vi2]).multiplyScalar(.5));return ni;});
+    f.forEach((vi,i)=>newF.push([vi,mids[i],ci,mids[(i+f.length-1)%f.length]]));rem.add(fi);
+  });
+  F=F.filter((_,i)=>!rem.has(i));F.push(...newF);SEL_F.clear();recompute();rebuild();setStatus('サブディビジョン完了');
+}
+function op_flip_normals(){
+  push_undo();const tgt=SEL_F.size?[...SEL_F]:F.map((_,i)=>i);
+  tgt.forEach(fi=>F[fi].reverse());recompute();rebuild();setStatus('法線反転完了');
+}
+
+// ─── OBJ I/O ─────────────────────────────────────────────────────────────────
+function do_export_obj(){
+  let out='# Poly Editor Export\n# Vertices: '+V.length+'\n# Faces: '+F.length+'\n\n';
+  V.forEach(v=>out+=`v ${v.x.toFixed(6)} ${v.y.toFixed(6)} ${v.z.toFixed(6)}\n`);
+  out+='\n';F.forEach(f=>out+=`f ${f.map(vi=>vi+1).join(' ')}\n`);
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/plain'}));a.download='model.obj';a.click();
+  setStatus('OBJ保存完了');
+}
+function import_obj(txt){
+  const nV=[],nF=[];
+  txt.split('\n').forEach(line=>{
+    const p=line.trim().split(/\s+/);
+    if(p[0]==='v')nV.push(new THREE.Vector3(parseFloat(p[1])||0,parseFloat(p[2])||0,parseFloat(p[3])||0));
+    else if(p[0]==='f'){const idx=p.slice(1).map(s=>parseInt(s.split('/')[0])-1);if(idx.length>=3)nF.push(idx);}
+  });
+  if(!nV.length){setStatus('OBJ読み込み失敗 (頂点なし)');return;}
+  V=nV;F=nF;SEL_V.clear();SEL_E.clear();SEL_F.clear();recompute();rebuild();setStatus(`OBJ読み込み完了 V:${V.length} F:${F.length}`);
+}
+function load_obj_file(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();r.onload=e=>import_obj(e.target.result);r.readAsText(f);inp.value='';
+}
+
+// ─── INTERACTION STATE ───────────────────────────────────────────────────────
+let MODE='vertex',TOOL='move',HOV_V=-1;
+let SEL_V=new Set(),SEL_E=new Set(),SEL_F=new Set();
+let ALT=false;
+const orb={a:false,p:false,lx:0,ly:0};
+let free_drag=null; // {plane, sp, averts, initVerts}
+let md={x:0,y:0,mv:false,wasGz:false,wasElem:false};
+
+document.addEventListener('keydown',e=>{
+  ALT=e.altKey;
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();do_undo();}
+  if(e.key==='Escape'){KN_PTS=[];kn_svg_upd();EC_V1=-1;upd_vc();EXT_DRAG=null;setStatus('キャンセル');}
+  if(e.key==='Enter'&&TOOL==='knife')exec_knife();
+  if((e.key==='Delete'||e.key==='Backspace')&&document.activeElement.tagName!=='INPUT'){
+    if(MODE==='vertex'&&SEL_V.size)op_del_verts();
+    else if(MODE==='edge'&&SEL_E.size)op_del_edges();
+    else if(MODE==='polygon'&&SEL_F.size)op_del_faces();
+  }
+});
+document.addEventListener('keyup',e=>{ALT=e.altKey;});
+
+CV.addEventListener('mousemove',e=>{
+  if(Math.abs(e.clientX-md.x)>2||Math.abs(e.clientY-md.y)>2)md.mv=true;
+  // Orbit
+  if(orb.a){
+    const dth=e.clientX-orb.lx,dph=e.clientY-orb.ly;
+    oc.th-=dth*.008;oc.ph=Math.max(.04,Math.min(Math.PI-.04,oc.ph-dph*.008));  // <-- INVERTED VERTICAL
+    orb.lx=e.clientX;orb.ly=e.clientY;camU();return;
+  }
+  if(orb.p){
+    const dx=e.clientX-orb.lx,dy=e.clientY-orb.ly,s=oc.r*.0012;
+    const rt=new THREE.Vector3().crossVectors(CAM.getWorldDirection(new THREE.Vector3()),CAM.up).normalize();
+    oc.tx-=rt.x*dx*s;oc.ty-=rt.y*dx*s;oc.tz-=rt.z*dx*s;
+    oc.tx+=CAM.up.x*dy*s;oc.ty+=CAM.up.y*dy*s;oc.tz+=CAM.up.z*dy*s;
+    orb.lx=e.clientX;orb.ly=e.clientY;camU();return;
+  }
+  // Extrude drag
+  if(EXT_DRAG&&md.mv){ext_upd(e.clientY);return;}
+  // GZ drag
+  if(GZ_DRAG&&md.mv){
+    const ud=GZ_DRAG;
+    if(ud.type==='move_axis'||ud.type==='move_plane'){
+      RC.setFromCamera(ndc(e),CAM);const cp=new THREE.Vector3();
+      if(RC.ray.intersectPlane(ud.plane,cp)){
+        const delta=cp.clone().sub(ud.startPt);
+        if(ud.type==='move_axis'){const av=axVec(ud.axis),d=delta.dot(av);ud.averts.forEach(vi=>V[vi].copy(ud.initV[vi]).addScaledVector(av,d));}
+        else{const axes=ud.axes;ud.averts.forEach(vi=>{const nv=ud.initV[vi].clone();if(axes.includes('x'))nv.x+=delta.x;if(axes.includes('y'))nv.y+=delta.y;if(axes.includes('z'))nv.z+=delta.z;V[vi].copy(nv);});}
+        upd_geo();if(SYM_ON)apply_sym_drag(ud.averts);
+      }
+    }else if(ud.type==='rotate_axis'){
+      const dx=e.clientX-ud.startMouse.x,dy=e.clientY-ud.startMouse.y;
+      const ang=(ud.axis==='x'?-dy:-dx)*0.01;
+      const q=new THREE.Quaternion().setFromAxisAngle(axVec(ud.axis),ang);
+      const c=ud.centroid;ud.averts.forEach(vi=>V[vi].copy(c).add(ud.initV[vi].clone().sub(c).applyQuaternion(q)));
+      upd_geo();
+    }else if(ud.type==='scale_axis'||ud.type==='scale_uni'){
+      const d=(e.clientX-ud.startMouse.x-(e.clientY-ud.startMouse.y))*.005;const sf=1+d;
+      const c=ud.centroid;ud.averts.forEach(vi=>{const rel=ud.initV[vi].clone().sub(c);if(ud.axis==='x')rel.x*=sf;else if(ud.axis==='y')rel.y*=sf;else if(ud.axis==='z')rel.z*=sf;else rel.multiplyScalar(sf);V[vi].copy(c).add(rel);});
+      upd_geo();
+    }
+    return;
+  }
+  // Free drag (vertex/edge/face)
+  if(free_drag&&md.mv){
+    RC.setFromCamera(ndc(e),CAM);const cp=new THREE.Vector3();
+    if(RC.ray.intersectPlane(free_drag.plane,cp)){
+      const delta=cp.clone().sub(free_drag.sp);
+      free_drag.averts.forEach(vi=>V[vi].copy(free_drag.initV[vi]).add(delta));
+      upd_geo();upd_vc();if(SYM_ON)apply_sym_drag(free_drag.averts);
+    }
+    return;
+  }
+  // Box selection update
+  if(BOX.on){box_upd(e);return;}
+  // Hover for vertex
+  if(MODE==='vertex'&&TOOL==='move'){
+    RC.setFromCamera(ndc(e),CAM);const h=RC.intersectObjects(VDOTS.filter(d=>d.visible));
+    const nv=h.length?h[0].object.userData.vi:-1;if(nv!==HOV_V){HOV_V=nv;upd_vc();}
+  }
+  // Knife hover
+  if(TOOL==='knife'){
+    RC.setFromCamera(ndc(e),CAM);const h=RC.intersectObject(EDGE_LN);
+    if(h.length){const sp=toScreen(h[0].point);KN_HOV.valid=true;KN_HOV.sx=sp.x;KN_HOV.sy=sp.y;}
+    else KN_HOV.valid=false;kn_svg_upd();
+  }
+});
+
+CV.addEventListener('mousedown',e=>{
+  md.x=e.clientX;md.y=e.clientY;md.mv=false;md.wasGz=false;md.wasElem=false;
+  if(e.button===1||(e.button===0&&ALT)){orb.a=true;orb.lx=e.clientX;orb.ly=e.clientY;e.preventDefault();return;}
+  if(e.button===2){orb.p=true;orb.lx=e.clientX;orb.ly=e.clientY;if(TOOL==='knife'){KN_PTS=[];kn_svg_upd();}return;}
+  if(e.button!==0)return;
+  const ctrl=e.ctrlKey||e.metaKey;
+  RC.setFromCamera(ndc(e),CAM);
+
+  // ── Special tools ──────────────────────────────────
+  if(TOOL==='knife'){knife_click(e);return;}
+  if(TOOL==='edgecr'){ec_click(e);return;}
+
+  // ── Extrude tool ───────────────────────────────────
+  if(TOOL==='extrude'){
+    if(MODE!=='polygon')setMode('polygon');
+    const h=RC.intersectObject(MESH);
+    if(h.length){
+      const fi=T2F[h[0].faceIndex];
+      if(ctrl){
+        // Ctrl+クリック: 選択トグル
+        SEL_F.has(fi)?SEL_F.delete(fi):SEL_F.add(fi);
+      } else if(!SEL_F.has(fi)){
+        // 未選択の面をクリック: 選択リセットしてその面だけに
+        SEL_F.clear();SEL_F.add(fi);
+      }
+      // すでに選択済みの面をクリック: 選択を維持 → 複数面押し出し
+      upd_fo();upd_ui();
+      if(!EXT_DRAG&&SEL_F.size)ext_start(fi,e.clientY);
+    }else if(!ctrl){SEL_F.clear();upd_fo();upd_ui();}
+    return;
+  }
+
+  // ── Gizmo check ─────────────────────────────────────
+  if(['move','rotate','scale'].includes(TOOL)&&GZ.grp?.visible){
+    const ghits=RC.intersectObjects(GZ.handles);
+    if(ghits.length){
+      const ud=ghits[0].object.userData;const c=get_centroid();const averts=[...get_sel_verts()];
+      GZ_DRAG={type:ud.type,axis:ud.axis,axes:ud.axes,centroid:c.clone(),startMouse:{x:e.clientX,y:e.clientY},initV:V.map(v=>v.clone()),averts};
+      if(ud.type==='move_axis'){GZ_DRAG.plane=axPlane(ud.axis,c);const sp=new THREE.Vector3();RC.ray.intersectPlane(GZ_DRAG.plane,sp);GZ_DRAG.startPt=sp.clone();}
+      else if(ud.type==='move_plane'){const excl='xyz'.split('').find(a=>!ud.axes.includes(a));const n=axVec(excl);GZ_DRAG.plane=new THREE.Plane().setFromNormalAndCoplanarPoint(n,c);const sp=new THREE.Vector3();RC.ray.intersectPlane(GZ_DRAG.plane,sp);GZ_DRAG.startPt=sp.clone();}
+      push_undo();md.wasGz=true;return;
+    }
+  }
+
+  // ── Element selection + free drag ──────────────────
+  let hit=false;
+  if(MODE==='vertex'||(TOOL==='select'&&MODE==='vertex')){
+    const h=RC.intersectObjects(VDOTS.filter(d=>d.visible));
+    if(h.length){
+      const vi=h[0].object.userData.vi;hit=true;
+      if(!ctrl)SEL_V.clear();SEL_V.has(vi)&&ctrl?SEL_V.delete(vi):SEL_V.add(vi);
+      upd_vc();gz_place();upd_ui();
+      if(TOOL==='move'){
+        const pl=new THREE.Plane().setFromNormalAndCoplanarPoint(CAM.getWorldDirection(new THREE.Vector3()),V[vi]);
+        const sp=new THREE.Vector3();RC.ray.intersectPlane(pl,sp);
+        free_drag={plane:pl,sp:sp.clone(),averts:[vi],initV:V.map(v=>v.clone())};
+        push_undo();
+      }
+      md.wasElem=true;
+    }
+  }else if(MODE==='edge'){
+    const h=RC.intersectObject(EDGE_LN);
+    if(h.length){
+      const ei=Math.floor(h[0].index/2);hit=true;
+      if(!ctrl)SEL_E.clear();SEL_E.has(ei)&&ctrl?SEL_E.delete(ei):SEL_E.add(ei);
+      upd_ec();gz_place();upd_ui();
+      if(TOOL==='move'){
+        const c=get_centroid(),pl=new THREE.Plane().setFromNormalAndCoplanarPoint(CAM.getWorldDirection(new THREE.Vector3()),c);
+        const sp=new THREE.Vector3();RC.ray.intersectPlane(pl,sp);
+        const averts=[...get_sel_verts()];
+        free_drag={plane:pl,sp:sp.clone(),averts,initV:V.map(v=>v.clone())};push_undo();
+      }
+      md.wasElem=true;
+    }
+  }else if(MODE==='polygon'){
+    const h=RC.intersectObject(MESH);
+    if(h.length){
+      const fi=T2F[h[0].faceIndex];hit=true;
+      if(!ctrl)SEL_F.clear();SEL_F.has(fi)&&ctrl?SEL_F.delete(fi):SEL_F.add(fi);
+      upd_fo();gz_place();upd_ui();
+      if(TOOL==='move'){
+        const c=get_centroid(),pl=new THREE.Plane().setFromNormalAndCoplanarPoint(CAM.getWorldDirection(new THREE.Vector3()),c);
+        const sp=new THREE.Vector3();RC.ray.intersectPlane(pl,sp);
+        const averts=[...get_sel_verts()];
+        free_drag={plane:pl,sp:sp.clone(),averts,initV:V.map(v=>v.clone())};push_undo();
+      }
+      md.wasElem=true;
+    }
+  }else if(MODE==='object'&&TOOL==='move'){
+    const c=get_centroid(),pl=new THREE.Plane().setFromNormalAndCoplanarPoint(CAM.getWorldDirection(new THREE.Vector3()),c);
+    const sp=new THREE.Vector3();RC.ray.intersectPlane(pl,sp);
+    free_drag={plane:pl,sp:sp.clone(),averts:[...get_sel_verts()],initV:V.map(v=>v.clone())};push_undo();
+    hit=true;md.wasElem=true;
+  }
+
+  // ── Start box selection / mobile orbit if no element hit ──
+  if(!hit&&!ctrl&&TOOL!=='knife'&&TOOL!=='edgecr'&&TOOL!=='extrude'){
+    if(MOBILE_UI){
+      // モバイル: 空白ドラッグ = 視点回転
+      orb.a=true;orb.lx=e.clientX;orb.ly=e.clientY;
+    }else{
+      if(!ctrl){SEL_V.clear();SEL_E.clear();SEL_F.clear();upd_vc();upd_ec();upd_fo();gz_place();upd_ui();}
+      const r=CV.getBoundingClientRect();BOX.on=true;BOX.x0=e.clientX-r.left;BOX.y0=e.clientY-r.top;BOX.x1=BOX.x0;BOX.y1=BOX.y0;
+    }
+  }
+});
+
+CV.addEventListener('mouseup',e=>{
+  if(e.button===1)orb.a=false;
+  if(e.button===2){orb.p=false;return;}
+  if(e.button!==0)return;
+  orb.a=false;
+  if(EXT_DRAG){ext_end();recompute();rebuild();}
+  EXT_DRAG=null;
+  GZ_DRAG=null;
+  free_drag=null;
+  if(BOX.on)box_apply(e.ctrlKey||e.metaKey);
+});
+CV.addEventListener('wheel',e=>{oc.r=Math.max(.3,Math.min(50,oc.r*(1+e.deltaY*.001)));camU();e.preventDefault();},{passive:false});
+CV.addEventListener('contextmenu',e=>e.preventDefault());
+
+// ─── UI FUNCTIONS (global) ───────────────────────────────────────────────────
+const TOOL_NAMES={select:'ボックス選択',move:'移動',rotate:'回転',scale:'拡縮',knife:'カッター',edgecr:'辺作成',extrude:'押し出し'};
+
+window.setMode=function(m){
+  MODE=m;SEL_V.clear();SEL_E.clear();SEL_F.clear();EC_V1=-1;
+  if(FOVL){SC.remove(FOVL);FOVL=null;}
+  ['vertex','edge','polygon','object'].forEach(x=>{const b=$('m-'+x);if(b)b.classList.toggle('on',x===m);const b2=$('ml-'+x);if(b2)b2.classList.toggle('on',x===m);});
+  refVDots();upd_vc();upd_ec();gz_rebuild_if_needed();gz_place();upd_ui();
+};
+window.setTool=function(t){
+  // 押出ツール: もう一度押すと解除して面選択モードへ
+  if(t==='extrude'&&TOOL==='extrude'){
+    TOOL='select';KN_PTS=[];kn_svg_upd();EC_V1=-1;EXT_DRAG=null;
+    setMode('polygon');
+    ['select','move','rotate','scale','knife','edgecr','extrude'].forEach(x=>{const b=$('t-'+x);if(b)b.classList.toggle('on',x==='select');});
+    $('sb-t').textContent=TOOL_NAMES['select']||'ボックス選択';
+    refVDots();gz_rebuild_if_needed();gz_place();
+    setStatus('面選択モード');return;
+  }
+  TOOL=t;KN_PTS=[];kn_svg_upd();EC_V1=-1;EXT_DRAG=null;upd_vc();
+  if(t==='edgecr')setMode('vertex');
+  if(t==='extrude'&&MODE!=='polygon')setMode('polygon'); // すでに面モードなら選択を保持
+  ['select','move','rotate','scale','knife','edgecr','extrude'].forEach(x=>{const b=$('t-'+x);if(b)b.classList.toggle('on',x===t);});
+  $('sb-t').textContent=TOOL_NAMES[t]||t;
+  refVDots();gz_rebuild_if_needed();gz_place();
+  const hints={knife:'辺をクリックして切断点追加 / Ctrl+クリック=中点スナップ / 2点クリックで自動実行 / ESCキャンセル',edgecr:'頂点を順番に2つクリックして辺作成',extrude:'面をクリック→ドラッグで押し出し量調整 / もう一度⬆で解除',select:'ドラッグで範囲選択'};
+  setStatus(hints[t]||'');
+};
+window.toggleWire=function(){SHOW_WIRE=!SHOW_WIRE;if(EDGE_LN)EDGE_LN.visible=SHOW_WIRE;$('t-wire').classList.toggle('on',SHOW_WIRE);};
+window.toggleGrid=function(){SHOW_GRID=!SHOW_GRID;GRID_OBJ.visible=SHOW_GRID;$('t-grid').classList.toggle('on',SHOW_GRID);};
+window.doReset=function(){SEL_V.clear();SEL_E.clear();SEL_F.clear();KN_PTS=[];kn_svg_upd();EC_V1=-1;EXT_DRAG=null;init_box(CUR_SEG);rebuild();upd_ui();setStatus('リセット');};
+window.setVSize=function(v){VSIZE=parseInt(v)*.007;$('vsize-v').textContent=v;VDOTS.forEach(d=>d.scale.setScalar(VSIZE));};
+window.setSegs=function(v){$('segs-v').textContent=v;SEL_V.clear();SEL_E.clear();SEL_F.clear();init_box(parseInt(v));rebuild();upd_ui();};
+window.setPos=function(ax,val){const v=parseFloat(val);if(isNaN(v))return;SEL_V.forEach(vi=>V[vi][ax]=v);upd_geo();upd_vc();};
+window.selAll=function(){
+  if(MODE==='vertex')V.forEach((_,i)=>SEL_V.add(i)),upd_vc();
+  else if(MODE==='edge')E.forEach((_,i)=>SEL_E.add(i)),upd_ec();
+  else if(MODE==='polygon')F.forEach((_,i)=>SEL_F.add(i)),upd_fo();
+  gz_place();upd_ui();
+};
+window.selNone=function(){SEL_V.clear();SEL_E.clear();SEL_F.clear();upd_vc();upd_ec();upd_fo();gz_place();upd_ui();};
+window.selInvert=function(){
+  if(MODE==='vertex'){V.forEach((_,i)=>SEL_V.has(i)?SEL_V.delete(i):SEL_V.add(i));upd_vc();}
+  else if(MODE==='edge'){E.forEach((_,i)=>SEL_E.has(i)?SEL_E.delete(i):SEL_E.add(i));upd_ec();}
+  else if(MODE==='polygon'){F.forEach((_,i)=>SEL_F.has(i)?SEL_F.delete(i):SEL_F.add(i));upd_fo();}
+  gz_place();upd_ui();
+};
+window.toggleSym=toggleSym;window.apply_sym_full=apply_sym_full;
+window.op_del_verts=op_del_verts;window.op_del_edges=op_del_edges;window.op_del_faces=op_del_faces;
+window.op_weld=op_weld;window.op_merge_by_dist=op_merge_by_dist;window.op_smooth=op_smooth;window.op_create_face=op_create_face;
+window.op_split_edge=op_split_edge;window.op_loop_cut=op_loop_cut;
+window.op_split_face=op_split_face;window.op_subdiv=op_subdiv;window.op_flip_normals=op_flip_normals;
+window.do_undo=do_undo;window.do_export_obj=do_export_obj;window.load_obj_file=load_obj_file;
+
+// ─── TOUCH SUPPORT ───────────────────────────────────────────────────────────
+let MOBILE_UI=false;
+const tc={pinching:false,p0d:0,pmx:0,pmy:0};
+function tc_ev(touch,type,extra={}){
+  return new MouseEvent(type,{clientX:touch.clientX,clientY:touch.clientY,button:0,buttons:1,bubbles:true,cancelable:true,ctrlKey:false,metaKey:false,altKey:false,...extra});
+}
+CV.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(e.touches.length>=2){
+    // 2本指: 現在のドラッグ終了 → ピンチ開始
+    if(GZ_DRAG||free_drag||EXT_DRAG){
+      orb.a=false;
+      if(EXT_DRAG){ext_end();recompute();rebuild();}
+      EXT_DRAG=null;GZ_DRAG=null;free_drag=null;BOX.on=false;
+    }
+    orb.a=false;
+    tc.pinching=true;
+    const t0=e.touches[0],t1=e.touches[1];
+    tc.p0d=Math.hypot(t1.clientX-t0.clientX,t1.clientY-t0.clientY);
+    tc.pmx=(t0.clientX+t1.clientX)/2;tc.pmy=(t0.clientY+t1.clientY)/2;
+    return;
+  }
+  tc.pinching=false;
+  if(e.touches.length===1)CV.dispatchEvent(tc_ev(e.touches[0],'mousedown'));
+},{passive:false});
+
+CV.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(tc.pinching&&e.touches.length>=2){
+    const t0=e.touches[0],t1=e.touches[1];
+    const d=Math.hypot(t1.clientX-t0.clientX,t1.clientY-t0.clientY);
+    // ピンチズーム
+    if(tc.p0d>0)oc.r=Math.max(.3,Math.min(50,oc.r*(tc.p0d/d)));
+    // 2本指パン
+    const mx=(t0.clientX+t1.clientX)/2,my=(t0.clientY+t1.clientY)/2;
+    const dx=mx-tc.pmx,dy=my-tc.pmy,s=oc.r*.0012;
+    const rt=new THREE.Vector3().crossVectors(CAM.getWorldDirection(new THREE.Vector3()),CAM.up).normalize();
+    oc.tx-=rt.x*dx*s;oc.ty-=rt.y*dx*s;oc.tz-=rt.z*dx*s;
+    oc.tx+=CAM.up.x*dy*s;oc.ty+=CAM.up.y*dy*s;oc.tz+=CAM.up.z*dy*s;
+    tc.p0d=d;tc.pmx=mx;tc.pmy=my;camU();return;
+  }
+  if(e.touches.length===1)CV.dispatchEvent(tc_ev(e.touches[0],'mousemove'));
+},{passive:false});
+
+CV.addEventListener('touchend',e=>{
+  e.preventDefault();
+  tc.pinching=false;
+  const t=e.changedTouches[0];
+  CV.dispatchEvent(tc_ev(t,'mouseup'));
+},{passive:false});
+
+// ViewCubeのタッチ対応
+VC_CV.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];vc_drag={lx:t.clientX,ly:t.clientY,moved:false};},{passive:false});
+VC_CV.addEventListener('touchmove',e=>{
+  e.preventDefault();if(!vc_drag)return;
+  const t=e.touches[0],dx=t.clientX-vc_drag.lx,dy=t.clientY-vc_drag.ly;
+  if(Math.abs(dx)>2||Math.abs(dy)>2)vc_drag.moved=true;
+  oc.th-=dx*.013;oc.ph=Math.max(.04,Math.min(Math.PI-.04,oc.ph-dy*.013));
+  vc_drag.lx=t.clientX;vc_drag.ly=t.clientY;camU();
+},{passive:false});
+VC_CV.addEventListener('touchend',e=>{
+  e.preventDefault();if(!vc_drag)return;
+  if(!vc_drag.moved)vc_snap();vc_drag=null;
+},{passive:false});
+
+window.toggleMobileUI=function(){
+  MOBILE_UI=!MOBILE_UI;
+  document.getElementById('pe').classList.toggle('mobile',MOBILE_UI);
+  // パネル閉じる
+  document.getElementById('rp').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('open');
+  const logo=document.getElementById('title-logo');
+  logo.style.background=MOBILE_UI?'#1a4a8a':'';
+  logo.title=MOBILE_UI?'📱スマホモード (クリックでPC切替)':'クリックでスマホ/PC切替';
+  setStatus(MOBILE_UI?'スマホモード: 1本指=要素操作/空白で回転 / 2本指=ズーム・パン':'PCモード');
+};
+window.toggleMobilePanel=function(){
+  const rp=document.getElementById('rp'),ov=document.getElementById('mob-overlay');
+  const open=rp.classList.toggle('open');ov.classList.toggle('open',open);
+};
+
+// ─── RESIZE + INIT + LOOP ────────────────────────────────────────────────────
+function rsz(){const w=VP.clientWidth,h=VP.clientHeight;if(!w||!h)return;R.setSize(w,h);CAM.aspect=w/h;CAM.updateProjectionMatrix();}
+window.addEventListener('resize',rsz);new ResizeObserver(rsz).observe(VP);
+
+init_box(2);rebuild();setMode('vertex');setTool('move');rsz();upd_ui();
+setStatus('準備完了 — 頂点クリック/ドラッグで移動、XYZマニピュレーターで軸拘束移動');
+(function loop(){requestAnimationFrame(loop);gz_place();R.render(SC,CAM);vc_draw();})();
+</script>
+</body>
+</html>
