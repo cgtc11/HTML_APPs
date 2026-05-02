@@ -185,9 +185,12 @@ body.fullcv #fullcv-bar{display:flex}
       <div style="padding:4px"><div class="pgrid" id="pgrid"></div></div>
       <div id="palops" style="display:none;padding:4px 5px;background:#1c1c2c;border-top:1px solid #333;flex-wrap:wrap;gap:3px;align-items:center">
         <button class="pop" onclick="palGradient()" title="選択範囲の端2色でグラデーション生成">グラデ</button>
-        <button class="pop" onclick="palInvert()" title="選択範囲の色を反転">反転</button>
+        <button class="pop" onclick="palInvert()" title="選択範囲の色をRGB反転">色反転</button>
+        <button class="pop" onclick="palReverseOrder()" title="選択範囲の並び順を逆にする">位置反転</button>
         <button class="pop" id="palmovebtn" onclick="togglePalSwapMode()" title="選択範囲と別の範囲を入れ替え">差し替え</button>
+        <button class="pop" id="palmoveselbtn" onclick="togglePalMoveSelMode()" title="選択範囲を別の位置へ移動（他がシフト）">移動</button>
         <span id="palmovehint" style="font-size:9px;color:#fa8;display:none">入替先をクリック</span>
+        <span id="palmoveselhint" style="font-size:9px;color:#adf;display:none">移動先をクリック</span>
         <button class="pop" onclick="clearPalSel()">✕解除</button>
       </div>
     </div>
@@ -324,6 +327,7 @@ let palHoverIdx=-1;
 let palMiddleDrag=false;
 let palMiddleDragTarget=-1;
 let palSwapSel=null;
+let palMoveSelTarget=-1;
 
 // パレット編集用カラーピッカー
 let _palPrevHex=''; // ライブ編集前の色を保持
@@ -353,11 +357,8 @@ document.getElementById('paledit').addEventListener('change',function(){onPalEdi
 
 // ===== Palette =====
 function mkPal256(){
-  const p=[];
-  for(let r=0;r<=5;r++)for(let g=0;g<=5;g++)for(let b=0;b<=5;b++)p.push([r*51,g*51,b*51]);
-  for(let i=0;i<24;i++){const v=Math.round(i*10.9);p.push([v,v,v]);}
-  while(p.length<256)p.push([0,0,0]);
-  return p.slice(0,256);
+  const colors=["#000000","#222222","#444444","#666666","#888888","#aaaaaa","#cccccc","#ffffff","#008800","#880000","#ff00ff","#00ffff","#ffff00","#0000ff","#00ff00","#ff0000","#000000","#f80000","#f87000","#f8a0a0","#a85800","#f8b800","#f8d8b8","#00a800","#58f858","#0000f8","#58a8f8","#00d8f8","#303030","#787878","#d8d8d8","#f8f8f8","#000000","#208800","#58d858","#a8f878","#a87840","#d8b878","#f8e8b0","#203878","#3870d8","#68a8f8","#883030","#d86060","#f89898","#505050","#c0c0c0","#f8f8f8","#000000","#303030","#606060","#a0a0a0","#e0e0e0","#705030","#a08050","#d0b080","#102030","#203850","#406080","#503030","#806060","#a08080","#304030","#708070","#000000","#202060","#4040a0","#8080f8","#802020","#d84040","#f87070","#a86830","#d89860","#f8c8a0","#2080d8","#60c0f8","#303030","#606060","#a0a0a0","#f8f8f8","#000000","#880030","#dd0050","#ff2078","#ff4098","#ff70b8","#ffa0d0","#ffc0e0","#ffd8f0","#ff0060","#ff4080","#ff80c0","#ff99cc","#ffb8d8","#ffcce8","#fff0f8","#000000","#a80000","#f80000","#f87000","#f8a800","#f8f800","#505050","#00a800","#00f800","#0000a8","#0000f8","#0088a8","#00f8f8","#a858a8","#f8b8f8","#f8f8f8","#000000","#2a2a2a","#555555","#aaaaaa","#d8d8d8","#704020","#a06030","#d09050","#f8c870","#f8f8a0","#203040","#406080","#80a8d8","#406060","#60a0a0","#80d0d0","#000000","#0020a8","#0040f8","#00a8f8","#00f8f8","#a80000","#f80000","#f87000","#f8f800","#00a800","#00f800","#4040a8","#8080f8","#505050","#c0c0c0","#f8f8f8","#000000","#404040","#808080","#c0c0c0","#203040","#406080","#6080a0","#80a0c0","#a0c0e0","#302010","#503820","#705840","#a89860","#d8c080","#f8e8b0","#f8f8f8","#000000","#704000","#a06020","#c08040","#e0a060","#f8c080","#f8e0a0","#406000","#608020","#80a040","#a0c060","#203040","#406080","#6080a0","#80a0c0","#f8f8f8","#000000","#702030","#a00040","#e00050","#ff1860","#ff3878","#ff5890","#ff78a8","#ff98c0","#ffb8d0","#ffd8e8","#ff60a8","#ff90c0","#ffc0d8","#ffe8f0","#fff8f8","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"];
+  return colors.map(h=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];});
 }
 function mkPal16(){
   return[[0,0,0],[128,0,0],[0,128,0],[128,128,0],[0,0,128],[128,0,128],[0,128,128],[192,192,192],
@@ -1007,6 +1008,7 @@ function updatePalHighlight(){
   for(let i=0;i<cells.length;i++){
     cells[i].classList.toggle('pal-sel',!!(PAL_SEL&&i>=PAL_SEL.a&&i<=PAL_SEL.b));
     cells[i].classList.toggle('pal-swap',!!(palSwapSel&&i>=palSwapSel.a&&i<=palSwapSel.b));
+    cells[i].classList.toggle('pal-hover',palMoveSelMode&&i===palMoveSelTarget&&!(PAL_SEL&&i>=PAL_SEL.a&&i<=PAL_SEL.b));
   }
 }
 function updatePalHover(idx){
@@ -1022,9 +1024,11 @@ function showPalOps(){
   if(el)el.style.display=PAL_SEL?'flex':'none';
 }
 function clearPalSel(){
-  PAL_SEL=null;palMoveMode=false;
+  PAL_SEL=null;palMoveMode=false;palMoveSelMode=false;
   const mb=document.getElementById('palmovebtn');if(mb)mb.classList.remove('on');
   const mh=document.getElementById('palmovehint');if(mh)mh.style.display='none';
+  const mb2=document.getElementById('palmoveselbtn');if(mb2)mb2.classList.remove('on');
+  const mh2=document.getElementById('palmoveselhint');if(mh2)mh2.style.display='none';
   showPalOps();updatePalHighlight();
 }
 function togglePalFollow(){
@@ -1058,9 +1062,10 @@ function replaceColorsInLayers(colorMap){
 // グラデーション生成
 function palGradient(){
   if(!PAL_SEL||PAL_SEL.b<=PAL_SEL.a){alert('2マス以上選択してください');return;}
+  pushHist();
   const{a,b}=PAL_SEL;
-  const oldColors=[];for(let i=a;i<=b;i++)oldColors.push([...PAL[i]]);
   const[r0,g0,bl0]=PAL[a],[r1,g1,bl1]=PAL[b];const n=b-a;
+  const oldColors=PAL.slice(a,b+1).map(c=>[...c]);
   for(let i=0;i<=n;i++){
     const t=n===0?0:i/n;
     PAL[a+i]=[Math.round(r0+(r1-r0)*t),Math.round(g0+(g1-g0)*t),Math.round(bl0+(bl1-bl0)*t)];
@@ -1071,13 +1076,32 @@ function palGradient(){
       const oc=oldColors[i],nc=PAL[a+i];
       if(oc[0]!==nc[0]||oc[1]!==nc[1]||oc[2]!==nc[2])map.set(oc[0]+','+oc[1]+','+oc[2],nc);
     }
-    if(map.size>0){pushHist();replaceColorsInLayers(map);}
+    if(map.size>0)replaceColorsInLayers(map);
+  }
+  buildPalUI();
+}
+// 位置反転（選択範囲の並び順を逆にする）
+function palReverseOrder(){
+  if(!PAL_SEL){alert('範囲を選択してください');return;}
+  pushHist();
+  const{a,b}=PAL_SEL;
+  const oldPAL=PAL.map(c=>[...c]);
+  const seg=PAL.slice(a,b+1).reverse();
+  for(let i=0;i<=b-a;i++)PAL[a+i]=seg[i];
+  if(PAL_PIXEL_FOLLOW){
+    const map=new Map();
+    for(let i=0;i<oldPAL.length;i++){
+      const oc=oldPAL[i],nc=PAL[i];
+      if(oc[0]!==nc[0]||oc[1]!==nc[1]||oc[2]!==nc[2])map.set(oc[0]+','+oc[1]+','+oc[2],nc);
+    }
+    if(map.size>0)replaceColorsInLayers(map);
   }
   buildPalUI();
 }
 // 色反転
 function palInvert(){
   if(!PAL_SEL){alert('範囲を選択してください');return;}
+  pushHist();
   const{a,b}=PAL_SEL;
   const map=new Map();
   for(let i=a;i<=b;i++){
@@ -1085,14 +1109,22 @@ function palInvert(){
     if(PAL_PIXEL_FOLLOW)map.set(r+','+g+','+bv,nr);
     PAL[i]=nr;
   }
-  if(PAL_PIXEL_FOLLOW&&map.size>0){pushHist();replaceColorsInLayers(map);}
-  buildPalUI();renderAll();
+  if(PAL_PIXEL_FOLLOW&&map.size>0)replaceColorsInLayers(map);
+  buildPalUI();
 }
-// 中ドラッグ用: 選択範囲を指定位置へシフト移動
+// 移動ボタン用: 選択範囲を指定位置へシフト移動
+let palMoveSelMode=false;
+function togglePalMoveSelMode(){
+  palMoveSelMode=!palMoveSelMode;
+  const mb=document.getElementById('palmoveselbtn');if(mb)mb.classList.toggle('on',palMoveSelMode);
+  const mh=document.getElementById('palmoveselehint');if(mh)mh.style.display=palMoveSelMode?'':'none';
+}
+// 中ドラッグ・移動ボタン共用: 選択範囲を指定位置へシフト移動
 function doMovePalSel(targetIdx){
   if(!PAL_SEL)return;
   const{a,b}=PAL_SEL;const selLen=b-a+1;
   if(targetIdx>=a&&targetIdx<=b)return;
+  pushHist();
   const oldPAL=PAL.map(c=>[...c]);
   const selected=PAL.slice(a,b+1);
   const rest=[...PAL.slice(0,a),...PAL.slice(b+1)];
@@ -1105,18 +1137,21 @@ function doMovePalSel(targetIdx){
       const oc=oldPAL[i],nc=newPAL[i];
       if(oc[0]!==nc[0]||oc[1]!==nc[1]||oc[2]!==nc[2])map.set(oc[0]+','+oc[1]+','+oc[2],nc);
     }
-    if(map.size>0){pushHist();replaceColorsInLayers(map);}
+    if(map.size>0)replaceColorsInLayers(map);
   }
   PAL=newPAL;
   PAL_SEL={a:t,b:t+selLen-1};
+  palMoveSelMode=false;
+  const mb=document.getElementById('palmoveselbtn');if(mb)mb.classList.remove('on');
+  const mh=document.getElementById('palmoveselhint');if(mh)mh.style.display='none';
   buildPalUI();
 }
 // 差し替えボタン用: 2つの選択範囲の内容をスワップ
 function doSwapPalRanges(src,dst){
   if(!src||!dst)return;
   const len=Math.min(src.b-src.a+1,dst.b-dst.a+1);
-  // 重複チェック
   if(dst.a+len>src.a&&dst.a<src.a+len)return;
+  pushHist();
   const oldPAL=PAL.map(c=>[...c]);
   for(let i=0;i<len;i++){const tmp=PAL[src.a+i];PAL[src.a+i]=PAL[dst.a+i];PAL[dst.a+i]=tmp;}
   if(PAL_PIXEL_FOLLOW){
@@ -1125,7 +1160,7 @@ function doSwapPalRanges(src,dst){
       const oc=oldPAL[i],nc=PAL[i];
       if(oc[0]!==nc[0]||oc[1]!==nc[1]||oc[2]!==nc[2])map.set(oc[0]+','+oc[1]+','+oc[2],nc);
     }
-    if(map.size>0){pushHist();replaceColorsInLayers(map);}
+    if(map.size>0)replaceColorsInLayers(map);
   }
   palMoveMode=false;palSwapSel=null;
   const mb=document.getElementById('palmovebtn');if(mb)mb.classList.remove('on');
@@ -1134,6 +1169,7 @@ function doSwapPalRanges(src,dst){
 }
 // 2セルをスワップ（D&D用）
 function swapPalCells(idxA,idxB){
+  pushHist();
   const[rA,gA,bA]=PAL[idxA],[rB,gB,bB]=PAL[idxB];
   const tmp=PAL[idxA];PAL[idxA]=PAL[idxB];PAL[idxB]=tmp;
   if(PAL_PIXEL_FOLLOW&&(rA!==rB||gA!==gB||bA!==bB)){
@@ -1183,8 +1219,11 @@ function buildPalUI(){
       if(e.button!==0)return;
       e.preventDefault();
       palMouseDown=true;palMouseDownIdx=idx;palMouseMoved=false;
+      if(palMoveSelMode&&PAL_SEL){
+        // 移動モード: ドラッグ開始（選択範囲内でなくても移動先追跡開始）
+        return;
+      }
       if(palMoveMode&&PAL_SEL){
-        // 差し替えモード: 差し替え先の選択開始
         palSwapSel={a:idx,b:idx};
         updatePalHighlight();
       } else {
@@ -1193,10 +1232,17 @@ function buildPalUI(){
         updatePalHighlight();showPalOps();
       }
     });
-    // マウスオーバー: 選択範囲を拡張
+    // マウスオーバー: 選択範囲を拡張 or 移動先を追跡
     c.addEventListener('mouseover',()=>{
       if(palMiddleDrag){palMiddleDragTarget=idx;return;}
       if(!palMouseDown)return;
+      if(palMoveSelMode&&PAL_SEL){
+        // 移動モード: ホバー中のインデックスを追跡（ハイライトで移動先を示す）
+        palMouseMoved=true;
+        palMoveSelTarget=idx;
+        updatePalHighlight();
+        return;
+      }
       const a=Math.min(palMouseDownIdx,idx),b=Math.max(palMouseDownIdx,idx);
       if(palMoveMode&&PAL_SEL){
         if(palSwapSel&&palSwapSel.a===a&&palSwapSel.b===b)return;
@@ -1210,8 +1256,13 @@ function buildPalUI(){
     c.addEventListener('mouseup',e=>{
       if(e.button!==0||!palMouseDown)return;
       palMouseDown=false;
+      if(palMoveSelMode&&PAL_SEL&&palMouseMoved){
+        // 移動モード: ドロップ位置に移動実行
+        doMovePalSel(palMoveSelTarget);
+        palMoveSelTarget=-1;
+        return;
+      }
       if(palMoveMode&&PAL_SEL){
-        // 差し替え実行
         if(palSwapSel)doSwapPalRanges(PAL_SEL,palSwapSel);
       } else {
         if(!palMouseMoved)setFg(hex);
@@ -1355,12 +1406,15 @@ function updateThumbs(){
 // ===== History =====
 function pushHist(){
   const snap=A.layers.map(l=>{const c=document.createElement('canvas');c.width=A.w;c.height=A.h;c.getContext('2d').drawImage(l.canvas,0,0);return{canvas:c,name:l.name,vis:l.vis,locked:l.locked,opacity:l.opacity,blendMode:l.blendMode||'normal'};});
-  A.hist=A.hist.slice(0,A.hidx+1);A.hist.push({layers:snap,al:A.al});A.hidx=A.hist.length-1;
+  const palSnap=PAL.map(c=>[...c]);
+  A.hist=A.hist.slice(0,A.hidx+1);A.hist.push({layers:snap,al:A.al,pal:palSnap});A.hidx=A.hist.length-1;
   if(A.hist.length>60){A.hist.shift();A.hidx--;}
 }
 function restoreHist(snap){
   A.layers=snap.layers.map(s=>{const l=mkLayer(s.name);l.ctx.drawImage(s.canvas,0,0);l.vis=s.vis;l.locked=s.locked;l.opacity=s.opacity;l.blendMode=s.blendMode||'normal';return l;});
-  A.al=snap.al;refreshLayers();renderAll();
+  A.al=snap.al;
+  if(snap.pal){PAL=snap.pal.map(c=>[...c]);buildPalUI();}
+  refreshLayers();renderAll();
 }
 function doUndo(){if(A.hidx>0){A.hidx--;restoreHist(A.hist[A.hidx]);}}
 function doRedo(){if(A.hidx<A.hist.length-1){A.hidx++;restoreHist(A.hist[A.hidx]);}}
