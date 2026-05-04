@@ -12,3 +12,6 @@ https://cgtc11.github.io/HTML_APPs/PaintStudio/PaintStudio.html<br>
 LoPolyEdit　ローポリ3Dモデル作成<br>
 https://cgtc11.github.io/HTML_APPs/LoPolyEdit/LoPolyEdit.html<br>
 <br>
+SVPlayer　動画プレイヤー<br>
+https://cgtc11.github.io/HTML_APPs/SVPlayer/SVPlayer.html<br>
+<br>
