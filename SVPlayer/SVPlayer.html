@@ -1045,7 +1045,11 @@ function initControl() {
     const seg = S.segments[S.curSegIdx]; if (!seg) return;
     if (seg.titleShowing) {
       seg.titleShowing = false;
-      if (seg.files.length) { playItem(null); renderList(); renderProgress(); updateNowPlaying(); } return;
+      if (seg.files.length) {
+        playItem(null); renderList(); renderProgress(); updateNowPlaying(); return;
+      }
+      // ★ タイトル画像しかない → 次のセグメントへ
+      nextSeg(); return;
     }
     if (!seg.files.length) return;
     seg.orderPos = (seg.orderPos+1) % seg.order.length;
@@ -1062,11 +1066,21 @@ function initControl() {
 
   function nextSeg() {
     if (S.curSegIdx < 0) return;
+    const cur = S.segments[S.curSegIdx];
+    if (cur && cur.titleShowing) {
+      cur.titleShowing = false;
+      if (cur.files.length) {
+        // フォルダに他のファイルがある → そちらを表示
+        playItem(null); renderList(); renderProgress(); updateNowPlaying();
+        return;
+      }
+      // ★ タイトル画像しかない（files[]が空）→ そのまま次のセグメントへ進む
+    }
     let ni = S.curSegIdx+1;
     while (ni < S.segments.length && !S.segments[ni].files.length && !S.segments[ni].titleFile) ni++;
     if (ni >= S.segments.length) return;
     S.curSegIdx = ni;
-    renderList(); renderProgress(); // ★ 即座に枠を更新
+    renderList(); renderProgress();
     playSeg(true);
   }
 
