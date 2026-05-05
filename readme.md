@@ -1,8 +1,5 @@
 ブラウザで動くものを置いてます<br>
 <br>
-AEmini　動画編集<br>
-https://cgtc11.github.io/HTML_APPs/AEmini/AEmini.html<br>
-<br>
 DotEditor　ドット絵<br>
 https://cgtc11.github.io/HTML_APPs/DotEditor/DotEditor.html<br>
 <br>
@@ -11,6 +8,9 @@ https://cgtc11.github.io/HTML_APPs/PaintStudio/PaintStudio.html<br>
 <br>
 LoPolyEdit　ローポリ3Dモデル作成<br>
 https://cgtc11.github.io/HTML_APPs/LoPolyEdit/LoPolyEdit.html<br>
+<br>
+AEmini　動画編集<br>
+https://cgtc11.github.io/HTML_APPs/AEmini/AEmini.html<br>
 <br>
 SVPlayer　動画プレイヤー<br>
 https://cgtc11.github.io/HTML_APPs/SVPlayer/SVPlayer.html<br>
