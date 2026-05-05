@@ -21,7 +21,6 @@ body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(
 #proj-layer{position:absolute;inset:0;opacity:1;}
 #proj-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:none;}
 #proj-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:none;}
-/* overlay非表示 */
 #proj-overlay{display:none;}
 #proj-black{position:absolute;inset:0;z-index:30;background:#000;opacity:0;pointer-events:none;}
 #proj-black-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;}
@@ -127,6 +126,12 @@ body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(
 .seg-btn:active:not(:disabled){transform:scale(.97);}
 .seg-btn:disabled{opacity:.3;cursor:not-allowed;}
 .seg-btn .sbl{font-size:10px;font-weight:normal;letter-spacing:.1em;text-transform:uppercase;opacity:.65;}
+/* ★ SEG次ボタン: 再生中はゆっくりオレンジ点滅 */
+@keyframes seg-pulse{
+  0%,100%{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.12);}
+  50%{border-color:var(--amber-lo);color:var(--amber-lo);background:transparent;}
+}
+.seg-btn.is-playing{animation:seg-pulse 2s ease-in-out infinite;}
 .ctrl-row3{display:flex;gap:8px;flex:0 0 auto;}
 .blackout-btn{flex:1;height:52px;font-family:inherit;font-size:15px;font-weight:bold;letter-spacing:.06em;border:2px solid #333;border-radius:var(--r);background:var(--surface3);color:var(--text-dim);cursor:pointer;transition:all .13s;display:flex;align-items:center;justify-content:center;gap:8px;}
 .blackout-btn:hover{border-color:#666;color:var(--text);}
@@ -192,6 +197,7 @@ body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(
       <div id="dot" class="dot err"></div>
       <span id="proj-status" class="bar-label">Projector: 未接続</span>
       <button class="btn sm" id="btn-open-proj">プロジェクター画面を開く</button>
+      <button class="btn sm" id="btn-sc-settings">⌨ SC設定</button>
       <button class="btn sm" id="btn-toggle-preview">プレビュー 非表示</button>
     </div>
   </div>
@@ -204,7 +210,7 @@ body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(
       <div class="monitor-row">
         <div class="preview-box">
           <div id="preview-layer">
-            <video id="preview-vid" playsinline></video><!-- 確認用は音あり -->
+            <video id="preview-vid" playsinline></video>
             <img   id="preview-img" alt="">
           </div>
           <div class="preview-off" id="preview-off"><span>非表示中</span></div>
@@ -228,8 +234,8 @@ body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(
           <span class="sc"><span class="key">→</span> 次</span>
           <span class="sc"><span class="key">←</span> 前</span>
           <span class="sc"><span class="key">R</span> 最初から</span>
-          <span class="sc"><span class="key">Shift+→</span> 次SEG</span>
-          <span class="sc"><span class="key">Shift+←</span> 前SEG</span>
+          <span class="sc"><span class="key">↓</span> 次SEG</span>
+          <span class="sc"><span class="key">↑</span> 前SEG</span>
           <span class="sc"><span class="key">H</span> プレビュー</span>
           <span class="sc"><span class="key">B</span> BlackOUT</span>
         </div>
@@ -261,6 +267,22 @@ body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(
           BlackOUT画像: <span id="bo-img-name">未設定（黒）</span>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- SC設定モーダル -->
+<div id="sc-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:360px;max-width:460px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.6);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <span style="font-size:14px;letter-spacing:.15em;color:var(--amber);">⌨ ショートカット設定</span>
+      <button id="sc-close" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:2px 8px;line-height:1;">✕</button>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);margin-bottom:14px;">キー欄をクリック → 割り当てたいキーを押す</div>
+    <table id="sc-table" style="width:100%;border-collapse:collapse;font-size:12px;"></table>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;">
+      <button id="sc-reset" class="btn sm">デフォルトに戻す</button>
+      <button id="sc-save"  class="btn sm" style="border-color:var(--amber);color:var(--amber);">保存</button>
     </div>
   </div>
 </div>
@@ -509,7 +531,6 @@ function initControl() {
   let imgTimerFallback = null;
   let playSeq          = 0;
   let isSeeking        = false;
-  // ★ フォルダ選択 startIn 用（セッション内共有）
   let lastDirHandle    = null;
 
   const $dot         = document.getElementById('dot');
@@ -543,16 +564,11 @@ function initControl() {
     return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
   }
 
-  // ── IndexedDB 設定保存/読み込み ──
+  // ── IndexedDB ──
   async function saveCfg() {
     try {
       await IDB.set('fadeSecs', getFade());
       await IDB.set('segments', S.segments.map(s => ({ name:s.name, mode:s.mode, imgDur:s.imgDur })));
-      if (lastDirHandle) await IDB.set('lastDirHandle', lastDirHandle);
-      // 各セグメントのdirHandleも保存（startIn用）
-      const dirHandles = {};
-      S.segments.forEach(s => { if (s.dirHandle) dirHandles[s.id] = s.dirHandle; });
-      await IDB.set('dirHandles', dirHandles);
     } catch(e) { console.warn('saveCfg', e); }
   }
 
@@ -560,16 +576,10 @@ function initControl() {
     try {
       const fade = await IDB.get('fadeSecs');
       if (fade != null) $fadeSecs.value = fade;
-
       const segs = await IDB.get('segments');
       if (segs && segs.length > 0) {
         S.segments = segs.map(s => makeSeg(s.name, s.mode, s.imgDur));
       }
-
-      // lastDirHandle を startIn 用に復元
-      const ldh = await IDB.get('lastDirHandle');
-      if (ldh) lastDirHandle = ldh;
-
       renderList(); renderProgress();
     } catch(e) { console.warn('loadCfg', e); }
   }
@@ -579,6 +589,7 @@ function initControl() {
     const data = {
       fadeSecs: getFade(),
       segments: S.segments.map(s => ({ name:s.name, mode:s.mode, imgDur:s.imgDur })),
+      shortcuts: { ...SC },
     };
     try {
       const fh = await window.showSaveFilePicker({
@@ -606,15 +617,19 @@ function initControl() {
       if (data.segments && data.segments.length > 0) {
         S.segments = data.segments.map(s => makeSeg(s.name, s.mode, s.imgDur??5));
       }
+      if (data.shortcuts) {
+        SC = { ...SC_DEFAULTS, ...data.shortcuts };
+        await saveSC();
+        updateShortcutDisplay();
+      }
       await saveCfg();
       renderList(); renderProgress();
     } catch(e) { if (e.name !== 'AbortError') alert('読込エラー:\n' + e.message); }
   });
 
-  // フェード変更時に自動保存
   $fadeSecs.addEventListener('change', saveCfg);
 
-  // タイムライン
+  // ── タイムライン ──
   $prevVid.addEventListener('timeupdate', () => {
     if (isSeeking || !$prevVid.duration || isNaN($prevVid.duration)) return;
     $timeline.value = ($prevVid.currentTime / $prevVid.duration) * 100;
@@ -643,7 +658,7 @@ function initControl() {
     if (!isVideo) { $timeline.value = 0; $timelineTime.textContent = '-:-- / -:--'; }
   }
 
-  // フェードヘルパー
+  // ── フェードヘルパー ──
   function fadePreviewLayerTo(opacity, secs) {
     return new Promise(resolve => {
       $prevLayer.style.transition = secs > 0 ? `opacity ${secs}s ease` : 'none';
@@ -662,7 +677,7 @@ function initControl() {
     });
   }
 
-  // Channel
+  // ── Channel ──
   CH.onmessage = ({ data }) => {
     if (data.type === 'READY')       setReady(true);
     if (data.type === 'VIDEO_ENDED') onEnded();
@@ -675,7 +690,6 @@ function initControl() {
     S.projReady = v;
     $dot.className = 'dot ' + (v ? 'ok' : 'err');
     $projStatus.textContent = 'Projector: ' + (v ? '接続済み' : '未接続');
-    // ★ プロジェクターボタンの色
     const $pb = document.getElementById('btn-open-proj');
     if (v) {
       $pb.style.borderColor = 'var(--green)';
@@ -692,7 +706,14 @@ function initControl() {
     $nextSeg.disabled = !v; $prevSeg.disabled = !v;
   }
 
-  // ── 音声有効化ボタン ──
+  // ★ 再生状態に合わせてSEG次ボタンの点滅を制御
+  function syncPlayState(playing) {
+    S.isPlaying = playing;
+    $ppBtn.textContent = playing ? '⏸' : '▶';
+    if (playing) $nextSeg.classList.add('is-playing');
+    else         $nextSeg.classList.remove('is-playing');
+  }
+
   document.getElementById('btn-open-proj').addEventListener('click', () => {
     if (S.projWin && !S.projWin.closed) { S.projWin.focus(); return; }
     S.projWin = window.open(
@@ -736,7 +757,6 @@ function initControl() {
       $prevImg.style.display='none'; $prevImg.src='';
       $prevVid.style.display='block';
       $prevVid.src = previewBlobUrl;
-      // ★ ロード完了後にシーク → プロジェクターとの同期
       $prevVid.addEventListener('loadedmetadata', () => {
         const elapsed = vidStartTs ? (Date.now() - vidStartTs) / 1000 : 0;
         $prevVid.currentTime = Math.max(0, Math.min(elapsed, $prevVid.duration || 0));
@@ -745,7 +765,7 @@ function initControl() {
     }
   }
 
-  // BlackOUT
+  // ── BlackOUT ──
   $boBtn.addEventListener('click', toggleBlackout);
   $boImgBtn.addEventListener('click', async () => {
     try {
@@ -791,7 +811,7 @@ function initControl() {
     }
   }
 
-  // Segment list
+  // ── Segment list ──
   function renderList() {
     const list = document.getElementById('seg-list');
     list.innerHTML = '';
@@ -880,14 +900,11 @@ function initControl() {
 
   async function selectFolder(rawId) {
     try {
-      // ★ startIn: 前回選択したフォルダから開く
       const opts = { mode:'read' };
       if (lastDirHandle) { try { opts.startIn = lastDirHandle; } catch(e) {} }
       const dh = await window.showDirectoryPicker(opts);
 
-      // ★ 選んだフォルダを記憶（今後のstartIn用）
       lastDirHandle = dh;
-      IDB.set('lastDirHandle', dh).catch(() => {});
 
       const seg = byId(rawId); if (!seg) return;
       seg.dirHandle=dh; seg.files=[]; seg.titleFile=null; seg.titleShowing=false;
@@ -902,7 +919,6 @@ function initControl() {
       }
       entries.sort((a,b) => a.name.localeCompare(b.name));
 
-      // タイトル画像: フォルダ名.jpg/.bmp/.png を除外して別管理
       const bare = n => n.replace(/\.[^.]+$/, '');
       const folderName = dh.name.toLowerCase();
       const ti = entries.findIndex(e =>
@@ -932,7 +948,7 @@ function initControl() {
       S.segments.forEach(s => initOrder(s)); setLive(true);
     }
     S.curSegIdx = idx;
-    renderList(); renderProgress(); // ★ クリック直後に枠を更新
+    renderList(); renderProgress();
     playSeg(true);
   }
 
@@ -963,14 +979,12 @@ function initControl() {
     S.curItemType = item.type;
     const fadeS = getFade();
 
-    // ★ プロジェクターへ即座に送信（フェードを同時開始）+ 最前面へ
     CH.postMessage({
       type:'PLAY', handle:item.handle, itemType:item.type,
       imageDuration:imgDur, fadeSecs:fadeS, segName:segNameOverlay||null,
     });
     if (S.projWin && !S.projWin.closed) S.projWin.focus();
 
-    // ★ プレビューフェードアウト と ファイル読込 を並列実行
     const fadeOutPromise = (S.previewOn && fadeS > 0)
       ? fadePreviewLayerTo(0, fadeS) : Promise.resolve();
 
@@ -1004,7 +1018,8 @@ function initControl() {
     setTimelineMode(item.type === 'video');
     if (!S.projReady && item.type==='image' && imgDur>0)
       imgTimerFallback = setTimeout(onEnded, imgDur * 1000);
-    vidStartTs = Date.now(); S.isPlaying = true; $ppBtn.textContent = '⏸';
+    vidStartTs = Date.now();
+    syncPlayState(true);
   }
 
   async function playItem(segNameOverlay) {
@@ -1048,7 +1063,6 @@ function initControl() {
       if (seg.files.length) {
         playItem(null); renderList(); renderProgress(); updateNowPlaying(); return;
       }
-      // ★ タイトル画像しかない → 次のセグメントへ
       nextSeg(); return;
     }
     if (!seg.files.length) return;
@@ -1070,11 +1084,9 @@ function initControl() {
     if (cur && cur.titleShowing) {
       cur.titleShowing = false;
       if (cur.files.length) {
-        // フォルダに他のファイルがある → そちらを表示
         playItem(null); renderList(); renderProgress(); updateNowPlaying();
         return;
       }
-      // ★ タイトル画像しかない（files[]が空）→ そのまま次のセグメントへ進む
     }
     let ni = S.curSegIdx+1;
     while (ni < S.segments.length && !S.segments[ni].files.length && !S.segments[ni].titleFile) ni++;
@@ -1090,7 +1102,7 @@ function initControl() {
     while (pi >= 0 && !S.segments[pi].files.length && !S.segments[pi].titleFile) pi--;
     if (pi < 0) return;
     S.curSegIdx = pi;
-    renderList(); renderProgress(); // ★ 即座に枠を更新
+    renderList(); renderProgress();
     playSeg(true);
   }
 
@@ -1105,11 +1117,12 @@ function initControl() {
         if (fs > 0) await fadePreviewLayerTo(1, fs);
         else { $prevLayer.style.transition='none'; void $prevLayer.offsetHeight; $prevLayer.style.opacity='1'; }
       }
-      $ppBtn.textContent = '⏸';
+      syncPlayState(true);
     } else {
       CH.postMessage({ type:'PAUSE', fadeSecs:fs });
       if (S.previewOn && fs > 0) await fadePreviewLayerTo(0, fs);
-      $prevVid.pause(); $ppBtn.textContent = '▶';
+      $prevVid.pause();
+      syncPlayState(false);
     }
   }
 
@@ -1146,16 +1159,146 @@ function initControl() {
   $nextSeg.addEventListener('click', nextSeg);
   $prevSeg.addEventListener('click', prevSeg);
 
+  // ── ショートカット設定 ──
+  const SC_DEFAULTS = {
+    play:    'Space',
+    next:    'ArrowRight',
+    prev:    'ArrowLeft',
+    restart: 'r',
+    nextSeg: 'ArrowDown',
+    prevSeg: 'ArrowUp',
+    preview: 'h',
+    blackout:'b',
+  };
+  const SC_LABELS = {
+    play:    '再生 / 停止',
+    next:    '次の動画・画像',
+    prev:    '前の動画・画像',
+    restart: '最初から',
+    nextSeg: '次のセグメント',
+    prevSeg: '前のセグメント',
+    preview: 'プレビュー切替',
+    blackout:'BlackOUT',
+  };
+
+  // 表示用キー名
+  function keyLabel(k) {
+    const m = { ' ':'Space','ArrowRight':'→','ArrowLeft':'←','ArrowUp':'↑','ArrowDown':'↓','Backspace':'BS','Escape':'Esc','Enter':'Enter','Delete':'Del' };
+    return m[k] || k.toUpperCase();
+  }
+
+  let SC = { ...SC_DEFAULTS };
+
+  // IDBから読み込み
+  async function loadSC() {
+    try {
+      const saved = await IDB.get('shortcuts');
+      if (saved) SC = { ...SC_DEFAULTS, ...saved };
+    } catch(e) {}
+    updateShortcutDisplay();
+  }
+  async function saveSC() {
+    try { await IDB.set('shortcuts', SC); } catch(e) {}
+  }
+
+  // ショートカット表示欄を更新
+  function updateShortcutDisplay() {
+    const list = document.querySelector('.shortcuts');
+    if (!list) return;
+    list.innerHTML = Object.entries(SC_LABELS).map(([id, lbl]) =>
+      `<span class="sc"><span class="key">${keyLabel(SC[id])}</span> ${lbl}</span>`
+    ).join('');
+  }
+
+  // SC設定モーダル
+  const $scModal   = document.getElementById('sc-modal');
+  const $scTable   = document.getElementById('sc-table');
+  const $scClose   = document.getElementById('sc-close');
+  const $scReset   = document.getElementById('sc-reset');
+  const $scSave    = document.getElementById('sc-save');
+  let editSC       = {};   // モーダル内の編集中の値
+  let listeningId  = null; // 現在キー待ちのアクションID
+
+  function openSCModal() {
+    editSC = { ...SC };
+    listeningId = null;
+    renderSCTable();
+    $scModal.style.display = 'flex';
+  }
+  function closeSCModal() {
+    listeningId = null;
+    $scModal.style.display = 'none';
+  }
+
+  function renderSCTable() {
+    $scTable.innerHTML = '';
+    Object.entries(SC_LABELS).forEach(([id, lbl]) => {
+      const tr = document.createElement('tr');
+      const isListening = listeningId === id;
+      tr.innerHTML = `
+        <td style="padding:7px 0;color:var(--text-dim);width:55%;">${lbl}</td>
+        <td style="padding:7px 0;text-align:right;">
+          <button class="sc-key-btn" data-id="${id}"
+            style="font-family:inherit;font-size:12px;padding:4px 12px;
+              border-radius:4px;cursor:pointer;min-width:70px;
+              border:1px solid ${isListening ? 'var(--amber)' : 'var(--border)'};
+              background:${isListening ? 'rgba(245,166,35,.15)' : 'var(--surface3)'};
+              color:${isListening ? 'var(--amber)' : 'var(--text)'};">
+            ${isListening ? '… 押してください' : keyLabel(editSC[id])}
+          </button>
+        </td>`;
+      $scTable.appendChild(tr);
+    });
+    $scTable.querySelectorAll('.sc-key-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        listeningId = btn.dataset.id;
+        renderSCTable();
+      });
+    });
+  }
+
+  // モーダル内のキー入力をキャプチャ（documentレベルで監視）
+  document.addEventListener('keydown', e => {
+    if ($scModal.style.display === 'none') return;
+    if (!listeningId) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.key === 'Escape') { listeningId = null; renderSCTable(); return; }
+    editSC[listeningId] = e.key;
+    listeningId = null;
+    renderSCTable();
+  }, true); // capture phase で先に取得
+
+  $scClose.addEventListener('click', closeSCModal);
+  $scModal.addEventListener('click', e => { if (e.target === $scModal) closeSCModal(); });
+
+  $scReset.addEventListener('click', () => {
+    editSC = { ...SC_DEFAULTS };
+    listeningId = null;
+    renderSCTable();
+  });
+
+  $scSave.addEventListener('click', async () => {
+    SC = { ...editSC };
+    await saveSC();
+    updateShortcutDisplay();
+    closeSCModal();
+  });
+
+  document.getElementById('btn-sc-settings').addEventListener('click', openSCModal);
+
+  // キーボードハンドラ（SC変数を参照）
   document.addEventListener('keydown', e => {
     if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
-    if (e.key===' '){e.preventDefault();togglePlay();}
-    else if(e.key==='ArrowRight'&&e.shiftKey){e.preventDefault();nextSeg();}
-    else if(e.key==='ArrowLeft' &&e.shiftKey){e.preventDefault();prevSeg();}
-    else if(e.key==='ArrowRight'){e.preventDefault();if(S.curSegIdx>=0)nextItem();}
-    else if(e.key==='ArrowLeft' ){e.preventDefault();if(S.curSegIdx>=0)prevItem();}
-    else if(e.key==='r'||e.key==='R'){if(S.curSegIdx>=0)restartItem();}
-    else if(e.key==='h'||e.key==='H'){togglePreview();}
-    else if(e.key==='b'||e.key==='B'){toggleBlackout();}
+    if ($scModal.style.display !== 'none') return; // モーダル中は無視
+    const k = e.key;
+    if      (k === SC.play)    { e.preventDefault(); togglePlay(); }
+    else if (k === SC.next)    { e.preventDefault(); if(S.curSegIdx>=0) nextItem(); }
+    else if (k === SC.prev)    { e.preventDefault(); if(S.curSegIdx>=0) prevItem(); }
+    else if (k === SC.restart) { if(S.curSegIdx>=0) restartItem(); }
+    else if (k === SC.nextSeg) { e.preventDefault(); nextSeg(); }
+    else if (k === SC.prevSeg) { e.preventDefault(); prevSeg(); }
+    else if (k === SC.preview) { togglePreview(); }
+    else if (k === SC.blackout){ e.preventDefault(); toggleBlackout(); }
   });
 
   function byId(rawId){ return S.segments.find(s=>s.id==rawId); }
@@ -1163,8 +1306,7 @@ function initControl() {
   function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
   function esc(s)     { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  // 起動時に設定を復元してから描画
-  loadCfg().then(() => { renderList(); renderProgress(); setLive(false); });
+  loadCfg().then(() => { renderList(); renderProgress(); setLive(false); loadSC(); });
 }
 </script>
 </body>
