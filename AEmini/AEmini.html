@@ -200,15 +200,15 @@ body.simple-mode #tlZoomBtn:hover{color:#ddd;background:#1e1e1e;}
   <label class="lbl">解像度
     <select id="selRes" onchange="onResSelect(this.value)" style="width:90px">
       <option value="1920x1080">1920×1080</option>
-      <option value="1280x720">1280×720</option>
+      <option value="1280x720" selected>1280×720</option>
       <option value="custom">カスタム</option>
     </select>
-    <input type="number" id="inResW" value="1920" min="1" max="7680" style="width:52px" oninput="applyCustomRes()">
+    <input type="number" id="inResW" value="1280" min="1" max="7680" style="width:52px" oninput="applyCustomRes()">
     <span style="color:#555">×</span>
-    <input type="number" id="inResH" value="1080" min="1" max="4320" style="width:52px" oninput="applyCustomRes()">
+    <input type="number" id="inResH" value="720" min="1" max="4320" style="width:52px" oninput="applyCustomRes()">
   </label>
   <label class="lbl">FPS<input type="number" id="inFps" value="24" min="1" max="120" onchange="S.fps=+this.value;rebuildTl()"></label>
-  <label class="lbl">尺(秒)<input type="number" id="inDur" value="10" min="1" max="3600" onchange="setActiveDur(+this.value)"></label>
+  <label class="lbl">尺(秒)<input type="number" id="inDur" value="15" min="1" max="3600" onchange="setActiveDur(+this.value)"></label>
   <button class="btn act" id="btnTimeMode" onclick="toggleTimeMode()" title="フレーム/秒 切替">F</button>
   <div class="sep"></div>
   <button class="btn" id="btnPen" onclick="togglePenMode()" title="ペン描画モード">✏</button>
@@ -245,7 +245,7 @@ body.simple-mode #tlZoomBtn:hover{color:#ddd;background:#1e1e1e;}
     <div id="pvWrap">
       <div id="pvCheckerWrap">
         <div id="pvChecker"></div>
-        <canvas id="pvCanvas" width="1920" height="1080"></canvas>
+        <canvas id="pvCanvas" width="1280" height="720"></canvas>
       </div>
       <div id="pvTime">0f</div>
     </div>
@@ -295,8 +295,8 @@ body.simple-mode #tlZoomBtn:hover{color:#ddd;background:#1e1e1e;}
     <div class="exp-row"><label>映像ビットレート</label>
       <select id="expBitrate">
         <option value="4000000">4 Mbps</option>
-        <option value="8000000" selected>8 Mbps (標準)</option>
-        <option value="16000000">16 Mbps</option>
+        <option value="8000000">8 Mbps</option>
+        <option value="16000000" selected>16 Mbps (標準)</option>
         <option value="30000000">30 Mbps</option>
       </select>
     </div>
@@ -446,7 +446,7 @@ body.simple-mode #tlZoomBtn:hover{color:#ddd;background:#1e1e1e;}
 // ─── Constants ───────────────────────────────────────────────────────────
 var TRACK_H=44,RULER_H=24;
 var CLIP_COLORS=['#1b3a68','#1a4a28','#4e1a10','#321068','#3d3c10','#0e3a3a','#4a1235','#26400e'];
-var CW=1920,CH=1080;
+var CW=1280,CH=720;
 var C=document.getElementById('pvCanvas');
 var ctx=C.getContext('2d',{alpha:true});
 var pvZoom='fit';
@@ -1214,7 +1214,7 @@ var _copiedClip=null;
 
 // ─── Comp management ──────────────────────────────────────────────────────
 function mkComp(name,w,h){
-  return {id:nid(),name:name||'Comp'+(S.comps.length+1),dur:10,
+  return {id:nid(),name:name||'Comp'+(S.comps.length+1),dur:15,
     width:w||CW,height:h||CH,
     vLayers:[{id:nid(),name:'V2',visible:true},{id:nid(),name:'V1',visible:true}],
     aTracks:[{id:nid(),name:'A1',visible:true}],
@@ -1947,7 +1947,42 @@ function doSeek(clientX){
 g('tlRight').addEventListener('scroll',function(){g('tlLblRows').scrollTop=g('tlRight').scrollTop;});
 
 // ─── Keyboard ─────────────────────────────────────────────────────────────
-// ─── Scrub drag on property labels ────────────────────────────────────────
+// ─── タイムライン横スクロール ─────────────────────────────────────────────
+(function(){
+  var tlR=null;
+  var _midDrag=null;
+  function getTlRight(){return tlR||(tlR=g('tlRight'));}
+
+  // ホイールで横スクロール（Shiftなしでも横）
+  document.addEventListener('wheel',function(e){
+    var tr=getTlRight();if(!tr)return;
+    if(!tr.contains(e.target)&&e.target!==tr)return;
+    e.preventDefault();
+    // Shiftキーでも通常でも横スクロール
+    var delta=e.deltaX||e.deltaY;
+    tr.scrollLeft+=delta;
+  },{passive:false});
+
+  // 中ボタンドラッグで横スクロール
+  document.addEventListener('mousedown',function(e){
+    if(e.button!==1)return;
+    var tr=getTlRight();if(!tr)return;
+    if(!tr.contains(e.target)&&e.target!==tr)return;
+    e.preventDefault();
+    _midDrag={startX:e.clientX,scrollLeft:tr.scrollLeft};
+    document.body.style.cursor='grab';
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!_midDrag)return;
+    var tr=getTlRight();if(!tr)return;
+    var dx=e.clientX-_midDrag.startX;
+    tr.scrollLeft=_midDrag.scrollLeft-dx;
+  });
+  document.addEventListener('mouseup',function(e){
+    if(e.button!==1&&!_midDrag)return;
+    if(_midDrag){_midDrag=null;document.body.style.cursor='';}
+  });
+})();
 var _scrub=null;
 document.addEventListener('mousedown',function(e){
   var lbl=e.target.classList&&e.target.classList.contains('scrub-lbl')?e.target:null;
