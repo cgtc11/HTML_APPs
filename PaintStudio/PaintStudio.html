@@ -186,6 +186,11 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
           <option value="both">両方</option>
         </select>
       </div>
+      <div style="display:flex;align-items:center;gap:4px;width:100%">
+        <span class="ol">スムージング</span>
+        <input type="range" class="osl" id="sSmooth" min="0" max="100" value="50" oninput="strokeSmooth=parseInt(this.value)/100;G('nSmooth').value=this.value">
+        <input type="number" class="onum" id="nSmooth" value="50" min="0" max="100" oninput="strokeSmooth=parseInt(this.value)/100;G('sSmooth').value=this.value">
+      </div>
     </div>
     <div id="txOpts">
       <span class="ol">フォント</span>
@@ -349,11 +354,91 @@ let penLiftThreshold=0.04;
 let currentPressure=1.0,currentPointerType='mouse';
 let _penLiftTimer=null;
 let _activePointerId=null;
+let strokeSmooth=0.5; // 0=なし 1=最大
+// ストローク蓄積用
+let strokePts=[];  // [{x,y,r,op}]
+let wetCv=null,wetCtx=null; // 毎フレーム描き直す一時キャンバス
 // ═══ RAF THROTTLE
 let _rafPending=false,_dirtyComp=false;
 function scheduleComp(){
   _dirtyComp=true;
   if(!_rafPending){_rafPending=true;requestAnimationFrame(()=>{_rafPending=false;if(_dirtyComp){comp();_dirtyComp=false;}});}
+}
+
+// ═══ WET STROKE (soft/watercolor用: 全点ベジェ描き直し方式)
+function useWet(){return(bType==='soft'||bType==='watercolor')&&tool==='brush';}
+
+function initWet(){
+  if(!wetCv){wetCv=document.createElement('canvas');wetCv.width=W;wetCv.height=H;wetCtx=wetCv.getContext('2d');}
+  wetCtx.clearRect(0,0,W,H);
+  strokePts=[];
+}
+
+function addWetPt(x,y,r,op){
+  // スムージング: 前点と重み付き平均
+  if(strokeSmooth>0&&strokePts.length>0){
+    const last=strokePts[strokePts.length-1];
+    const s=strokeSmooth*0.6;
+    x=last.x*(s)+(x)*(1-s);
+    y=last.y*(s)+(y)*(1-s);
+  }
+  strokePts.push({x,y,r,op});
+}
+
+function redrawWet(col){
+  if(!wetCtx||strokePts.length<1)return;
+  wetCtx.clearRect(0,0,W,H);
+  const pts=strokePts;
+  const type=bType;
+
+  wetCtx.save();
+  if(type==='soft'){
+    const h01=bHd/100;
+    const blr=Math.max(0.5,pts[0].r*(1-h01)*1.2+0.5);
+    wetCtx.filter=`blur(${blr}px)`;
+    wetCtx.globalAlpha=cl(pts[0].op,0,1);
+    wetCtx.strokeStyle=c2s(col,col.a);
+    wetCtx.lineWidth=pts[0].r*(1+h01);
+    wetCtx.lineCap='round';wetCtx.lineJoin='round';
+  }else if(type==='watercolor'){
+    const blr=Math.max(1,Math.round(pts[0].r*0.35));
+    wetCtx.filter=`blur(${blr}px)`;
+    wetCtx.globalAlpha=cl(pts[0].op*0.22,0,1);
+    wetCtx.strokeStyle=c2s(col,col.a);
+    wetCtx.lineWidth=pts[0].r*1.9;
+    wetCtx.lineCap='round';wetCtx.lineJoin='round';
+  }
+
+  // カーディナルスプライン（ベジェ補間）で滑らかな曲線
+  wetCtx.beginPath();
+  if(pts.length===1){
+    wetCtx.arc(pts[0].x,pts[0].y,(pts[0].r*(1+(bHd/100)))/2,0,Math.PI*2);
+    wetCtx.fill();
+  }else{
+    wetCtx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length-1;i++){
+      const mx=(pts[i].x+pts[i+1].x)/2;
+      const my=(pts[i].y+pts[i+1].y)/2;
+      wetCtx.quadraticCurveTo(pts[i].x,pts[i].y,mx,my);
+    }
+    const last=pts[pts.length-1];
+    wetCtx.lineTo(last.x,last.y);
+    wetCtx.stroke();
+  }
+  wetCtx.restore();
+}
+
+function commitWet(ctx,col){
+  if(!wetCv||strokePts.length===0)return;
+  redrawWet(col);
+  wClip(ctx,()=>{
+    ctx.save();
+    ctx.globalAlpha=1;
+    ctx.drawImage(wetCv,0,0);
+    ctx.restore();
+  });
+  wetCtx.clearRect(0,0,W,H);
+  strokePts=[];
 }
 
 // ═══ DOM
@@ -1079,7 +1164,10 @@ function onDown(e){
     saveH();
     if(actTool==='eraser')withPressure(()=>applyErase(aC2(),cp.x,cp.y,cp.x,cp.y));
     else if(actTool==='blur')applyBlur(aC2(),cp.x,cp.y);
-    else withPressure(()=>applyBrush(aC2(),cp.x,cp.y,cp.x,cp.y,useCol));
+    else{
+      if(useWet()){initWet();addWetPt(cp.x,cp.y,bSz,bOp/100);}
+      else withPressure(()=>applyBrush(aC2(),cp.x,cp.y,cp.x,cp.y,useCol));
+    }
     comp();
   }
   // 今回のdown用にactToolを記憶
@@ -1120,7 +1208,19 @@ function onMove(e){
     px.beginPath();px.moveTo(lassoPts[0].x,lassoPts[0].y);lassoPts.forEach(p=>px.lineTo(p.x,p.y));px.stroke();px.restore();
   }else if(actTool==='move'){updateMove(cp.x,cp.y);}
   else if(['line','rect','ellipse'].includes(actTool)){px.clearRect(0,0,W,H);drawShape(px,startX,startY,cp.x,cp.y,useCol,actTool);}
-  else if(['brush','dotpen'].includes(actTool)){if(ctx){withPressure(()=>{applyBrush(ctx,prevX,prevY,cp.x,cp.y,useCol);});prevX=cp.x;prevY=cp.y;scheduleComp();}}
+  else if(['brush','dotpen'].includes(actTool)){if(ctx){
+    if(useWet()&&tool==='brush'){
+      withPressure(()=>addWetPt(cp.x,cp.y,bSz,bOp/100));
+      redrawWet(useCol);
+      // wetCvをプレビューとしてpCに表示
+      px.clearRect(0,0,W,H);
+      px.save();px.drawImage(wetCv,0,0);px.restore();
+      scheduleComp();
+    }else{
+      withPressure(()=>{applyBrush(ctx,prevX,prevY,cp.x,cp.y,useCol);});
+      prevX=cp.x;prevY=cp.y;scheduleComp();
+    }
+  }}
   else if(actTool==='eraser'){if(ctx){withPressure(()=>{applyErase(ctx,prevX,prevY,cp.x,cp.y);});prevX=cp.x;prevY=cp.y;scheduleComp();}}
   else if(actTool==='blur'){if(ctx){applyBlur(ctx,cp.x,cp.y);prevX=cp.x;prevY=cp.y;scheduleComp();}}
 }
@@ -1138,6 +1238,11 @@ function onUp(e){
   else if(actTool==='lasso'){px.clearRect(0,0,W,H);setSL(lassoPts);lassoPts=[];}
   else if(actTool==='move'){commitMove();}
   else if(['line','rect','ellipse'].includes(actTool)){px.clearRect(0,0,W,H);if(ctx){drawShape(ctx,startX,startY,cp.x,cp.y,useCol,actTool);comp();renderLL();}}
+  else if(actTool==='brush'&&useWet()&&strokePts.length>0){
+    px.clearRect(0,0,W,H);
+    commitWet(ctx,eC._useCol||fg);
+    comp();renderLL();
+  }
   else renderLL();
 }
 function onWheel(e){
