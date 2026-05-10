@@ -12,6 +12,9 @@ https://cgtc11.github.io/HTML_APPs/LoPolyEdit/LoPolyEdit.html<br>
 AEmini　動画編集<br>
 https://cgtc11.github.io/HTML_APPs/AEmini/AEmini.html<br>
 <br>
+loop_studio　音楽編集<br>
+https://cgtc11.github.io/HTML_APPs/loop_studio/loop_studio.html<br>
+<br>
 SVPlayer　動画プレイヤー<br>
 https://cgtc11.github.io/HTML_APPs/SVPlayer/SVPlayer.html<br>
 <br>
