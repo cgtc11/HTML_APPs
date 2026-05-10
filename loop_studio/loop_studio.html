@@ -1502,12 +1502,10 @@ function buildPiano(){
     el.style.left=(wi*24-8)+'px';inner.appendChild(el);
   });
 
-  // ── コンテナレベルのポインター追跡（スライド演奏対応）──
-  let pianoDown=false;
-  let lastPianoNote=-1;
+  // ── ポインターIDごとに音を管理（マルチタッチ対応）──
+  const pointerNotes=new Map(); // pointerId → midiNote
 
   function noteFromPoint(x,y){
-    // elementFromPointで黒鍵優先（z-index:2 なので先にヒット）
     const el=document.elementFromPoint(x,y);
     if(el&&el.dataset&&el.dataset.note)return +el.dataset.note;
     return -1;
@@ -1515,30 +1513,31 @@ function buildPiano(){
 
   inner.addEventListener('pointerdown',e=>{
     if(e.button!==0&&e.pointerType==='mouse')return;
-    e.preventDefault();inner.setPointerCapture(e.pointerId);
-    pianoDown=true;
+    e.preventDefault();
+    inner.setPointerCapture(e.pointerId);
     const n=noteFromPoint(e.clientX,e.clientY);
-    if(n>=0){noteOn(n);lastPianoNote=n;}
+    if(n>=0){noteOn(n);pointerNotes.set(e.pointerId,n);}
   },{passive:false});
 
   inner.addEventListener('pointermove',e=>{
-    if(!pianoDown)return;
+    if(!pointerNotes.has(e.pointerId))return;
     e.preventDefault();
     const n=noteFromPoint(e.clientX,e.clientY);
-    if(n>=0&&n!==lastPianoNote){
-      if(lastPianoNote>=0)noteOff(lastPianoNote);
-      noteOn(n);lastPianoNote=n;
+    const prev=pointerNotes.get(e.pointerId);
+    if(n>=0&&n!==prev){
+      noteOff(prev);
+      noteOn(n);
+      pointerNotes.set(e.pointerId,n);
     }
   },{passive:false});
 
-  function pianoRelease(e){
-    if(!pianoDown)return;
-    pianoDown=false;
-    if(lastPianoNote>=0){noteOff(lastPianoNote);lastPianoNote=-1;}
+  function pointerRelease(e){
+    const prev=pointerNotes.get(e.pointerId);
+    if(prev!==undefined){noteOff(prev);pointerNotes.delete(e.pointerId);}
   }
-  inner.addEventListener('pointerup',pianoRelease);
-  inner.addEventListener('pointercancel',pianoRelease);
-  inner.addEventListener('pointerleave',pianoRelease);
+  inner.addEventListener('pointerup',pointerRelease);
+  inner.addEventListener('pointercancel',pointerRelease);
+  inner.addEventListener('pointerleave',pointerRelease);
 }
 function setOctave(o){octave=Math.max(1,Math.min(7,o));document.getElementById('octDsp').textContent=octave;}
 function pcKey(k){if(KEY_MAP[k]===undefined)return null;return(octave-1)*12+24+KEY_MAP[k];}
