@@ -1,6 +1,6 @@
-ーーClaude(Ai) を使って作成ーー<br>
+Claude(Ai) を使って作成<br>
 ブラウザで動くものを置いてます<br>
-ーーーーーーーーーーーーーーー<br>
+<br>
 DotEditor　ドット絵<br>
 https://cgtc11.github.io/HTML_APPs/DotEditor/DotEditor.html<br>
 <br>
