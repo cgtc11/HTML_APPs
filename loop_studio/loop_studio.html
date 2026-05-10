@@ -128,10 +128,10 @@ select.pr-sel{background:#151515;border:1px solid #2a2a2a;color:#aaa;font-family
 #piano{height:72px;overflow-x:auto;overflow-y:hidden}
 .piano-inner{position:relative;height:72px;display:flex}
 .wkey{width:24px;height:72px;background:#e8e4d8;border:1px solid #444;border-top:none;border-radius:0 0 3px 3px;cursor:pointer;flex-shrink:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
-.wkey:active,.wkey.pr{background:#9ab8dc}
+.wkey.pr{background:#9ab8dc}
 .wkey .klbl{font-size:6px;color:#888;font-family:sans-serif}
 .bkey{width:15px;height:42px;background:#111;border:1px solid #000;border-top:none;border-radius:0 0 2px 2px;cursor:pointer;position:absolute;z-index:2}
-.bkey:active,.bkey.pr{background:#2a4a7a}
+.bkey.pr{background:#2a4a7a}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--bdr3);border-radius:3px}
@@ -233,6 +233,12 @@ select.pr-sel{background:#151515;border:1px solid #2a2a2a;color:#aaa;font-family
 <!-- PIANO -->
 <div id="pianoSection">
   <div class="piano-top">
+    <div class="oct-ctrl">
+      <span style="font-size:9px;letter-spacing:1px;color:var(--dim)">KEYS</span>
+      <button class="oct-btn" id="pianoDn">−</button>
+      <span id="pianoDsp" style="font-size:11px;color:var(--accent);min-width:28px;text-align:center">72</span>
+      <button class="oct-btn" id="pianoUp">+</button>
+    </div>
     <div class="oct-ctrl"><span>OCT</span><button class="oct-btn" id="octDn">−</button><span class="oct-val" id="octDsp">4</span><button class="oct-btn" id="octUp">+</button></div>
     <span id="recHint" class="rec-hint"></span>
     <span class="khint">A-J,T,Y=鍵盤 / W,E,U=黒鍵 / 1=OCT- / 2=OCT+ / 7=REC / 8=PLAY / 9=STOP</span>
@@ -1482,8 +1488,57 @@ function buildPiano(){
   const start=36,end=96;const keys=[];let wCount=0;
   for(let n=start;n<=end;n++){const isW=WHITE_SEM.has(n%12);keys.push({n,isW});if(isW)wCount++;}
   inner.style.width=(wCount*24)+'px';
-  keys.forEach(k=>{if(!k.isW)return;const el=document.createElement('div');el.className='wkey piano-key';el.dataset.note=k.n;if(k.n%12===0){const l=document.createElement('div');l.className='klbl';l.textContent=`C${Math.floor(k.n/12)-1}`;el.appendChild(l);}el.addEventListener('mousedown',e=>{e.preventDefault();noteOn(k.n);});el.addEventListener('mouseup',()=>noteOff(k.n));el.addEventListener('mouseleave',()=>{if(activeKeys[k.n])noteOff(k.n);});inner.appendChild(el);});
-  let wi=0;keys.forEach(k=>{if(k.isW){wi++;return;}const el=document.createElement('div');el.className='bkey piano-key';el.dataset.note=k.n;el.style.left=(wi*24-8)+'px';el.addEventListener('mousedown',e=>{e.preventDefault();noteOn(k.n);});el.addEventListener('mouseup',()=>noteOff(k.n));el.addEventListener('mouseleave',()=>{if(activeKeys[k.n])noteOff(k.n);});inner.appendChild(el);});
+  // 白鍵
+  keys.forEach(k=>{
+    if(!k.isW)return;
+    const el=document.createElement('div');el.className='wkey piano-key';el.dataset.note=k.n;
+    if(k.n%12===0){const l=document.createElement('div');l.className='klbl';l.textContent=`C${Math.floor(k.n/12)-1}`;el.appendChild(l);}
+    inner.appendChild(el);
+  });
+  // 黒鍵
+  let wi=0;keys.forEach(k=>{
+    if(k.isW){wi++;return;}
+    const el=document.createElement('div');el.className='bkey piano-key';el.dataset.note=k.n;
+    el.style.left=(wi*24-8)+'px';inner.appendChild(el);
+  });
+
+  // ── コンテナレベルのポインター追跡（スライド演奏対応）──
+  let pianoDown=false;
+  let lastPianoNote=-1;
+
+  function noteFromPoint(x,y){
+    // elementFromPointで黒鍵優先（z-index:2 なので先にヒット）
+    const el=document.elementFromPoint(x,y);
+    if(el&&el.dataset&&el.dataset.note)return +el.dataset.note;
+    return -1;
+  }
+
+  inner.addEventListener('pointerdown',e=>{
+    if(e.button!==0&&e.pointerType==='mouse')return;
+    e.preventDefault();inner.setPointerCapture(e.pointerId);
+    pianoDown=true;
+    const n=noteFromPoint(e.clientX,e.clientY);
+    if(n>=0){noteOn(n);lastPianoNote=n;}
+  },{passive:false});
+
+  inner.addEventListener('pointermove',e=>{
+    if(!pianoDown)return;
+    e.preventDefault();
+    const n=noteFromPoint(e.clientX,e.clientY);
+    if(n>=0&&n!==lastPianoNote){
+      if(lastPianoNote>=0)noteOff(lastPianoNote);
+      noteOn(n);lastPianoNote=n;
+    }
+  },{passive:false});
+
+  function pianoRelease(e){
+    if(!pianoDown)return;
+    pianoDown=false;
+    if(lastPianoNote>=0){noteOff(lastPianoNote);lastPianoNote=-1;}
+  }
+  inner.addEventListener('pointerup',pianoRelease);
+  inner.addEventListener('pointercancel',pianoRelease);
+  inner.addEventListener('pointerleave',pianoRelease);
 }
 function setOctave(o){octave=Math.max(1,Math.min(7,o));document.getElementById('octDsp').textContent=octave;}
 function pcKey(k){if(KEY_MAP[k]===undefined)return null;return(octave-1)*12+24+KEY_MAP[k];}
@@ -1548,8 +1603,45 @@ document.getElementById('loopFrom').addEventListener('change',function(){loopSta
 document.getElementById('loopTo').addEventListener('change',function(){loopEnd=Math.max(loopStart+0.5,+this.value||5);this.value=loopEnd.toFixed(1);if(playing&&loopEnabled)startLoopTimer();drawAll();});
 document.getElementById('octDn').addEventListener('click',()=>setOctave(octave-1));
 document.getElementById('octUp').addEventListener('click',()=>setOctave(octave+1));
-document.getElementById('pianoInner').addEventListener('touchstart',e=>{e.preventDefault();[...e.changedTouches].forEach(t=>{const el=document.elementFromPoint(t.clientX,t.clientY);if(el?.dataset?.note)noteOn(+el.dataset.note);});},{passive:false});
-document.getElementById('pianoInner').addEventListener('touchend',e=>{[...e.changedTouches].forEach(t=>{const el=document.elementFromPoint(t.clientX,t.clientY);if(el?.dataset?.note)noteOff(+el.dataset.note);});});
+// Piano size control
+let pianoH=72;
+const BASE_WW=24; // base white key width
+const BASE_BW=15; // base black key width
+function setPianoH(h){
+  pianoH=Math.max(40,Math.min(220,h));
+  const scale=pianoH/72;
+  const ww=Math.round(BASE_WW*scale);
+  const bw=Math.round(BASE_BW*scale);
+  const bh=Math.round(pianoH*0.58);
+  document.getElementById('piano').style.height=pianoH+'px';
+  document.getElementById('pianoDsp').textContent=pianoH;
+  // White keys
+  document.querySelectorAll('.wkey').forEach(k=>{
+    k.style.height=pianoH+'px';
+    k.style.width=ww+'px';
+  });
+  // Black keys: width + reposition left offset
+  const inner=document.getElementById('pianoInner');
+  // Recalculate total width
+  const wCount=inner.querySelectorAll('.wkey').length;
+  inner.style.width=(wCount*ww)+'px';
+  // Reposition black keys
+  const start=36,end=96;
+  let wi=0;
+  for(let n=start;n<=end;n++){
+    const isW=WHITE_SEM.has(n%12);
+    if(isW){wi++;continue;}
+    const el=inner.querySelector(`.bkey[data-note="${n}"]`);
+    if(el){
+      el.style.width=bw+'px';
+      el.style.height=bh+'px';
+      el.style.left=(wi*ww - Math.round(bw/2))+'px';
+    }
+  }
+}
+document.getElementById('pianoDn').addEventListener('click',()=>setPianoH(pianoH-8));
+document.getElementById('pianoUp').addEventListener('click',()=>setPianoH(pianoH+8));
+// タッチ操作はpointerイベントで統一済み
 new ResizeObserver(()=>drawAll()).observe(document.getElementById('trackContainer'));
 new ResizeObserver(()=>drawAll()).observe(document.getElementById('rulerCanvas').parentElement);
 new ResizeObserver(()=>{if(!document.getElementById('prModal').classList.contains('hidden'))initPRCanvas();}).observe(document.getElementById('prPanel'));
