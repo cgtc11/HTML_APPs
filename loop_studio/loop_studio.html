@@ -281,8 +281,13 @@ select.pr-sel{background:#151515;border:1px solid #2a2a2a;color:#aaa;font-family
     <div class="pr-sb">
       <span style="font-size:8px;color:#333;white-space:nowrap">← →</span>
       <input type="range" id="prScrollX" min="0" max="10000" value="0" style="flex:1;height:2px">
+      <div style="width:1px;height:12px;background:#282828;flex-shrink:0"></div>
       <span style="font-size:8px;color:#333;white-space:nowrap">ZOOM</span>
-      <input type="range" id="prZoom" min="40" max="600" value="100" style="width:70px;height:2px">
+      <button id="prZoomOut" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#666;width:20px;height:18px;cursor:pointer;font-family:inherit;font-size:13px;line-height:1;flex-shrink:0">−</button>
+      <span id="prZoomDsp" style="font-size:9px;color:var(--accent);min-width:38px;text-align:center;flex-shrink:0">100%</span>
+      <button id="prZoomIn" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#666;width:20px;height:18px;cursor:pointer;font-family:inherit;font-size:13px;line-height:1;flex-shrink:0">+</button>
+      <button id="prZoomFit" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#666;padding:1px 6px;cursor:pointer;font-family:inherit;font-size:9px;flex-shrink:0">FIT</button>
+      <input type="range" id="prZoom" min="20" max="800" value="100" style="width:60px;height:2px">
     </div>
   </div>
 </div>
@@ -1044,14 +1049,28 @@ function drawPR(){
   // ── Piano keys (low=top: A0 at top, C8 at bottom) ──
   c.save();c.beginPath();c.rect(0,rulerH,keyW,gridH);c.clip();
   c.fillStyle='#181818';c.fillRect(0,rulerH,keyW,gridH);
+  // Find notes currently under playhead
+  const activeNotes=new Set();
+  if(clip.notes.length>0){
+    const relPH=playheadPos-clip.startTime+(clip.trimStart||0);
+    clip.notes.forEach(n=>{
+      if(!n.muted&&relPH>=n.time&&relPH<n.time+n.duration)activeNotes.add(n.note);
+    });
+  }
   for(let note=MIN_NOTE;note<=MAX_NOTE;note++){
     const y=rulerH+(note-MIN_NOTE)*noteH-scrollY;
     if(y+noteH<rulerH||y>rulerH+gridH)continue;
     const isBlack=[1,3,6,8,10].includes(note%12);
-    c.fillStyle=isBlack?'#151515':'#d8d4c8';c.fillRect(1,y,keyW-3,noteH-.5);
-    // Label C notes (note%12===0)
+    const isActive=activeNotes.has(note);
+    if(isActive){
+      c.fillStyle='#e01030';
+    }else{
+      c.fillStyle=isBlack?'#151515':'#d8d4c8';
+    }
+    c.fillRect(1,y,keyW-3,noteH-.5);
     if(!isBlack&&note%12===0){
-      c.fillStyle='#777';c.font='7px Courier New';
+      c.fillStyle=isActive?'#ff6060':'#777';
+      c.font='7px Courier New';
       c.fillText(`C${Math.floor(note/12)-1}`,2,y+noteH-2);
     }
     if(isBlack){c.strokeStyle='#0a0a0a';c.lineWidth=.5;c.strokeRect(1,y,keyW-3,noteH-.5);}
@@ -1190,12 +1209,37 @@ document.getElementById('prCanvas').addEventListener('contextmenu',e=>{
 });
 document.getElementById('prCanvas').addEventListener('wheel',e=>{
   e.preventDefault();
-  if(e.shiftKey){PR.scrollX=Math.max(0,PR.scrollX+e.deltaY);const sl=document.getElementById('prScrollX');sl.value=Math.min(PR.scrollX,+sl.max);}
+  if(e.ctrlKey||e.metaKey){
+    const rect=PR.canvas.getBoundingClientRect();
+    const pivotPx=e.clientX-rect.left-PR.keyW;
+    setPRZoom(PR.pps*(e.deltaY>0?0.85:1.18),Math.max(0,pivotPx));
+  }else if(e.shiftKey){PR.scrollX=Math.max(0,PR.scrollX+e.deltaY);const sl=document.getElementById('prScrollX');sl.value=Math.min(PR.scrollX,+sl.max);}
   else{PR.scrollY=Math.max(0,Math.min(PR.totalH-(PR.canvas.height-PR.rulerH),PR.scrollY+e.deltaY));}
   drawPR();
 },{passive:false});
 document.getElementById('prScrollX').addEventListener('input',function(){PR.scrollX=+this.value;drawPR();});
-document.getElementById('prZoom').addEventListener('input',function(){PR.pps=+this.value;updatePRScrollBar();drawPR();});
+document.getElementById('prZoom').addEventListener('input',function(){setPRZoom(+this.value);});
+// Zoom helpers
+function setPRZoom(newPps,pivotPx){
+  const cv=PR.canvas;if(!cv)return;
+  const vw=cv.width-PR.keyW;
+  pivotPx=pivotPx??vw/2;
+  const pivotTime=(pivotPx+PR.scrollX)/PR.pps;
+  PR.pps=Math.max(20,Math.min(800,newPps));
+  PR.scrollX=Math.max(0,pivotTime*PR.pps-pivotPx);
+  document.getElementById('prZoom').value=PR.pps;
+  document.getElementById('prZoomDsp').textContent=Math.round(PR.pps)+'%';
+  updatePRScrollBar();drawPR();
+}
+document.getElementById('prZoomOut').addEventListener('click',()=>setPRZoom(PR.pps/1.5));
+document.getElementById('prZoomIn').addEventListener('click',()=>setPRZoom(PR.pps*1.5));
+document.getElementById('prZoomFit').addEventListener('click',()=>{
+  if(!PR.clip||!PR.canvas)return;
+  const vw=PR.canvas.width-PR.keyW;
+  const dur=Math.max(1,PR.clip.duration||1);
+  const fit=Math.max(20,Math.min(800,(vw/dur)*0.92));
+  PR.scrollX=0;setPRZoom(fit);
+});
 // PR toolbar
 function setPRTool(t){PR.tool=t;document.getElementById('prSelTool').classList.toggle('act',t==='select');document.getElementById('prDrawTool').classList.toggle('act',t==='draw');document.getElementById('prEraseTool').classList.toggle('act',t==='erase');document.getElementById('prCanvas').style.cursor=t==='draw'?'crosshair':t==='erase'?'not-allowed':'default';}
 document.getElementById('prSelTool').addEventListener('click',()=>setPRTool('select'));
