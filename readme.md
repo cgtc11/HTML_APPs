@@ -1,5 +1,6 @@
+ーーーClaudeを使って作成ーーー<br>
 ブラウザで動くものを置いてます<br>
-<br>
+ーーーーーーーーーーーーーーー<br>
 DotEditor　ドット絵<br>
 https://cgtc11.github.io/HTML_APPs/DotEditor/DotEditor.html<br>
 <br>
