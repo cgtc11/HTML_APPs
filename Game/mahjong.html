@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四人打ち麻雀</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#08200e;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',Georgia,serif;color:#f0e8d0}
+#game{width:860px;background:#1c5226;border-radius:16px;border:3px solid #c8a030;
+  box-shadow:0 0 60px rgba(0,0,0,.7),inset 0 0 80px rgba(0,0,0,.15);
+  padding:10px;display:flex;flex-direction:column;gap:6px;user-select:none}
+
+/* Info bar */
+#info-bar{display:flex;justify-content:space-between;align-items:center;
+  background:rgba(0,0,0,.4);border-radius:8px;padding:6px 14px;font-size:13px;
+  border:1px solid rgba(200,160,48,.3);flex-wrap:wrap;gap:6px}
+#scores{display:flex;gap:12px;align-items:center}
+.sc{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:60px}
+.sc-name{font-size:10px;color:#90a880}
+.sc-val{font-size:13px;color:#e0c040;font-weight:bold}
+.sc.active .sc-name{color:#ffdd44;font-weight:bold}
+.rbadge{font-size:9px;padding:1px 4px;border-radius:3px;background:rgba(200,50,0,.4);
+  border:1px solid #d04000;color:#ff8844;margin-top:1px}
+
+/* ── Base tile（アニメーションなし） ── */
+.tile{width:34px;height:48px;background:#f8f2e2;border:2px solid #c8a030;border-radius:5px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;
+  box-shadow:2px 3px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.9);
+  flex-shrink:0;color:#1a1a1a;position:relative;transition:none}
+/* hover移動なし：選択時のみ上に上がる */
+.tile.sel{transform:translateY(-12px);box-shadow:2px 10px 12px rgba(0,0,0,.5),0 0 0 2px #ffcc00;border-color:#ffcc00}
+/* 引いた牌は青枠 */
+.tile.drw{border-color:#60aaff;box-shadow:2px 3px 4px rgba(0,0,0,.4),0 0 6px rgba(60,160,255,.5)}
+.tile.drw.sel{transform:translateY(-12px);box-shadow:2px 10px 12px rgba(0,0,0,.5),0 0 0 2px #ffcc00;border-color:#ffcc00}
+/* 裏面（CPU牌） */
+.tile.back{background:#1a3880;border-color:#0f2260;cursor:default;
+  background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0,rgba(255,255,255,.06) 2px,transparent 2px,transparent 6px)}
+.tile.back::after{content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,.14);border-radius:2px}
+.tile.man{color:#cc2200}.tile.pin{color:#1a3a9a}.tile.sou{color:#0a6a0a}
+.tile.haku{color:#2a2a2a}.tile.hatsu{color:#0a7a0a;font-weight:bold}.tile.chun{color:#cc0000;font-weight:bold}
+
+/* ── 捨て牌（全員統一 28×40px） ── */
+.dtile{width:28px!important;height:40px!important;font-size:13px!important;border-width:1px!important;
+  cursor:default!important;box-shadow:1px 1px 2px rgba(0,0,0,.3)!important;border-radius:4px!important}
+.dtile.hilight{outline:2px solid #ffcc44;outline-offset:1px}
+
+/* CPU2 上：固定高さ */
+#cpu2-row{display:flex;justify-content:center;gap:2px;padding:4px;
+  height:44px;overflow:hidden;align-items:center;flex-wrap:nowrap}
+#cpu2-row .tile{width:20px;height:28px;font-size:9px;flex-shrink:0}
+
+/* Mid */
+#mid-row{display:flex;gap:6px;align-items:stretch}
+/* 左右CPU：90度回転で1列・固定高さ */
+#cpu1-col,#cpu3-col{display:flex;flex-direction:column;gap:1px;
+  justify-content:flex-start;align-items:center;
+  width:44px;height:340px;overflow:hidden;
+  padding:4px;background:rgba(0,0,0,.12);border-radius:8px}
+/* 回転ラッパー：視覚上の幅=牌の高さ、高さ=牌の幅 */
+.side-wrap{width:34px;height:22px;position:relative;flex-shrink:0}
+.side-wrap .tile{
+  position:absolute;width:22px;height:34px;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%) rotate(90deg);
+  cursor:default;font-size:12px}
+#cpu3-col .side-wrap .tile{transform:translate(-50%,-50%) rotate(-90deg)}
+
+/* Center：固定高さ */
+#center{flex:1;display:grid;
+  grid-template-columns:1fr auto 1fr;
+  grid-template-rows:1fr auto 1fr;
+  grid-template-areas:"top top top" "left mid right" "bot bot bot";
+  gap:4px;padding:6px;background:rgba(0,0,0,.18);border-radius:8px;height:340px}
+.dzone{display:flex;flex-wrap:wrap;gap:2px;align-content:flex-start;padding:4px;
+  background:rgba(0,0,0,.14);border-radius:5px}
+#dz2{grid-area:top}#dz1{grid-area:left}#dz3{grid-area:right}#dz0{grid-area:bot}
+#cmid{grid-area:mid;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:6px}
+.wallnum{font-size:12px;color:#c8a030;background:rgba(0,0,0,.3);padding:3px 8px;border-radius:5px;
+  border:1px solid rgba(200,160,48,.3);white-space:nowrap;text-align:center}
+#turn-ind{font-size:11px;color:#a0d080;text-align:center;white-space:nowrap}
+
+/* ── 自分のエリア ── */
+#human-area{display:flex;flex-direction:column;align-items:center;gap:4px}
+#human-melds{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:20px}
+.mgrp{display:flex;gap:1px;background:rgba(0,0,0,.15);padding:2px;border-radius:4px;
+  border:1px solid rgba(200,160,48,.2)}
+.mgrp .tile{cursor:default}
+
+/* ── 自分の手牌（大きく・固定高さ） ── */
+#human-hand{display:flex;gap:3px;justify-content:center;align-items:flex-end;
+  padding:6px 4px 16px;height:100px;overflow:visible}
+#human-hand .tile{width:48px;height:68px;font-size:26px;border-radius:6px;border-width:2px;flex-shrink:0}
+#human-melds .tile{width:40px;height:57px;font-size:20px;border-radius:5px;cursor:default}
+.hgap{width:10px;flex-shrink:0}
+
+/* Actions */
+#actions{display:flex;gap:8px;justify-content:center;align-items:center;min-height:46px;flex-wrap:wrap;padding:0 8px}
+.btn{padding:9px 20px;border-radius:7px;border:2px solid;cursor:pointer;font-size:14px;
+  font-family:inherit;font-weight:bold}
+.bd{background:#3a2808;border-color:#c8a030;color:#f0e8d0}.bd:hover{background:#5a3c10}
+.bron{background:#6a1010;border-color:#cc2020;color:#fff}.bron:hover{background:#8a1818}
+.btsu{background:#103060;border-color:#2070b0;color:#fff}.btsu:hover{background:#1a4888}
+.brii{background:#3a1060;border-color:#8030b0;color:#fff}.brii:hover{background:#501880}
+.bpon{background:#0a5030;border-color:#18a060;color:#fff}.bpon:hover{background:#126840}
+.bchi{background:#304808;border-color:#70a018;color:#fff}.bchi:hover{background:#486010}
+.bskip{background:#282828;border-color:#505050;color:#888}.bskip:hover{background:#383838}
+.bkan{background:#5a3008;border-color:#c06820;color:#fff}.bkan:hover{background:#7a4818}
+
+#msg{text-align:center;font-size:13px;color:#b0c888;min-height:20px;padding:2px 10px}
+
+/* Overlay */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);
+  align-items:center;justify-content:center;z-index:1000}
+#overlay.show{display:flex}
+#result{background:linear-gradient(150deg,#162a12,#0c1a0a);border:2px solid #c8a030;
+  border-radius:14px;padding:22px 30px;text-align:center;min-width:320px;max-width:480px;
+  box-shadow:0 0 60px rgba(0,0,0,.9)}
+#result h2{font-size:24px;color:#e0c040;margin-bottom:8px}
+#res-who{font-size:13px;color:#a8c888;margin-bottom:8px}
+#res-tiles{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;margin:8px 0}
+#res-tiles .tile{width:28px;height:40px;font-size:13px;cursor:default}
+.ytbl{width:100%;margin:8px 0;border-collapse:collapse}
+.ytbl tr{border-bottom:1px solid rgba(255,255,255,.08)}
+.ytbl td{padding:3px 8px;font-size:13px}
+.ytbl td:last-child{text-align:right;color:#e0c040}
+#res-pts{font-size:21px;color:#e0c040;font-weight:bold;margin:8px 0}
+.bnext{margin-top:10px;padding:8px 26px;background:#c8a030;color:#1a1a1a;border:none;
+  border-radius:7px;font-size:14px;font-family:inherit;cursor:pointer;font-weight:bold}
+.bnext:hover{background:#e0b838}
+
+/* 赤ドラ */
+.tile.aka{background:#fff0ee;box-shadow:2px 3px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,220,220,.9),0 0 0 1px #e03030}
+/* ドラ表示エリア */
+#dora-disp{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0}
+.dora-row{display:flex;gap:2px;justify-content:center}
+.dora-lbl{font-size:9px;color:#c8a030;text-align:center}
+#chi-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  align-items:center;justify-content:center;z-index:500}
+#chi-modal.show{display:flex}
+#chi-pan{background:#162a12;border:2px solid #c8a030;border-radius:12px;padding:18px 26px;text-align:center}
+#chi-pan h3{color:#e0c040;margin-bottom:10px;font-size:15px}
+.copt{display:inline-flex;gap:2px;margin:5px;padding:5px;background:rgba(255,255,255,.08);
+  border-radius:6px;cursor:pointer;border:2px solid transparent}
+.copt:hover{border-color:#c8a030}
+.copt .tile{cursor:default;width:32px;height:46px;font-size:15px}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="info-bar">
+    <div id="rlbl">東1局 0本場</div>
+    <div id="scores"></div>
+    <div class="wallnum" id="wlbl">山: 84</div>
+  </div>
+  <div id="cpu2-row"></div>
+  <div id="mid-row">
+    <div id="cpu1-col"></div>
+    <div id="center">
+      <div id="dz2" class="dzone"></div>
+      <div id="dz1" class="dzone"></div>
+      <div id="cmid">
+        <div class="wallnum" id="wcnt">山 84</div>
+        <div id="dora-disp"></div>
+        <div id="turn-ind"></div>
+      </div>
+      <div id="dz3" class="dzone"></div>
+      <div id="dz0" class="dzone"></div>
+    </div>
+    <div id="cpu3-col"></div>
+  </div>
+  <div id="human-area">
+    <div id="human-melds"></div>
+    <div id="human-hand"></div>
+  </div>
+  <div id="actions"></div>
+  <div id="msg">ゲームを開始します...</div>
+</div>
+
+<div id="overlay">
+  <div id="result">
+    <h2 id="res-title">和了！</h2>
+    <div id="res-who"></div>
+    <div id="res-tiles"></div>
+    <table class="ytbl"><tbody id="yrows"></tbody></table>
+    <div id="res-pts"></div>
+    <button class="bnext" onclick="nextRound()">次局へ</button>
+  </div>
+</div>
+
+<div id="chi-modal">
+  <div id="chi-pan">
+    <h3>どの牌でチーしますか？</h3>
+    <div id="chi-opts"></div>
+    <button class="btn bskip" onclick="skipCall()" style="margin-top:10px">スキップ</button>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// CONSTANTS
+// ================================================================
+const TC={
+  m:['一','二','三','四','五','六','七','八','九'],
+  p:['①','②','③','④','⑤','⑥','⑦','⑧','⑨'],
+  s:['１','２','３','４','５','６','７','８','９'],
+  z:['東','南','西','北','白','發','中']
+};
+const WINDS=['東','南','西','北'];
+const DMAP={5:'白',6:'發',7:'中'};
+
+// ================================================================
+// TILE UTILITIES
+// ================================================================
+function tk(t){return t.suit+t.value}
+function same(a,b){return a.suit===b.suit&&a.value===b.value}
+function lbl(t){return TC[t.suit][t.value-1]}
+function sortTiles(arr){
+  const o={m:0,p:1,s:2,z:3};
+  return [...arr].sort((a,b)=>o[a.suit]!==o[b.suit]?o[a.suit]-o[b.suit]:a.value-b.value);
+}
+
+// ================================================================
+// DORA UTILITIES
+// ================================================================
+function getDoraFromIndicator(ind){
+  if(ind.suit==='z'){
+    if(ind.value<=4)return{suit:'z',value:ind.value===4?1:ind.value+1};
+    return{suit:'z',value:ind.value===7?5:ind.value+1};
+  }
+  return{suit:ind.suit,value:ind.value===9?1:ind.value+1};
+}
+function countDoraTiles(tiles){
+  let n=0;
+  for(const ind of(G.doraIndicators||[])){
+    const d=getDoraFromIndicator(ind);
+    n+=tiles.filter(t=>t.suit===d.suit&&t.value===d.value).length;
+  }
+  n+=tiles.filter(t=>t.red).length; // 赤ドラ
+  return n;
+}
+function countUraDoraTiles(tiles){
+  let n=0;
+  for(const ind of(G.uraDoraIndicators||[])){
+    const d=getDoraFromIndicator(ind);
+    n+=tiles.filter(t=>t.suit===d.suit&&t.value===d.value).length;
+  }
+  return n;
+}
+function hasRealYaku(yk){
+  return yk.some(y=>!['ドラ','赤ドラ','裏ドラ'].includes(y.name));
+}
+
+// ================================================================
+// WALL
+// ================================================================
+function mkWall(){
+  const ts=[];let id=0;
+  for(const s of['m','p','s'])for(let v=1;v<=9;v++)for(let i=0;i<4;i++)ts.push({suit:s,value:v,id:id++,red:false});
+  for(let v=1;v<=7;v++)for(let i=0;i<4;i++)ts.push({suit:'z',value:v,id:id++,red:false});
+  for(let i=ts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ts[i],ts[j]]=[ts[j],ts[i]];}
+  // シャッフル後に各スートの5を1枚ずつ赤ドラに
+  for(const s of['m','p','s']){const idx=ts.findIndex(t=>t.suit===s&&t.value===5);if(idx!==-1)ts[idx].red=true;}
+  return ts;
+}
+
+// ================================================================
+// WIN DETECTION
+// ================================================================
+function canMM(tiles){
+  if(tiles.length===0)return true;
+  if(tiles.length%3!==0)return false;
+  const s=sortTiles(tiles);
+  const f=s[0],r=s.slice(1);
+  // Try koutsu
+  if(r.length>=2&&same(r[0],f)&&same(r[1],f))if(canMM(r.slice(2)))return true;
+  // Try shuntsu
+  if(f.suit!=='z'){
+    const i1=r.findIndex(t=>t.suit===f.suit&&t.value===f.value+1);
+    if(i1!==-1){
+      const r2=r.filter((_,i)=>i!==i1);
+      const i2=r2.findIndex(t=>t.suit===f.suit&&t.value===f.value+2);
+      if(i2!==-1&&canMM(r2.filter((_,i)=>i!==i2)))return true;
+    }
+  }
+  return false;
+}
+
+function isCT(tiles){
+  const c={};
+  for(const t of tiles)c[tk(t)]=(c[tk(t)]||0)+1;
+  const v=Object.values(c);
+  return v.length===7&&v.every(x=>x>=2);
+}
+
+function isKK(tiles){
+  const KT=['m1','m9','p1','p9','s1','s9','z1','z2','z3','z4','z5','z6','z7'];
+  const ks=tiles.map(tk);
+  return KT.every(k=>ks.includes(k))&&KT.some(k=>ks.filter(x=>x===k).length>=2);
+}
+
+function checkWin(closed,nm){
+  // nm = mentsu still needed from closed tiles; closed.length must be nm*3+2
+  if(closed.length!==nm*3+2)return false;
+  if(nm===4){if(isCT(closed))return true;if(isKK(closed))return true;}
+  const s=sortTiles([...closed]);
+  const seen=new Set();
+  for(let i=0;i<s.length-1;i++){
+    const k=tk(s[i]);
+    if(seen.has(k))continue;
+    if(!same(s[i],s[i+1]))continue;
+    seen.add(k);
+    if(canMM(s.filter((_,idx)=>idx!==i&&idx!==i+1)))return true;
+  }
+  return false;
+}
+
+function playerWins(p){
+  return checkWin(p.hand, 4-p.melds.length);
+}
+
+// ================================================================
+// TENPAI
+// ================================================================
+function getTenpaiWaits(h13,melds){
+  const nm=4-melds.length;
+  const waits=[];
+  const tried=new Set();
+  for(const suit of['m','p','s','z']){
+    const mx=suit==='z'?7:9;
+    for(let v=1;v<=mx;v++){
+      const k=suit+v;
+      if(tried.has(k))continue;
+      tried.add(k);
+      const test=[...h13,{suit,value:v,id:-1}];
+      if(checkWin(test,nm))waits.push({suit,value:v});
+    }
+  }
+  return waits;
+}
+
+// ================================================================
+// CALL CHECKS
+// ================================================================
+function canRon(player,tile){
+  // Basic furiten: player discarded this tile before
+  if(player.discards.some(d=>same(d,tile)))return false;
+  const test=[...player.hand,tile];
+  return checkWin(test,4-player.melds.length);
+}
+
+function canPon(player,tile){
+  return player.hand.filter(t=>same(t,tile)).length>=2;
+}
+
+function getChiOpts(hand,tile){
+  if(tile.suit==='z')return[];
+  const{suit:s,value:v}=tile;
+  const opts=[];
+  const pats=[[v-2,v-1],[v-1,v+1],[v+1,v+2]];
+  for(const[a,b]of pats){
+    if(a<1||b>9)continue;
+    const tA=hand.find(t=>t.suit===s&&t.value===a);
+    if(!tA)continue;
+    const tB=hand.find(t=>t.suit===s&&t.value===b&&t.id!==tA.id);
+    if(tB)opts.push([tA,tB]);
+  }
+  return opts;
+}
+
+// ================================================================
+// YAKU DETECTION
+// ================================================================
+function detectYaku(player,tsumo,rWind,sWind){
+  const hand=player.hand;
+  const melds=player.melds;
+  const isOpen=melds.length>0;
+  const all=[...hand,...melds.flatMap(m=>m.tiles)];
+  const yk=[];
+
+  if(tsumo&&!isOpen) yk.push({name:'門前清自摸和',han:1});
+  if(tsumo&&G.rinshan) yk.push({name:'嶺上開花',han:1});
+  if(player.riichi){
+    yk.push({name:'立直',han:1});
+    if(player.ippatsu)yk.push({name:'一発',han:1});
+  }
+
+  // Tanyao
+  if(all.every(t=>t.suit!=='z'&&t.value>=2&&t.value<=8))yk.push({name:'断么九',han:1});
+
+  // Yakuhai - dragons
+  for(const v of[5,6,7]){
+    if(all.filter(t=>t.suit==='z'&&t.value===v).length>=3)yk.push({name:DMAP[v],han:1});
+  }
+  // Yakuhai - round wind
+  if(all.filter(t=>t.suit==='z'&&t.value===rWind).length>=3)yk.push({name:'場風('+WINDS[rWind-1]+')',han:1});
+  // Yakuhai - seat wind (even if same as round, both count)
+  if(all.filter(t=>t.suit==='z'&&t.value===sWind).length>=3)yk.push({name:'自風('+WINDS[sWind-1]+')',han:1});
+
+  // Chiitoi
+  if(!isOpen&&isCT(hand))yk.push({name:'七対子',han:2});
+
+  // Kokushi
+  if(!isOpen&&isKK(hand)){yk.push({name:'国士無双',han:13});return yk;}
+
+  // Honitsu/Chinitsu
+  const nsuits=new Set(all.filter(t=>t.suit!=='z').map(t=>t.suit));
+  if(nsuits.size===1){
+    const hasZ=all.some(t=>t.suit==='z');
+    if(hasZ)yk.push({name:'混一色',han:isOpen?2:3});
+    else yk.push({name:'清一色',han:isOpen?5:6});
+  }
+
+  // ドラ・赤ドラ
+  const doraHan=countDoraTiles(all);
+  if(doraHan>0)yk.push({name:'ドラ',han:doraHan});
+
+  // De-duplicate
+  const seen=new Set();
+  return yk.filter(y=>{if(seen.has(y.name))return false;seen.add(y.name);return true;});
+}
+
+// ================================================================
+// SCORING
+// ================================================================
+function calcScore(yk,isDealer){
+  const han=yk.reduce((s,y)=>s+y.han,0);
+  if(han===0)return null;
+  const isChi=yk.some(y=>y.name==='七対子');
+  const fu=isChi?25:30;
+  let basic=Math.min(fu*Math.pow(2,han+2),2000);
+  if(han>=5)basic=2000;if(han>=6)basic=3000;if(han>=8)basic=4000;
+  if(han>=11)basic=6000;if(han>=13)basic=8000;
+  const r=n=>Math.ceil(n/100)*100;
+  return{han,fu,ron:r(isDealer?basic*6:basic*4),tdeal:r(basic*2),tnon:r(basic)};
+}
+
+function hanName(h){
+  if(h>=13)return '役満';if(h>=11)return '三倍満';if(h>=8)return '倍満';
+  if(h>=6)return '跳満';if(h>=5)return '満貫';return h+'翻';
+}
+
+// ================================================================
+// CPU AI
+// ================================================================
+function cpuDiscard(hand){
+  let bestIdx=0,bestScore=Infinity;
+  for(let i=0;i<hand.length;i++){
+    const t=hand[i];let conn=0;
+    for(let j=0;j<hand.length;j++){
+      if(i===j)continue;const o=hand[j];
+      if(same(t,o))conn+=2;
+      else if(t.suit!=='z'&&t.suit===o.suit){
+        const d=Math.abs(t.value-o.value);
+        if(d===1)conn+=1.5;else if(d===2)conn+=0.5;
+      }
+    }
+    if(conn<bestScore){bestScore=conn;bestIdx=i;}
+  }
+  return bestIdx;
+}
+
+function cpuWantPon(tile){return tile.suit==='z'?Math.random()<.65:Math.random()<.15;}
+function cpuWantChi(){return Math.random()<.22;}
+
+// ================================================================
+// GAME STATE
+// ================================================================
+let G={};
+
+function swWind(pi){return((pi-G.dealer+4)%4)+1;}
+
+function initGame(){
+  const wall=mkWall();
+  const remaining=wall.slice(52); // 84枚
+  const deadWall=remaining.slice(70); // 王牌14枚
+  G={
+    wall:remaining.slice(0,70), // プレイ用70枚
+    rinshanTiles:[deadWall[10],deadWall[11],deadWall[12],deadWall[13]], // 嶺上牌4枚
+    doraIndicators:[deadWall[0]], // ドラ表示牌（最初1枚）
+    uraDoraIndicators:[deadWall[1]], // 裏ドラ表示牌
+    deadWall:deadWall, doraFlipCount:0,
+    players:[0,1,2,3].map(i=>({
+      hand:sortTiles(wall.slice(i*13,(i+1)*13)),
+      discards:[],melds:[],
+      score:25000,riichi:false,ippatsu:false,
+      name:i===0?'あなた':'CPU'+(i)
+    })),
+    dealer:0,currentPlayer:-1,roundWind:1,roundNum:1,honba:0,
+    phase:'idle',lastDiscard:null,lastDP:-1,
+    selIdx:-1,drawnId:-1,pendCalls:null,riichiPend:false,chiOpts:null,
+    kans:0,rinshan:false,
+    msg:''
+  };
+  setMsg('東1局 開始！');
+  render();
+  setTimeout(()=>startTurn(0),300);
+}
+
+// ================================================================
+// TURN MANAGEMENT
+// ================================================================
+function startTurn(pi){
+  if(G.wall.length===0){endRound('ryuukyoku');return;}
+  G.currentPlayer=pi;G.selIdx=-1;G.phase='discard';
+  const tile=G.wall.shift();
+  G.players[pi].hand.push(tile);
+  G.drawnId=tile.id;
+  // ソートしない：引いた牌は右端に置く
+  if(pi===0){
+    G.rinshan=false;
+    if(playerWins(G.players[0])){G.pendCalls={tsumo:true};setMsg('ツモ和了できます！');}
+    else{
+      G.pendCalls=null;
+      // リーチ可能チェック：どの牌を捨ててもテンパイになるか
+      if(!G.players[0].riichi&&G.players[0].melds.length===0){
+        const h=G.players[0].hand;
+        const canRiichi=h.some((_,i)=>getTenpaiWaits(h.filter((_,j)=>j!==i),[]).length>0);
+        if(canRiichi)G.pendCalls=Object.assign(G.pendCalls||{},{canRiichi:true});
+      }
+      checkHumanKanOpts();
+      setMsg('牌を選んでクリック→選択、もう一度クリックまたは「捨てる」ボタンで捨てます');
+    }
+    render();
+  }else{
+    setMsg(G.players[pi].name+' が考えています...');
+    render();
+    setTimeout(()=>cpuTurn(pi),280);
+  }
+}
+
+// ================================================================
+// CPU TURN
+// ================================================================
+function cpuTurn(pi){
+  const p=G.players[pi];
+  // Check tsumo
+  if(playerWins(p)){
+    const sw=swWind(pi);
+    const yk=detectYaku(p,true,G.roundWind,sw);
+    if(hasRealYaku(yk)){
+      setMsg(p.name+' ツモ！');render();
+      setTimeout(()=>declareWin(pi,'tsumo',null,yk),150);return;
+    }
+  }
+  // CPU 暗槓チェック（リーチ中は不可）
+  if(!p.riichi&&G.kans<4){
+    const groups={};
+    for(const t of p.hand)groups[tk(t)]=(groups[tk(t)]||0)+1;
+    for(const[k,v]of Object.entries(groups)){
+      if(v>=4){setMsg(p.name+' が暗槓！');render();setTimeout(()=>execAnkan(pi,k),180);return;}
+    }
+    // CPU 加槓チェック
+    for(let i=0;i<p.melds.length;i++){
+      const m=p.melds[i];
+      if(m.type==='pon'&&p.hand.some(t=>same(t,m.tiles[0]))){
+        setMsg(p.name+' が加槓！');render();setTimeout(()=>execKakan(pi,i),180);return;
+      }
+    }
+  }
+  // Riichi check: if hand minus worst discard is tenpai
+  if(!p.riichi&&p.melds.length===0&&G.wall.length>4){
+    const di=cpuDiscard(p.hand);
+    const t13=p.hand.filter((_,i)=>i!==di);
+    if(getTenpaiWaits(t13,[]).length>0&&Math.random()<.55){
+      p.riichi=true;p.ippatsu=true;
+      setMsg(p.name+' が立直！');
+    }
+  }
+  const di=cpuDiscard(p.hand);
+  const dt=p.hand.splice(di,1)[0];
+  p.discards.push(dt);
+  G.lastDiscard=dt;G.lastDP=pi;G.drawnId=-1;G.rinshan=false;
+  setMsg(p.name+' が '+lbl(dt)+' を捨てました');
+  render();
+  setTimeout(processCallPhase,200);
+}
+
+// ================================================================
+// CALL PHASE
+// ================================================================
+function processCallPhase(){
+  const tile=G.lastDiscard;const dp=G.lastDP;
+  // CPU ron check (priority order: next player, then clockwise)
+  const order=[(dp+1)%4,(dp+2)%4,(dp+3)%4].filter(p=>p!==dp);
+  for(const pi of order){
+    if(pi===0)continue;
+    const p=G.players[pi];
+    if(canRon(p,tile)){
+      const sw=swWind(pi);
+      const yk=detectYaku({...p,hand:[...p.hand,tile]},false,G.roundWind,sw);
+      if(hasRealYaku(yk)){
+        setMsg(p.name+' ロン！');render();
+        setTimeout(()=>declareWin(pi,'ron',dp,yk),150);return;
+      }
+    }
+  }
+  // Human call check
+  const hRon=dp!==0&&canRon(G.players[0],tile);
+  const hRonYk=hRon?detectYaku({...G.players[0],hand:[...G.players[0].hand,tile]},false,G.roundWind,swWind(0)):[];
+  const hPon=dp!==0&&canPon(G.players[0],tile);
+  const prevH=(0+3)%4; // player 3 is before player 0 in turn order
+  const hChi=dp===prevH&&getChiOpts(G.players[0].hand,tile).length>0;
+  const hMinkan=dp!==0&&G.kans<4&&G.players[0].hand.filter(t=>same(t,tile)).length>=3;
+
+  if((hRon&&hRonYk.length>0)||hPon||hChi||hMinkan){
+    G.pendCalls={ron:hRon&&hRonYk.length>0,pon:hPon,chi:hChi,minkan:hMinkan};
+    G.phase='calling';
+    setMsg('アクションを選択してください');
+    render();return;
+  }
+  cpuCallsCheck();
+}
+
+function cpuCallsCheck(){
+  const tile=G.lastDiscard;const dp=G.lastDP;
+  // CPU 明槓チェック
+  if(G.kans<4){
+    for(const pi of[1,2,3]){
+      if(pi===dp)continue;
+      if(G.players[pi].hand.filter(t=>same(t,tile)).length>=3&&Math.random()<.3){
+        setTimeout(()=>execMinkan(pi,tile),200);return;
+      }
+    }
+  }
+  // CPU pon
+  for(const pi of[1,2,3]){
+    if(pi===dp)continue;
+    if(canPon(G.players[pi],tile)&&cpuWantPon(tile)){
+      setTimeout(()=>execPon(pi,tile),200);return;
+    }
+  }
+  // CPU chi (next player only)
+  const np=(dp+1)%4;
+  if(np!==0){
+    const opts=getChiOpts(G.players[np].hand,tile);
+    if(opts.length>0&&cpuWantChi()){
+      setTimeout(()=>execChi(np,tile,opts[0]),200);return;
+    }
+  }
+  const next=(dp+1)%4;
+  setTimeout(()=>startTurn(next),150);
+}
+
+// ================================================================
+// HUMAN ACTIONS
+// ================================================================
+function humanDiscard(){
+  if(G.currentPlayer!==0||G.phase!=='discard')return;
+  if(G.selIdx===-1){setMsg('捨てる牌を選んでください');return;}
+  const p=G.players[0];
+  if(p.riichi&&p.hand[G.selIdx].id!==G.drawnId){setMsg('立直後は引いた牌しか捨てられません');return;}
+  if(G.riichiPend){
+    const t13=p.hand.filter((_,i)=>i!==G.selIdx);
+    if(getTenpaiWaits(t13,[]).length===0){setMsg('この牌を捨てるとテンパイになりません');return;}
+    p.riichi=true;p.ippatsu=true;p.score-=1000;G.riichiPend=false;
+  }
+  const tile=p.hand.splice(G.selIdx,1)[0];
+  p.hand=sortTiles(p.hand); // 捨てた後に並べ替え
+  p.discards.push(tile);
+  G.lastDiscard=tile;G.lastDP=0;G.selIdx=-1;G.drawnId=-1;
+  G.pendCalls=null;G.phase='calling';G.rinshan=false;
+  // Reset ippatsu for this player after discard
+  if(p.riichi&&!G.riichiPend){}// keep ippatsu until others draw
+  render();
+  setTimeout(processCallPhase,150);
+}
+
+function humanTsumo(){
+  if(!G.pendCalls?.tsumo)return;
+  const p=G.players[0];
+  const yk=detectYaku(p,true,G.roundWind,swWind(0));
+  if(!hasRealYaku(yk)){setMsg('役がありません');return;}
+  declareWin(0,'tsumo',null,yk);
+}
+
+function humanRon(){
+  if(!G.pendCalls?.ron)return;
+  const p=G.players[0];const tile=G.lastDiscard;
+  const yk=detectYaku({...p,hand:[...p.hand,tile]},false,G.roundWind,swWind(0));
+  if(!hasRealYaku(yk)){setMsg('役がありません（フリテン）');skipCall();return;}
+  declareWin(0,'ron',G.lastDP,yk);
+}
+
+function humanPon(){if(!G.pendCalls?.pon)return;execPon(0,G.lastDiscard);}
+
+function humanChi(){
+  if(!G.pendCalls?.chi)return;
+  const opts=getChiOpts(G.players[0].hand,G.lastDiscard);
+  if(opts.length===1){execChi(0,G.lastDiscard,opts[0]);}
+  else{G.chiOpts=opts;showChiModal(opts);}
+}
+
+function humanRiichi(){
+  if(!G.pendCalls?.canRiichi)return;
+  G.riichiPend=true;G.pendCalls={...G.pendCalls,canRiichi:false};
+  setMsg('立直！テンパイになる牌を選んで捨ててください');render();
+}
+
+function skipCall(){
+  G.pendCalls=null;G.chiOpts=null;
+  document.getElementById('chi-modal').classList.remove('show');
+  G.phase='calling';render();
+  cpuCallsCheck();
+}
+
+// ================================================================
+// MELD EXECUTION
+// ================================================================
+function execPon(pi,tile){
+  const p=G.players[pi];
+  let removed=0;const fromHand=[];
+  p.hand=p.hand.filter(t=>{
+    if(removed<2&&same(t,tile)){removed++;fromHand.push(t);return false;}return true;
+  });
+  p.melds.push({type:'pon',tiles:[{...tile,id:tile.id+10000},...fromHand]});
+  G.currentPlayer=pi;G.phase='discard';G.drawnId=-1;G.lastDiscard=null;G.pendCalls=null;G.selIdx=-1;
+  setMsg(p.name+' がポン！');render();
+  if(pi===0){setMsg('ポン！捨て牌を選んでください');}
+  else setTimeout(()=>cpuAfterMeld(pi),250);
+}
+
+function execChi(pi,tile,handPair){
+  const p=G.players[pi];
+  for(const ht of handPair){const idx=p.hand.findIndex(t=>t.id===ht.id);if(idx!==-1)p.hand.splice(idx,1);}
+  const mTiles=sortTiles([{...tile,id:tile.id+20000},...handPair]);
+  p.melds.push({type:'chi',tiles:mTiles});
+  G.currentPlayer=pi;G.phase='discard';G.drawnId=-1;G.lastDiscard=null;G.pendCalls=null;G.selIdx=-1;
+  document.getElementById('chi-modal').classList.remove('show');
+  G.chiOpts=null;
+  setMsg(p.name+' がチー！');render();
+  if(pi===0){setMsg('チー！捨て牌を選んでください');}
+  else setTimeout(()=>cpuAfterMeld(pi),250);
+}
+
+function cpuAfterMeld(pi){
+  const p=G.players[pi];
+  const di=cpuDiscard(p.hand);
+  const dt=p.hand.splice(di,1)[0];
+  p.discards.push(dt);G.lastDiscard=dt;G.lastDP=pi;G.drawnId=-1;
+  setMsg(p.name+' が '+lbl(dt)+' を捨てました');render();
+  setTimeout(processCallPhase,200);
+}
+
+// ================================================================
+// KAN (暗槓・加槓・明槓)
+// ================================================================
+function drawRinshan(pi){
+  if(G.rinshanTiles.length===0||G.wall.length===0){endRound('ryuukyoku');return false;}
+  const tile=G.rinshanTiles.shift(); // 嶺上牌は王牌から
+  G.players[pi].hand.push(tile);
+  G.drawnId=tile.id;
+  G.rinshan=true;
+  G.kans++;
+  // 槓ドラをめくる（最大4回）
+  if(G.doraFlipCount<4&&G.deadWall){
+    const ni=2+G.doraFlipCount*2;
+    if(G.deadWall[ni])G.doraIndicators.push(G.deadWall[ni]);
+    if(G.deadWall[ni+1])G.uraDoraIndicators.push(G.deadWall[ni+1]);
+    G.doraFlipCount++;
+  }
+  if(pi===0){}// 嶺上牌も右端に配置（ソートしない）
+  return true;
+}
+
+function execAnkan(pi,tileKey){
+  const p=G.players[pi];
+  const[suit,val]=[tileKey[0],parseInt(tileKey.slice(1))];
+  const kanTiles=[];
+  p.hand=p.hand.filter(t=>{
+    if(kanTiles.length<4&&t.suit===suit&&t.value===val){kanTiles.push(t);return false;}return true;
+  });
+  p.melds.push({type:'ankan',tiles:kanTiles});
+  G.currentPlayer=pi;G.phase='discard';G.lastDiscard=null;G.pendCalls=null;G.selIdx=-1;
+  setMsg(p.name+' が暗槓！');
+  if(!drawRinshan(pi))return;
+  render();
+  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),250);
+}
+
+function execKakan(pi,meldIdx){
+  const p=G.players[pi];const m=p.melds[meldIdx];
+  const idx=p.hand.findIndex(t=>same(t,m.tiles[0]));
+  if(idx===-1)return;
+  const extra=p.hand.splice(idx,1)[0];
+  m.tiles.push(extra);m.type='kakan';
+  G.currentPlayer=pi;G.phase='discard';G.lastDiscard=null;G.pendCalls=null;G.selIdx=-1;G.drawnId=-1;
+  setMsg(p.name+' が加槓！');
+  if(!drawRinshan(pi))return;
+  render();
+  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),250);
+}
+
+function execMinkan(pi,tile){
+  const p=G.players[pi];
+  let cnt=0;const fromHand=[];
+  p.hand=p.hand.filter(t=>{
+    if(cnt<3&&same(t,tile)){cnt++;fromHand.push(t);return false;}return true;
+  });
+  p.melds.push({type:'minkan',tiles:[{...tile,id:tile.id+40000},...fromHand]});
+  G.currentPlayer=pi;G.phase='discard';G.lastDiscard=null;G.pendCalls=null;G.selIdx=-1;
+  setMsg(p.name+' が明槓！');
+  if(!drawRinshan(pi))return;
+  render();
+  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),250);
+}
+
+function afterKanHuman(){
+  const p=G.players[0];
+  // ツモ和了チェック（嶺上開花）
+  if(playerWins(p)){
+    const yk=detectYaku(p,true,G.roundWind,swWind(0));
+    if(yk.length>0){G.pendCalls={tsumo:true};setMsg('ツモ和了！（嶺上開花）');render();return;}
+  }
+  G.pendCalls=null;
+  checkHumanKanOpts(); // 連続カン確認
+  // リーチ可能チェック（カン後も再確認）
+  if(!G.players[0].riichi&&G.players[0].melds.length===0){
+    const h=G.players[0].hand;
+    const canRiichi=h.some((_,i)=>getTenpaiWaits(h.filter((_,j)=>j!==i),[]).length>0);
+    if(canRiichi)G.pendCalls=Object.assign(G.pendCalls||{},{canRiichi:true});
+  }
+  setMsg('カン！嶺上牌を引きました。捨て牌を選んでください');
+  render();
+}
+
+function afterKanCpu(pi){
+  const p=G.players[pi];
+  if(playerWins(p)){
+    const sw=swWind(pi);const yk=detectYaku(p,true,G.roundWind,sw);
+    if(yk.length>0&&hasRealYaku(yk)){setMsg(p.name+' 嶺上開花！');render();setTimeout(()=>declareWin(pi,'tsumo',null,yk),150);return;}
+  }
+  // 連続カンチェック
+  if(G.kans<4&&!p.riichi){
+    const groups={};for(const t of p.hand)groups[tk(t)]=(groups[tk(t)]||0)+1;
+    for(const[k,v]of Object.entries(groups)){
+      if(v>=4){setMsg(p.name+' が再び暗槓！');render();setTimeout(()=>execAnkan(pi,k),180);return;}
+    }
+    for(let i=0;i<p.melds.length;i++){
+      const m=p.melds[i];
+      if(m.type==='pon'&&p.hand.some(t=>same(t,m.tiles[0]))){
+        setMsg(p.name+' が再び加槓！');render();setTimeout(()=>execKakan(pi,i),180);return;
+      }
+    }
+  }
+  const di=cpuDiscard(p.hand);
+  const dt=p.hand.splice(di,1)[0];
+  p.discards.push(dt);G.lastDiscard=dt;G.lastDP=pi;G.drawnId=-1;G.rinshan=false;
+  setMsg(p.name+' が '+lbl(dt)+' を捨てました');render();
+  setTimeout(processCallPhase,200);
+}
+
+function checkHumanKanOpts(){
+  if(G.kans>=4)return;
+  const p=G.players[0];
+  const groups={};for(const t of p.hand)groups[tk(t)]=(groups[tk(t)]||0)+1;
+  const ankanKeys=Object.entries(groups).filter(([,v])=>v>=4).map(([k])=>k);
+  const kakanIdxs=[];
+  for(let i=0;i<p.melds.length;i++){
+    const m=p.melds[i];
+    if(m.type==='pon'&&p.hand.some(t=>same(t,m.tiles[0])))kakanIdxs.push(i);
+  }
+  if(ankanKeys.length>0||kakanIdxs.length>0){
+    G.pendCalls=G.pendCalls||{};
+    G.pendCalls.ankan=ankanKeys;G.pendCalls.kakan=kakanIdxs;
+  }
+}
+
+function humanKan(){
+  const ak=G.pendCalls?.ankan||[];const kk=G.pendCalls?.kakan||[];
+  if(ak.length===1&&kk.length===0){execAnkan(0,ak[0]);return;}
+  if(kk.length===1&&ak.length===0){execKakan(0,kk[0]);return;}
+  if(ak.length===0&&kk.length===0)return;
+  // 複数候補：先頭を選択（将来的にモーダルで選ばせる想定）
+  if(ak.length>0)execAnkan(0,ak[0]);else execKakan(0,kk[0]);
+}
+
+function humanMinkan(){
+  if(!G.pendCalls?.minkan)return;
+  execMinkan(0,G.lastDiscard);
+}
+
+// ================================================================
+// WIN DECLARATION
+// ================================================================
+function declareWin(wi,type,li,yk){
+  G.phase='end';
+  const w=G.players[wi];
+  const isDealer=swWind(wi)===1;
+  // ロン牌を先に手に追加（ドラ計算のため）
+  if(type==='ron'){w.hand.push({...G.lastDiscard,id:G.lastDiscard.id+30000});}
+  // 裏ドラ（リーチ時）
+  if(w.riichi){
+    const allT=[...w.hand,...w.melds.flatMap(m=>m.tiles)];
+    const uraHan=countUraDoraTiles(allT);
+    if(uraHan>0)yk=[...yk,{name:'裏ドラ',han:uraHan}];
+  }
+  const sc=calcScore(yk,isDealer);
+  if(!sc){setMsg('役なし！');G.phase='discard';return;}
+  let payment=0;
+  if(type==='ron'){
+    payment=sc.ron+G.honba*300;
+    w.score+=payment;G.players[li].score-=payment;
+  }else{
+    for(const pi of[0,1,2,3]){
+      if(pi===wi)continue;
+      const pay=(swWind(pi)===1?sc.tdeal:sc.tnon)+G.honba*100;
+      G.players[pi].score-=pay;payment+=pay;
+    }
+    w.score+=payment;
+  }
+  // Riichi stick
+  if(w.riichi)w.score+=1000;
+
+  // Show result
+  document.getElementById('res-title').textContent=type==='tsumo'?'🀄 ツモ！':'🀄 ロン！';
+  document.getElementById('res-who').textContent=w.name+' の和了 ('+(type==='ron'?'ロン':'ツモ')+')';
+  const rt=document.getElementById('res-tiles');rt.innerHTML='';
+  const showHand=[...w.hand];
+  for(const t of showHand){const e=mkTileEl(t,false);e.classList.add('nohov');rt.appendChild(e);}
+  for(const m of w.melds){
+    const sep=document.createElement('div');sep.style.cssText='width:4px;flex-shrink:0';rt.appendChild(sep);
+    for(const t of m.tiles){const e=mkTileEl(t,false);e.classList.add('nohov');e.style.borderColor='#80c0ff';rt.appendChild(e);}
+  }
+  const tb=document.getElementById('yrows');tb.innerHTML='';
+  for(const y of yk){const tr=document.createElement('tr');tr.innerHTML=`<td>${y.name}</td><td>${y.han}翻</td>`;tb.appendChild(tr);}
+  const total=sc.han;
+  document.getElementById('res-pts').textContent=hanName(total)+' '+payment.toLocaleString()+'点';
+  document.getElementById('overlay').classList.add('show');
+  render();
+}
+
+// ================================================================
+// ROUND END
+// ================================================================
+function endRound(reason){
+  G.phase='end';
+  if(reason==='ryuukyoku'){
+    const tPlayers=G.players.filter((p,i)=>getTenpaiWaits(p.hand,p.melds).length>0);
+    document.getElementById('res-title').textContent='流局';
+    document.getElementById('res-who').textContent=tPlayers.length?'テンパイ: '+tPlayers.map(p=>p.name).join(', '):'全員ノーテン';
+    document.getElementById('res-tiles').innerHTML='';
+    document.getElementById('yrows').innerHTML='';
+    document.getElementById('res-pts').textContent='';
+    if(tPlayers.length>0&&tPlayers.length<4){
+      const noten=G.players.filter(p=>!tPlayers.includes(p));
+      const tpay=Math.floor(3000/tPlayers.length);
+      const npay=Math.floor(3000/noten.length);
+      for(const p of tPlayers)p.score+=tpay;
+      for(const p of noten)p.score-=npay;
+    }
+    G.honba++;
+    document.getElementById('overlay').classList.add('show');
+    render();
+  }
+}
+
+function nextRound(){
+  document.getElementById('overlay').classList.remove('show');
+  G.dealer=(G.dealer+1)%4;G.honba=0;G.roundNum++;
+  if(G.roundNum>4){G.roundWind=2;G.roundNum=1;}
+  if(G.roundWind>2){setMsg('ゲーム終了！スコア: '+G.players.map(p=>p.name+' '+p.score).join(' / '));return;}
+  const wall=mkWall();
+  for(let i=0;i<4;i++){
+    G.players[i].hand=sortTiles(wall.slice(i*13,(i+1)*13));
+    G.players[i].discards=[];G.players[i].melds=[];
+    G.players[i].riichi=false;G.players[i].ippatsu=false;
+  }
+  const remaining2=wall.slice(52);const dw2=remaining2.slice(70);
+  G.wall=remaining2.slice(0,70);
+  G.rinshanTiles=[dw2[10],dw2[11],dw2[12],dw2[13]];
+  G.doraIndicators=[dw2[0]];G.uraDoraIndicators=[dw2[1]];
+  G.deadWall=dw2;G.doraFlipCount=0;
+  const rn=WINDS[G.roundWind-1]+G.roundNum+'局';
+  setMsg(rn+' 開始！');render();
+  setTimeout(()=>startTurn(G.dealer),400);
+}
+
+// ================================================================
+// CHI MODAL
+// ================================================================
+function showChiModal(opts){
+  const container=document.getElementById('chi-opts');container.innerHTML='';
+  for(let i=0;i<opts.length;i++){
+    const div=document.createElement('div');div.className='copt';
+    for(const t of sortTiles([G.lastDiscard,...opts[i]])){
+      const e=mkTileEl(t,false);div.appendChild(e);
+    }
+    const idx=i;div.onclick=()=>selectChi(idx);
+    container.appendChild(div);
+  }
+  document.getElementById('chi-modal').classList.add('show');
+}
+
+function selectChi(idx){
+  document.getElementById('chi-modal').classList.remove('show');
+  execChi(0,G.lastDiscard,G.chiOpts[idx]);G.chiOpts=null;
+}
+
+// ================================================================
+// RENDERING
+// ================================================================
+function mkTileEl(tile,faceDown){
+  const d=document.createElement('div');
+  d.className='tile';
+  if(faceDown){d.classList.add('back');return d;}
+  d.textContent=lbl(tile);
+  if(tile.suit==='m')d.classList.add('man');
+  else if(tile.suit==='p')d.classList.add('pin');
+  else if(tile.suit==='s')d.classList.add('sou');
+  else if(tile.suit==='z'){
+    if(tile.value===5)d.classList.add('haku');
+    else if(tile.value===6)d.classList.add('hatsu');
+    else if(tile.value===7)d.classList.add('chun');
+  }
+  if(tile.red)d.classList.add('aka');
+  return d;
+}
+
+function render(){
+  renderInfo();renderDora();renderCpu2();renderCpu1();renderCpu3();renderCenter();renderHuman();renderActions();
+}
+
+function renderInfo(){
+  const rw=WINDS[G.roundWind-1];
+  document.getElementById('rlbl').textContent=rw+G.roundNum+'局 '+G.honba+'本場';
+  document.getElementById('wlbl').textContent='山: '+G.wall.length;
+  document.getElementById('wcnt').textContent='山 '+G.wall.length;
+  const sc=document.getElementById('scores');sc.innerHTML='';
+  for(let i=0;i<4;i++){
+    const p=G.players[i];const sw=swWind(i);
+    const div=document.createElement('div');
+    div.className='sc'+(G.currentPlayer===i?' active':'');
+    const nm=i===0?'あなた':p.name;
+    div.innerHTML=`<span class="sc-name">${WINDS[sw-1]} ${nm}</span><span class="sc-val">${p.score.toLocaleString()}</span>`;
+    if(p.riichi){const b=document.createElement('span');b.className='rbadge';b.textContent='立直';div.appendChild(b);}
+    sc.appendChild(div);
+  }
+  const ti=document.getElementById('turn-ind');
+  if(G.currentPlayer>=0){
+    const p=G.players[G.currentPlayer];
+    ti.textContent=WINDS[swWind(G.currentPlayer)-1]+' '+p.name+'の番';
+  }else ti.textContent='';
+}
+
+function renderDora(){
+  const el=document.getElementById('dora-disp');if(!el)return;
+  el.innerHTML='';
+  if(!G.doraIndicators||G.doraIndicators.length===0)return;
+  // ドラ表示牌行
+  const lb=document.createElement('div');lb.className='dora-lbl';lb.textContent='ドラ表示';el.appendChild(lb);
+  const row=document.createElement('div');row.className='dora-row';
+  for(const ind of G.doraIndicators){
+    const e=mkTileEl(ind,false);
+    e.style.cssText='width:20px;height:28px;font-size:10px;cursor:default';
+    e.classList.add('nohov');row.appendChild(e);
+  }
+  el.appendChild(row);
+  // 実際のドラ行
+  const lb2=document.createElement('div');lb2.className='dora-lbl';lb2.textContent='↓ドラ';el.appendChild(lb2);
+  const row2=document.createElement('div');row2.className='dora-row';
+  for(const ind of G.doraIndicators){
+    const d=getDoraFromIndicator(ind);
+    const fake={suit:d.suit,value:d.value,id:-999,red:false};
+    const e=mkTileEl(fake,false);
+    e.style.cssText='width:20px;height:28px;font-size:10px;cursor:default;border-color:#e0a020';
+    e.classList.add('nohov');row2.appendChild(e);
+  }
+  el.appendChild(row2);
+}
+
+function renderCpuTiles(area,player,sz){
+  area.innerHTML='';
+  for(let i=0;i<player.hand.length;i++){
+    const e=mkTileEl(null,true);
+    if(sz){e.style.width=sz[0]+'px';e.style.height=sz[1]+'px';}
+    area.appendChild(e);
+  }
+  for(const m of player.melds){
+    const g=document.createElement('div');
+    g.className='mgrp';g.style.marginLeft='4px';g.style.flexDirection='row';
+    for(const t of m.tiles){
+      const e=mkTileEl(t,false);e.classList.add('nohov');
+      if(sz){e.style.width=sz[0]+'px';e.style.height=sz[1]+'px';e.style.fontSize=(sz[1]*.3)+'px';}
+      g.appendChild(e);
+    }
+    area.appendChild(g);
+  }
+}
+
+function renderCpu2(){renderCpuTiles(document.getElementById('cpu2-row'),G.players[2],[20,28]);}
+
+function renderSideCpu(area,player){
+  area.innerHTML='';
+  // 手牌：裏面を回転ラッパーで1列
+  for(let i=0;i<player.hand.length;i++){
+    const wrap=document.createElement('div');wrap.className='side-wrap';
+    const e=mkTileEl(null,true);
+    wrap.appendChild(e);area.appendChild(wrap);
+  }
+  // 鳴き牌：表面を回転ラッパーで
+  for(const m of player.melds){
+    const sep=document.createElement('div');sep.style.cssText='height:4px;width:100%;flex-shrink:0';
+    area.appendChild(sep);
+    for(const t of m.tiles){
+      const wrap=document.createElement('div');wrap.className='side-wrap';
+      const e=mkTileEl(t,false);e.classList.add('nohov');
+      wrap.appendChild(e);area.appendChild(wrap);
+    }
+  }
+}
+
+function renderCpu1(){renderSideCpu(document.getElementById('cpu1-col'),G.players[1]);}
+function renderCpu3(){renderSideCpu(document.getElementById('cpu3-col'),G.players[3]);}
+
+function renderCenter(){
+  const dzIds=['dz0','dz1','dz2','dz3'];
+  for(let pi=0;pi<4;pi++){
+    const zone=document.getElementById(dzIds[pi]);zone.innerHTML='';
+    for(const t of G.players[pi].discards){
+      const e=mkTileEl(t,false);e.classList.add('dtile','nohov');
+      if(t===G.lastDiscard&&(G.phase==='calling'||G.pendCalls))e.classList.add('hilight');
+      zone.appendChild(e);
+    }
+  }
+}
+
+function renderHuman(){
+  const handEl=document.getElementById('human-hand');handEl.innerHTML='';
+  const p=G.players[0];
+  const lastIdx=p.hand.length-1; // ツモ牌は常に右端
+  for(let i=0;i<p.hand.length;i++){
+    const t=p.hand[i];
+    const e=mkTileEl(t,false);
+    if(i===G.selIdx)e.classList.add('sel');
+    if(t.id===G.drawnId)e.classList.add('drw');
+    // ツモ牌（右端）の前にギャップ
+    if(i===lastIdx&&p.hand.length>1&&G.drawnId===t.id){
+      const gap=document.createElement('div');gap.className='hgap';handEl.appendChild(gap);
+    }
+    if(G.currentPlayer===0&&G.phase==='discard'){
+      e.onclick=()=>{
+        if(p.riichi&&t.id!==G.drawnId){setMsg('立直後は引いた牌しか捨てられません');return;}
+        if(G.selIdx===i){humanDiscard();}else{G.selIdx=i;render();}
+      };
+    }else{e.classList.add('nohov');e.style.cursor='default';}
+    handEl.appendChild(e);
+  }
+  const meldsEl=document.getElementById('human-melds');meldsEl.innerHTML='';
+  for(const m of p.melds){
+    const g=document.createElement('div');g.className='mgrp';
+    const isKan=m.type==='ankan'||m.type==='kakan'||m.type==='minkan';
+    for(let i=0;i<m.tiles.length;i++){
+      const faceDown=m.type==='ankan'&&(i===0||i===3);
+      const e=mkTileEl(m.tiles[i],faceDown);
+      e.classList.add('nohov');
+      if(isKan&&!faceDown)e.style.borderColor='#e08030';
+      g.appendChild(e);
+    }
+    meldsEl.appendChild(g);
+  }
+}
+
+function renderActions(){
+  const bar=document.getElementById('actions');bar.innerHTML='';
+  if(G.currentPlayer===0&&G.phase==='discard'){
+    if(G.pendCalls?.tsumo)addBtn(bar,'ツモ','btsu',humanTsumo);
+    const hasKan=(G.pendCalls?.ankan?.length>0||G.pendCalls?.kakan?.length>0);
+    if(hasKan)addBtn(bar,'カン','bkan',humanKan);
+    if(G.pendCalls?.canRiichi&&!G.players[0].riichi&&!G.riichiPend)addBtn(bar,'立直','brii',humanRiichi);
+    if(G.riichiPend){const s=document.createElement('span');s.textContent='【立直宣言中】';s.style.cssText='color:#ff8844;font-size:13px';bar.appendChild(s);}
+    if(G.selIdx!==-1)addBtn(bar,'捨てる','bd',humanDiscard);
+  }
+  if(G.phase==='calling'&&G.pendCalls){
+    if(G.pendCalls.ron)addBtn(bar,'ロン','bron',humanRon);
+    if(G.pendCalls.minkan)addBtn(bar,'明槓','bkan',humanMinkan);
+    if(G.pendCalls.pon)addBtn(bar,'ポン','bpon',humanPon);
+    if(G.pendCalls.chi)addBtn(bar,'チー','bchi',humanChi);
+    addBtn(bar,'スキップ','bskip',skipCall);
+  }
+}
+
+function addBtn(c,label,cls,fn){
+  const b=document.createElement('button');b.className='btn '+cls;b.textContent=label;b.onclick=fn;c.appendChild(b);
+}
+
+function setMsg(m){G.msg=m;document.getElementById('msg').textContent=m;}
+
+// ================================================================
+// START
+// ================================================================
+window.addEventListener('load',initGame);
+</script>
+</body>
+</html>
