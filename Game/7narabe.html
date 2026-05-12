@@ -1,0 +1,441 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:sans-serif;font-size:14px;padding:10px;background:#fff;color:#222;}
+.screen{display:none;}.screen.active{display:block;}
+.su{text-align:center;padding:1.5rem .5rem;}
+.gtit{font-size:1.8rem;font-weight:600;margin-bottom:.2rem;}
+.gsub{color:#888;font-size:13px;margin-bottom:1.2rem;}
+.sec{margin-bottom:1.1rem;}
+.slbl{font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.or{display:flex;gap:8px;justify-content:center;}
+.ob{width:46px;height:46px;border-radius:50%;border:2px solid #ccc;background:#fff;color:#888;font-size:1rem;cursor:pointer;transition:all .15s;}
+.ob.sel{background:#b8720f;border-color:#b8720f;color:#fff;font-weight:700;transform:scale(1.12);}
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.pill{padding:7px 13px;border-radius:20px;border:1.5px solid #ccc;background:#fff;color:#888;font-size:12px;cursor:pointer;transition:all .15s;}
+.pill.sel{background:#b8720f;border-color:#b8720f;color:#fff;font-weight:600;}
+.sbtn{margin-top:1rem;padding:10px 28px;border-radius:8px;border:none;background:#b8720f;color:#fff;font-size:14px;font-weight:600;cursor:pointer;}
+.sbtn2{padding:7px 16px;border-radius:7px;border:1px solid #ccc;background:#fff;color:#555;font-size:13px;cursor:pointer;}
+.sbtn2:disabled{opacity:.4;cursor:default;}
+.opps{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;}
+.op{flex:1;min-width:76px;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:6px 8px;}
+.op.cur{border-color:#b8720f;background:#fdf6ec;}
+.op.done{opacity:.5;}
+.opn{font-size:11px;font-weight:700;color:#333;}
+.opm{font-size:10px;color:#888;}
+.bw{background:#f5f5f5;border-radius:10px;padding:8px;margin-bottom:8px;overflow-x:auto;}
+.brow{display:flex;align-items:center;gap:2px;margin-bottom:2px;}
+.brow:last-child{margin-bottom:0;}
+.bsym{font-size:13px;width:17px;text-align:center;flex-shrink:0;}
+.bsym.red{color:#c0392b;}
+.slot{width:33px;height:44px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:default;}
+.slot.emp{border:1px dashed #ccc;}
+.slot.pld{background:#fff;border:1px solid #ccc;color:#222;}
+.slot.pld.red{color:#c0392b;}
+.slot.ctr{background:#b8720f;color:#fff;}
+.slot.hint{border:2px solid #27ae60;background:#eafae0;}
+.slot.jktgt{border:2px solid #8e44ad;background:#f5eafd;cursor:pointer;animation:jp .6s infinite alternate;}
+.slot.blk{opacity:.2;border:1px dashed #ccc;}
+@keyframes jp{from{opacity:.5}to{opacity:1}}
+.pa{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:10px;}
+.stat{font-size:13px;color:#666;text-align:center;margin-bottom:7px;min-height:18px;}
+.hand{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:50px;margin-bottom:8px;}
+.hc{width:33px;height:46px;background:#fff;border:1px solid #ccc;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:default;transition:transform .12s;line-height:1.2;gap:1px;}
+.hc.red{color:#c0392b;}
+.hc.ok{border-color:#27ae60;cursor:pointer;}
+.hc.ok:hover{transform:translateY(-6px);}
+.hc.dim{opacity:.2;}
+.hc.jkc{color:#8e44ad;border-color:#8e44ad;background:#f5eafd;}
+.hc.jkca{color:#8e44ad;border-color:#8e44ad;background:#e8d5f8;transform:translateY(-7px);cursor:pointer;}
+.ctrl{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.pstat{text-align:center;font-size:11px;color:#888;margin-top:5px;}
+.tnote{text-align:center;font-size:11px;color:#8e44ad;margin-top:4px;min-height:14px;}
+.gobox{text-align:center;background:#fff;border:1px solid #ccc;border-radius:12px;padding:2rem;max-width:280px;margin:1.5rem auto;}
+.gotit{font-size:1.3rem;font-weight:700;margin-bottom:.3rem;}
+.gosub{font-size:13px;color:#888;margin-bottom:.7rem;}
+.rank{text-align:left;font-size:13px;margin:.7rem auto;max-width:200px;}
+.ri{padding:3px 0;}
+</style></head><body>
+<div id="ss" class="screen active">
+  <div class="su">
+    <div class="gtit">七並べ</div>
+    <div class="gsub">ゲーム設定</div>
+    <div class="sec"><div class="slbl">対戦相手の人数</div><div class="or" id="or"></div></div>
+    <div class="sec"><div class="slbl">🃏 ジョーカー（追加ルール１）</div><div class="pills" id="jp"></div></div>
+    <div class="sec"><div class="slbl">🚇 トンネル（追加ルール２・３）</div><div class="pills" id="tp"></div></div>
+    <button class="sbtn" onclick="startGame()">ゲーム開始</button>
+  </div>
+</div>
+<div id="sg" class="screen">
+  <div class="opps" id="opps"></div>
+  <div class="bw" id="board"></div>
+  <div class="pa">
+    <div class="stat" id="stat"></div>
+    <div class="hand" id="hand"></div>
+    <div class="ctrl">
+      <button class="sbtn2" id="pbtn" onclick="humanPass()">パス</button>
+      <button class="sbtn2" id="cbtn" onclick="cancelJK()" style="display:none">キャンセル</button>
+      <button class="sbtn2" onclick="goSetup()">最初に戻る</button>
+    </div>
+    <div class="pstat" id="pstat"></div>
+    <div class="tnote" id="tnote"></div>
+  </div>
+</div>
+<div id="sgo" class="screen">
+  <div class="gobox">
+    <div class="gotit" id="goT"></div>
+    <div class="gosub" id="goS"></div>
+    <div class="rank" id="goR"></div>
+    <button class="sbtn" onclick="goSetup()">もう一度</button>
+  </div>
+</div>
+<script>
+const SYM=['♠','♥','♦','♣'],RNKL=['A','2','3','4','5','6','7','8','9','10','J','Q','K'],RED=new Set([1,2]);
+let opts={n:1,joker:false,tunnel:0};
+let board,players,cur,finOrd,ct,ended,skips,tL,tR,jkMode=false;
+
+(function(){
+  const or=document.getElementById('or');
+  [1,2,3,4,5].forEach(n=>{
+    const b=document.createElement('button');b.className='ob'+(n===1?' sel':'');b.textContent=n;
+    b.onclick=()=>{opts.n=n;or.querySelectorAll('.ob').forEach(x=>x.classList.toggle('sel',x===b));};
+    or.appendChild(b);
+  });
+  mkP('jp',[{l:'なし',v:false},{l:'1枚追加',v:true}],'joker');
+  mkP('tp',[{l:'通常ルール',v:0},{l:'トンネル（片側）',v:1},{l:'トンネル（両側）',v:2}],'tunnel');
+})();
+
+function mkP(id,items,k){
+  const el=document.getElementById(id);
+  items.forEach(it=>{
+    const p=document.createElement('button');p.className='pill'+(it.v===opts[k]?' sel':'');p.textContent=it.l;
+    p.onclick=()=>{opts[k]=it.v;el.querySelectorAll('.pill').forEach(x=>x.classList.toggle('sel',x===p));};
+    el.appendChild(p);
+  });
+}
+function showScr(id){['ss','sg','sgo'].forEach(s=>document.getElementById(s).classList.toggle('active',s===id));}
+function goSetup(){clearTimeout(ct);jkMode=false;showScr('ss');}
+
+function startGame(){
+  clearTimeout(ct);ended=false;skips=0;finOrd=[];jkMode=false;
+  board=Array.from({length:4},()=>{const a=Array(13).fill(false);a[6]=true;return a;});
+  tL=[false,false,false,false];tR=[false,false,false,false];
+  let deck=[];
+  for(let s=0;s<4;s++) for(let r=1;r<=13;r++) if(r!==7) deck.push({s,r});
+  if(opts.joker) deck.push({jk:true});
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  const tot=1+opts.n;
+  players=[{name:'あなた',hand:[],passes:3,human:true,done:false,bankrupt:false}];
+  for(let i=1;i<=opts.n;i++) players.push({name:'CPU '+i,hand:[],passes:3,human:false,done:false,bankrupt:false});
+  deck.forEach((c,i)=>players[i%tot].hand.push(c));
+  players.forEach(p=>p.hand.sort((a,b)=>a.jk?1:b.jk?-1:(a.s-b.s||a.r-b.r)));
+  cur=0;showScr('sg');render();tick();
+}
+
+// ─── Tunnel canPlay ───
+function canPlay(s,r){
+  if(r===7||board[s][r-1]) return false;
+  const T=opts.tunnel;
+  // normal: need neighbour
+  if(r<7){
+    const fromRight=board[s][r]; // r+1 played?
+    if(T===0) return fromRight;
+    // tunnel 1: after K placed (tL), left side of 7 is blocked
+    if(T===1 && tL[s]) return false; // left side blocked once K reached
+    // tunnel 2: same as normal (both sides always ok)
+    return fromRight;
+  } else { // r>7
+    const fromLeft=board[s][r-2]; // r-1 played?
+    if(T===0) return fromLeft;
+    if(T===1 && tR[s]) return false; // right side blocked once A reached
+    return fromLeft;
+  }
+}
+
+// Tunnel: can also play from wrapped side
+function canPlayWrap(s,r){
+  if(opts.tunnel===0) return false;
+  if(r===7||board[s][r-1]) return false;
+  if(r<7){
+    // wrap: r=6 can be played after K placed → tL
+    if(opts.tunnel===1 && tL[s] && r===6) return board[s][0]; // need A played
+    // wait actually tunnel rule: after K placed, A side opens
+    // so if tL[s]: A can be placed (if K played), then 2,3... open from A side
+    if(opts.tunnel===1 && tL[s]) return r===6 ? board[s][12] : board[s][r]; 
+    if(opts.tunnel===2){
+      // left side can also come from K side (wrap)
+      return board[s][r]; // normal left neighbour still ok
+    }
+  } else {
+    if(opts.tunnel===1 && tR[s] && r===8) return board[s][12]; 
+    if(opts.tunnel===1 && tR[s]) return r===8 ? board[s][0] : board[s][r-2];
+    if(opts.tunnel===2) return board[s][r-2];
+  }
+  return false;
+}
+
+function isPlayable(s,r){
+  if(r===7||board[s][r-1]) return false;
+  const T=opts.tunnel;
+  if(T===0){
+    if(r<7) return !!board[s][r];
+    return !!board[s][r-2];
+  }
+  if(T===1){
+    // Once K is out → left (<=6) side sealed except wrap from A
+    if(tL[s]&&r<=6){
+      // Can only play going A→2→3... from A side
+      if(r===1) return !!board[s][12]; // after K, A opens if... wait
+      // Actually: tL means K was placed. After K, A can come from K side
+      // The description: "Kが出されたら、その後はAが出せるようになる"
+      // "Kが出された後は、7があった場合6は出せなくなる"
+      // So after K: A becomes playable (wraps), then 2,3,4,5,6 from A side
+      // But 6 from 7 side is BLOCKED
+      return r===1 ? true : !!board[s][r-2]; // chain from A side
+    }
+    if(tR[s]&&r>=8){
+      if(r===13) return !!board[s][0]; // A placed → K opens
+      return !!board[s][r];
+    }
+    if(r<7) return !!board[s][r];
+    return !!board[s][r-2];
+  }
+  if(T===2){
+    // Both sides always open, wrap after reaching end
+    if(r<7){
+      const norm=!!board[s][r];
+      const wrap=tL[s]&&r===1?true:tL[s]?!!board[s][r-2]:false;
+      return norm||wrap;
+    } else {
+      const norm=!!board[s][r-2];
+      const wrap=tR[s]&&r===13?true:tR[s]?!!board[s][r]:false;
+      return norm||wrap;
+    }
+  }
+  return false;
+}
+
+function afterPlace(s,r){
+  if(opts.tunnel>=1){
+    if(r===13) tL[s]=true;
+    if(r===1)  tR[s]=true;
+  }
+}
+
+function playable(pi){
+  return players[pi].hand.map((c,i)=>({c,i})).filter(({c})=>!c.jk&&isPlayable(c.s,c.r)).map(({i})=>i);
+}
+function hasJK(pi){return players[pi].hand.some(c=>c.jk);}
+function onlyJK(pi){return players[pi].hand.length===1&&hasJK(pi);}
+function jkSlots(){
+  const sl=[];
+  for(let s=0;s<4;s++) for(let r=1;r<=13;r++) if(isPlayable(s,r)) sl.push({s,r});
+  return sl;
+}
+
+function doPlay(pi,ci){
+  const p=players[pi],c=p.hand[ci];
+  board[c.s][c.r-1]=true;afterPlace(c.s,c.r);
+  p.hand.splice(ci,1);skips=0;
+  if(!p.hand.length){finish(pi);return;}
+  render();
+}
+
+function placeJK(pi,s,r){
+  const p=players[pi];
+  const ji=p.hand.findIndex(c=>c.jk);if(ji<0)return;
+  p.hand.splice(ji,1);
+  board[s][r-1]=true;afterPlace(s,r);skips=0;
+  // find who holds the real card and swap
+  for(let qi=0;qi<players.length;qi++){
+    const ci=players[qi].hand.findIndex(c=>!c.jk&&c.s===s&&c.r===r);
+    if(ci>=0){
+      players[qi].hand.splice(ci,1);
+      players[qi].hand.push({jk:true});
+      players[qi].hand.sort((a,b)=>a.jk?1:b.jk?-1:(a.s-b.s||a.r-b.r));
+      break;
+    }
+  }
+  if(!p.hand.length){finish(pi);return;}
+  render();
+}
+
+function doPass(pi){
+  const p=players[pi];
+  if(p.passes>0){p.passes--;skips++;checkStale();}
+  else {goBankrupt(pi);}
+}
+
+function goBankrupt(pi){
+  const p=players[pi];
+  p.hand.forEach(c=>{if(!c.jk&&!board[c.s][c.r-1]){board[c.s][c.r-1]=true;afterPlace(c.s,c.r);}});
+  p.hand=[];p.done=true;p.bankrupt=true;skips=0;render();
+  const act=players.filter(x=>!x.done);
+  if(act.length<=1){if(act.length===1){const li=players.indexOf(act[0]);players[li].done=true;finOrd.push(li);}endGame();return;}
+  advance();
+}
+
+function finish(pi){
+  players[pi].done=true;finOrd.push(pi);
+  // check joker: if hand empty but had joker it means they played all non-joker... actually hand IS 0
+  const act=players.filter(p=>!p.done);
+  if(act.length<=1){if(act.length===1){const li=players.indexOf(act[0]);players[li].done=true;finOrd.push(li);}endGame();return;}
+  advance();
+}
+
+function advance(){
+  const n=players.length;let nx=(cur+1)%n,t=0;
+  while(players[nx].done&&t<n){nx=(nx+1)%n;t++;}
+  if(t>=n){endGame();return;}
+  cur=nx;render();tick();
+}
+
+function checkStale(){
+  const act=players.filter(p=>!p.done).length;
+  if(skips>=act*3) endGame();
+}
+
+function tick(){
+  if(ended)return;
+  const p=players[cur],pl=playable(cur);
+  const jkOk=opts.joker&&hasJK(cur)&&!onlyJK(cur)&&jkSlots().length>0;
+  if(p.human){
+    if(pl.length&&jkOk) setSt('あなたのターン — カードまたは🃏を選んでください');
+    else if(pl.length) setSt('あなたのターン — 出せるカードを選んでください');
+    else if(jkOk) setSt('あなたのターン — 🃏ジョーカーを置く場所を選んでください');
+    else setSt('あなたのターン — 出せるカードがありません');
+    renderHand(true);updPass();
+  } else {
+    setSt(p.name+' が考え中...');
+    ct=setTimeout(()=>cpuTurn(cur),700);
+  }
+}
+
+function cpuTurn(pi){
+  if(ended||cur!==pi)return;
+  const p=players[pi],pl=playable(pi);
+  const jkOk=opts.joker&&hasJK(pi)&&!onlyJK(pi)&&jkSlots().length>0;
+  if(pl.length){
+    doPlay(pi,pl[Math.floor(Math.random()*pl.length)]);
+    if(!p.done)advance();
+  } else if(jkOk){
+    // CPU: pick joker slot that opens most plays
+    const slots=jkSlots();
+    let best=slots[0],bs=-1;
+    for(const sl of slots){
+      if(p.hand.some(c=>!c.jk&&c.s===sl.s&&c.r===sl.r)) continue;
+      board[sl.s][sl.r-1]=true;const sc=playable(pi).length;board[sl.s][sl.r-1]=false;
+      if(sc>bs){bs=sc;best=sl;}
+    }
+    placeJK(pi,best.s,best.r);
+    if(!p.done)advance();
+  } else {
+    doPass(pi);if(!ended)advance();
+  }
+}
+
+function humanPass(){
+  if(ended||cur!==0||jkMode)return;
+  doPass(0);
+  if(!ended&&!players[0].done)advance();
+}
+
+function enterJKMode(){jkMode=true;setSt('🃏 ジョーカーを置くマス（紫枠）を選んでください');document.getElementById('cbtn').style.display='';renderBoard();renderHand(true);}
+function cancelJK(){jkMode=false;document.getElementById('cbtn').style.display='none';renderBoard();renderHand(true);tick();}
+function selectJKSlot(s,r){if(!jkMode||cur!==0||ended)return;jkMode=false;document.getElementById('cbtn').style.display='none';placeJK(0,s,r);if(!players[0].done)advance();}
+
+function endGame(){
+  ended=true;clearTimeout(ct);
+  players.forEach((p,i)=>{if(!p.done){p.done=true;if(!finOrd.includes(i))finOrd.push(i);}});
+  const medals=['🥇','🥈','🥉','4位','5位','6位'];
+  document.getElementById('goR').innerHTML=finOrd.map((idx,rank)=>`<div class="ri">${medals[rank]||rank+1+'位'} ${players[idx].name}${players[idx].bankrupt?' 💀':''}</div>`).join('');
+  const hr=finOrd.indexOf(0);
+  document.getElementById('goT').textContent='ゲーム終了！';
+  document.getElementById('goS').textContent=hr===0?'🎉 あなたの勝ち！':hr===finOrd.length-1?'😔 あなたの負け...':hr+1+'位でした';
+  showScr('sgo');
+}
+
+function setSt(m){document.getElementById('stat').textContent=m;}
+
+function updPass(){
+  const p=players[0],pl=playable(0),btn=document.getElementById('pbtn');
+  const jkOk=opts.joker&&hasJK(0)&&!onlyJK(0)&&jkSlots().length>0;
+  btn.disabled=cur!==0||jkMode;
+  if(pl.length||jkOk) btn.textContent=p.passes>0?`パス（残り${p.passes}回）`:'パス不可（0回）';
+  else btn.textContent='パス（強制・無料）';
+}
+
+function tunnelNote(){
+  if(opts.tunnel===0) return '';
+  const ns=[];
+  for(let s=0;s<4;s++){
+    const col=RED.has(s)?'color:#c0392b':'';
+    if(tL[s]) ns.push(`<span style="${col}">${SYM[s]} K→A開通</span>`);
+    if(tR[s]) ns.push(`<span style="${col}">${SYM[s]} A→K開通</span>`);
+  }
+  return ns.length?'🚇 '+ns.join(' / '):'';
+}
+
+function render(){
+  renderBoard();renderOpps();
+  if(!jkMode) renderHand(cur===0);
+  updPass();
+  const p=players[0];
+  let st=`手札: ${p.hand.length}枚　パス残り: ${p.passes}回`;
+  if(opts.joker&&hasJK(0)) st+='　🃏あり';
+  document.getElementById('pstat').textContent=st;
+  document.getElementById('tnote').innerHTML=tunnelNote();
+}
+
+function renderBoard(){
+  const p=players[0];
+  const hintSet=cur===0&&!ended&&!jkMode?new Set(playable(0).map(i=>`${p.hand[i].s}-${p.hand[i].r}`)):new Set();
+  const jkSet=jkMode&&cur===0?new Set(jkSlots().map(({s,r})=>`${s}-${r}`)):new Set();
+  document.getElementById('board').innerHTML=SYM.map((sym,s)=>{
+    const isR=RED.has(s);
+    const cells=Array.from({length:13},(_,i)=>{
+      const r=i+1,k=`${s}-${r}`;
+      if(r===7) return`<div class="slot ctr">7</div>`;
+      if(board[s][i]) return`<div class="slot pld${isR?' red':''}">${RNKL[i]}</div>`;
+      if(jkSet.has(k)) return`<div class="slot jktgt" onclick="selectJKSlot(${s},${r})">${RNKL[i]}</div>`;
+      if(hintSet.has(k)) return`<div class="slot hint"></div>`;
+      // Show blocked slots in tunnel mode 1
+      const blocked=(opts.tunnel===1)&&((tL[s]&&r<7)||(tR[s]&&r>7))&&!isPlayable(s,r);
+      return blocked?`<div class="slot blk">${RNKL[i]}</div>`:`<div class="slot emp"></div>`;
+    }).join('');
+    return`<div class="brow"><span class="bsym${isR?' red':''}">${sym}</span>${cells}</div>`;
+  }).join('');
+}
+
+function renderOpps(){
+  document.getElementById('opps').innerHTML=players.slice(1).map((p,i)=>{
+    const pi=i+1,act=cur===pi&&!ended;
+    const jm=opts.joker&&hasJK(pi)?'🃏':'';
+    return`<div class="op${act?' cur':''}${p.done?' done':''}">
+      <div class="opn">${p.name}${act?' ▶':''}</div>
+      <div class="opm">${p.bankrupt?'💀 破産':p.done?'✓ 上がり':'手札 '+p.hand.length+'枚'} ${jm}| パス${p.passes}回</div>
+    </div>`;
+  }).join('');
+}
+
+function renderHand(myTurn){
+  const p=players[0],pl=new Set(playable(0)),el=document.getElementById('hand');
+  const jkOk=opts.joker&&hasJK(0)&&!onlyJK(0)&&jkSlots().length>0;
+  if(p.done){el.innerHTML='<div style="color:#888;font-size:13px;padding:14px 0">上がり！</div>';return;}
+  el.innerHTML=p.hand.map((c,i)=>{
+    if(c.jk){
+      const active=jkMode,clickable=myTurn&&jkOk&&!jkMode;
+      return`<div class="hc jkc${active?' jkca':clickable?' ok':''}" data-jk="1"><span>🃏</span><span>JK</span></div>`;
+    }
+    const isR=RED.has(c.s),ok=myTurn&&pl.has(i);
+    return`<div class="hc${isR?' red':''}${ok?' ok':myTurn?' dim':''}" data-i="${i}"><span>${SYM[c.s]}</span><span>${RNKL[c.r-1]}</span></div>`;
+  }).join('');
+  if(myTurn&&!jkMode){
+    el.querySelectorAll('.hc.ok:not([data-jk])').forEach(e=>{
+      e.addEventListener('click',()=>{if(ended||cur!==0||jkMode)return;doPlay(0,+e.dataset.i);if(!players[0].done)advance();});
+    });
+    el.querySelectorAll('.hc.jkc.ok').forEach(e=>{
+      e.addEventListener('click',()=>{if(ended||cur!==0)return;enterJKMode();});
+    });
+  }
+}
+</script></body></html>
