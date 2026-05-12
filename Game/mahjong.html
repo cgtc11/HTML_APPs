@@ -130,8 +130,14 @@ body{background:#08200e;min-height:100vh;display:flex;align-items:center;justify
   border-radius:7px;font-size:14px;font-family:inherit;cursor:pointer;font-weight:bold}
 .bnext:hover{background:#e0b838}
 
-/* 赤ドラ */
-.tile.aka{background:#fff0ee;box-shadow:2px 3px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,220,220,.9),0 0 0 1px #e03030}
+/* 赤ドラ：数字テキストを赤く */
+.tile.aka{color:#dd1111!important}
+.tile.aka.pin{color:#dd1111!important}
+.tile.aka.sou{color:#dd1111!important}
+/* 三元牌 */
+.tile.haku{color:#2a2a2a}
+.tile.hatsu{color:#0a7a0a;font-weight:bold}
+.tile.chun{color:#cc0000;font-weight:bold}
 /* ドラ表示エリア */
 #dora-disp{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0}
 .dora-row{display:flex;gap:2px;justify-content:center}
@@ -495,7 +501,7 @@ function initGame(){
   };
   setMsg('東1局 開始！');
   render();
-  setTimeout(()=>startTurn(0),300);
+  setTimeout(()=>startTurn(0),10);
 }
 
 // ================================================================
@@ -526,7 +532,7 @@ function startTurn(pi){
   }else{
     setMsg(G.players[pi].name+' が考えています...');
     render();
-    setTimeout(()=>cpuTurn(pi),280);
+    setTimeout(()=>cpuTurn(pi),10);
   }
 }
 
@@ -541,7 +547,7 @@ function cpuTurn(pi){
     const yk=detectYaku(p,true,G.roundWind,sw);
     if(hasRealYaku(yk)){
       setMsg(p.name+' ツモ！');render();
-      setTimeout(()=>declareWin(pi,'tsumo',null,yk),150);return;
+      setTimeout(()=>declareWin(pi,'tsumo',null,yk),10);return;
     }
   }
   // CPU 暗槓チェック（リーチ中は不可）
@@ -549,13 +555,13 @@ function cpuTurn(pi){
     const groups={};
     for(const t of p.hand)groups[tk(t)]=(groups[tk(t)]||0)+1;
     for(const[k,v]of Object.entries(groups)){
-      if(v>=4){setMsg(p.name+' が暗槓！');render();setTimeout(()=>execAnkan(pi,k),180);return;}
+      if(v>=4){setMsg(p.name+' が暗槓！');render();setTimeout(()=>execAnkan(pi,k),10);return;}
     }
     // CPU 加槓チェック
     for(let i=0;i<p.melds.length;i++){
       const m=p.melds[i];
       if(m.type==='pon'&&p.hand.some(t=>same(t,m.tiles[0]))){
-        setMsg(p.name+' が加槓！');render();setTimeout(()=>execKakan(pi,i),180);return;
+        setMsg(p.name+' が加槓！');render();setTimeout(()=>execKakan(pi,i),10);return;
       }
     }
   }
@@ -574,7 +580,7 @@ function cpuTurn(pi){
   G.lastDiscard=dt;G.lastDP=pi;G.drawnId=-1;G.rinshan=false;
   setMsg(p.name+' が '+lbl(dt)+' を捨てました');
   render();
-  setTimeout(processCallPhase,200);
+  setTimeout(processCallPhase,10);
 }
 
 // ================================================================
@@ -592,7 +598,7 @@ function processCallPhase(){
       const yk=detectYaku({...p,hand:[...p.hand,tile]},false,G.roundWind,sw);
       if(hasRealYaku(yk)){
         setMsg(p.name+' ロン！');render();
-        setTimeout(()=>declareWin(pi,'ron',dp,yk),150);return;
+        setTimeout(()=>declareWin(pi,'ron',dp,yk),10);return;
       }
     }
   }
@@ -620,7 +626,7 @@ function cpuCallsCheck(){
     for(const pi of[1,2,3]){
       if(pi===dp)continue;
       if(G.players[pi].hand.filter(t=>same(t,tile)).length>=3&&Math.random()<.3){
-        setTimeout(()=>execMinkan(pi,tile),200);return;
+        setTimeout(()=>execMinkan(pi,tile),10);return;
       }
     }
   }
@@ -628,7 +634,7 @@ function cpuCallsCheck(){
   for(const pi of[1,2,3]){
     if(pi===dp)continue;
     if(canPon(G.players[pi],tile)&&cpuWantPon(tile)){
-      setTimeout(()=>execPon(pi,tile),200);return;
+      setTimeout(()=>execPon(pi,tile),10);return;
     }
   }
   // CPU chi (next player only)
@@ -636,11 +642,11 @@ function cpuCallsCheck(){
   if(np!==0){
     const opts=getChiOpts(G.players[np].hand,tile);
     if(opts.length>0&&cpuWantChi()){
-      setTimeout(()=>execChi(np,tile,opts[0]),200);return;
+      setTimeout(()=>execChi(np,tile,opts[0]),10);return;
     }
   }
   const next=(dp+1)%4;
-  setTimeout(()=>startTurn(next),150);
+  setTimeout(()=>startTurn(next),10);
 }
 
 // ================================================================
@@ -664,7 +670,7 @@ function humanDiscard(){
   // Reset ippatsu for this player after discard
   if(p.riichi&&!G.riichiPend){}// keep ippatsu until others draw
   render();
-  setTimeout(processCallPhase,150);
+  setTimeout(processCallPhase,10);
 }
 
 function humanTsumo(){
@@ -718,7 +724,7 @@ function execPon(pi,tile){
   G.currentPlayer=pi;G.phase='discard';G.drawnId=-1;G.lastDiscard=null;G.pendCalls=null;G.selIdx=-1;
   setMsg(p.name+' がポン！');render();
   if(pi===0){setMsg('ポン！捨て牌を選んでください');}
-  else setTimeout(()=>cpuAfterMeld(pi),250);
+  else setTimeout(()=>cpuAfterMeld(pi),10);
 }
 
 function execChi(pi,tile,handPair){
@@ -731,7 +737,7 @@ function execChi(pi,tile,handPair){
   G.chiOpts=null;
   setMsg(p.name+' がチー！');render();
   if(pi===0){setMsg('チー！捨て牌を選んでください');}
-  else setTimeout(()=>cpuAfterMeld(pi),250);
+  else setTimeout(()=>cpuAfterMeld(pi),10);
 }
 
 function cpuAfterMeld(pi){
@@ -740,7 +746,7 @@ function cpuAfterMeld(pi){
   const dt=p.hand.splice(di,1)[0];
   p.discards.push(dt);G.lastDiscard=dt;G.lastDP=pi;G.drawnId=-1;
   setMsg(p.name+' が '+lbl(dt)+' を捨てました');render();
-  setTimeout(processCallPhase,200);
+  setTimeout(processCallPhase,10);
 }
 
 // ================================================================
@@ -776,7 +782,7 @@ function execAnkan(pi,tileKey){
   setMsg(p.name+' が暗槓！');
   if(!drawRinshan(pi))return;
   render();
-  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),250);
+  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),10);
 }
 
 function execKakan(pi,meldIdx){
@@ -789,7 +795,7 @@ function execKakan(pi,meldIdx){
   setMsg(p.name+' が加槓！');
   if(!drawRinshan(pi))return;
   render();
-  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),250);
+  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),10);
 }
 
 function execMinkan(pi,tile){
@@ -803,7 +809,7 @@ function execMinkan(pi,tile){
   setMsg(p.name+' が明槓！');
   if(!drawRinshan(pi))return;
   render();
-  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),250);
+  if(pi===0){afterKanHuman();}else setTimeout(()=>afterKanCpu(pi),10);
 }
 
 function afterKanHuman(){
@@ -829,18 +835,18 @@ function afterKanCpu(pi){
   const p=G.players[pi];
   if(playerWins(p)){
     const sw=swWind(pi);const yk=detectYaku(p,true,G.roundWind,sw);
-    if(yk.length>0&&hasRealYaku(yk)){setMsg(p.name+' 嶺上開花！');render();setTimeout(()=>declareWin(pi,'tsumo',null,yk),150);return;}
+    if(yk.length>0&&hasRealYaku(yk)){setMsg(p.name+' 嶺上開花！');render();setTimeout(()=>declareWin(pi,'tsumo',null,yk),10);return;}
   }
   // 連続カンチェック
   if(G.kans<4&&!p.riichi){
     const groups={};for(const t of p.hand)groups[tk(t)]=(groups[tk(t)]||0)+1;
     for(const[k,v]of Object.entries(groups)){
-      if(v>=4){setMsg(p.name+' が再び暗槓！');render();setTimeout(()=>execAnkan(pi,k),180);return;}
+      if(v>=4){setMsg(p.name+' が再び暗槓！');render();setTimeout(()=>execAnkan(pi,k),10);return;}
     }
     for(let i=0;i<p.melds.length;i++){
       const m=p.melds[i];
       if(m.type==='pon'&&p.hand.some(t=>same(t,m.tiles[0]))){
-        setMsg(p.name+' が再び加槓！');render();setTimeout(()=>execKakan(pi,i),180);return;
+        setMsg(p.name+' が再び加槓！');render();setTimeout(()=>execKakan(pi,i),10);return;
       }
     }
   }
@@ -848,7 +854,7 @@ function afterKanCpu(pi){
   const dt=p.hand.splice(di,1)[0];
   p.discards.push(dt);G.lastDiscard=dt;G.lastDP=pi;G.drawnId=-1;G.rinshan=false;
   setMsg(p.name+' が '+lbl(dt)+' を捨てました');render();
-  setTimeout(processCallPhase,200);
+  setTimeout(processCallPhase,10);
 }
 
 function checkHumanKanOpts(){
@@ -974,7 +980,7 @@ function nextRound(){
   G.deadWall=dw2;G.doraFlipCount=0;
   const rn=WINDS[G.roundWind-1]+G.roundNum+'局';
   setMsg(rn+' 開始！');render();
-  setTimeout(()=>startTurn(G.dealer),400);
+  setTimeout(()=>startTurn(G.dealer),10);
 }
 
 // ================================================================
@@ -1129,24 +1135,55 @@ function renderCenter(){
 function renderHuman(){
   const handEl=document.getElementById('human-hand');handEl.innerHTML='';
   const p=G.players[0];
-  const lastIdx=p.hand.length-1; // ツモ牌は常に右端
-  for(let i=0;i<p.hand.length;i++){
-    const t=p.hand[i];
+  const isMyTurn=G.currentPlayer===0&&G.phase==='discard';
+  const hasDraw=G.drawnId!==-1&&p.hand.length>0&&p.hand[p.hand.length-1].id===G.drawnId;
+
+  // 13枚分（インデックス 0〜length-2、またはhasDraw=falseなら全部）
+  const mainTiles=hasDraw?p.hand.slice(0,-1):p.hand;
+  const drawnTile=hasDraw?p.hand[p.hand.length-1]:null;
+
+  // 13枚ゾーン（常に13枚分の幅を確保）
+  const mainZone=document.createElement('div');
+  mainZone.style.cssText='display:flex;gap:3px;align-items:flex-end;flex-shrink:0;'
+    +'width:'+(13*(48+3)-3)+'px;'; // 13枚固定幅
+  for(let i=0;i<mainTiles.length;i++){
+    const t=mainTiles[i];
     const e=mkTileEl(t,false);
     if(i===G.selIdx)e.classList.add('sel');
-    if(t.id===G.drawnId)e.classList.add('drw');
-    // ツモ牌（右端）の前にギャップ
-    if(i===lastIdx&&p.hand.length>1&&G.drawnId===t.id){
-      const gap=document.createElement('div');gap.className='hgap';handEl.appendChild(gap);
-    }
-    if(G.currentPlayer===0&&G.phase==='discard'){
+    if(isMyTurn){
       e.onclick=()=>{
-        if(p.riichi&&t.id!==G.drawnId){setMsg('立直後は引いた牌しか捨てられません');return;}
+        if(p.riichi){setMsg('立直後は引いた牌しか捨てられません');return;}
         if(G.selIdx===i){humanDiscard();}else{G.selIdx=i;render();}
       };
     }else{e.classList.add('nohov');e.style.cursor='default';}
-    handEl.appendChild(e);
+    mainZone.appendChild(e);
   }
+  handEl.appendChild(mainZone);
+
+  // ギャップ（常に確保）
+  const gap=document.createElement('div');
+  gap.style.cssText='width:10px;flex-shrink:0;';
+  handEl.appendChild(gap);
+
+  // ツモ牌スロット（常に幅確保、牌がない時は透明プレースホルダー）
+  if(drawnTile){
+    const e=mkTileEl(drawnTile,false);
+    e.classList.add('drw');
+    const di=p.hand.length-1;
+    if(G.selIdx===di)e.classList.add('sel');
+    if(isMyTurn){
+      e.onclick=()=>{
+        if(G.selIdx===di){humanDiscard();}else{G.selIdx=di;render();}
+      };
+    }else{e.classList.add('nohov');e.style.cursor='default';}
+    handEl.appendChild(e);
+  }else{
+    // 空スロット（幅だけ確保）
+    const ph=document.createElement('div');
+    ph.style.cssText='width:48px;height:68px;flex-shrink:0;';
+    handEl.appendChild(ph);
+  }
+
   const meldsEl=document.getElementById('human-melds');meldsEl.innerHTML='';
   for(const m of p.melds){
     const g=document.createElement('div');g.className='mgrp';
