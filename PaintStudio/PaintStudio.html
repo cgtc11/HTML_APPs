@@ -77,6 +77,8 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
 .li{flex-wrap:wrap;}
 #sb{height:22px;background:var(--p1);border-top:1px solid var(--bdr);display:flex;align-items:center;padding:0 10px;gap:14px;font-size:10px;color:var(--dim);flex-shrink:0;}
 .moverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:1000;}
+.fmitem{padding:8px 16px;font-size:11px;cursor:pointer;color:var(--tx);}
+.fmitem:hover{background:var(--p3);}
 .mdlg{background:var(--p2);border:1px solid var(--bdr);border-radius:8px;padding:18px;min-width:290px;}
 .mdlg h3{font-size:14px;margin-bottom:13px;}
 .mfmt{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--p3);border:1px solid var(--bdr);border-radius:5px;cursor:pointer;margin-bottom:7px;color:var(--tx);font-size:12px;width:100%;text-align:left;}
@@ -104,8 +106,11 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <span class="ol">W</span><input class="tnum" id="cwI" type="number" value="800">
   <span class="ol">H</span><input class="tnum" id="chI" type="number" value="600">
   <button class="tbtn" onclick="applyRz()">適用</button>
+  <button class="tbtn" onclick="rotateCanvas(90)" title="時計回りに90度回転">↻90°</button>
+  <button class="tbtn" onclick="rotateCanvas(-90)" title="反時計回りに90度回転">↺90°</button>
   <button class="tbtn" id="cropBtn" onclick="cropToSel()" style="display:none">⬚トリミング</button>
   <button class="tbtn" onclick="showMouseCfg()">🖱設定</button>
+  <button class="tbtn" onclick="showFilter()">フィルター▾</button>
   <span style="margin-left:auto;font-size:10px;color:var(--dim)" id="zLbl">100%</span>
   <button class="tbtn" onclick="setZ(1)">1:1</button>
   <button class="tbtn" onclick="fitView()">全体</button>
@@ -119,11 +124,14 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <button class="btn"    id="b-blur"    onclick="setTool('blur')"    title="ぼかし (U)">💧</button>
   <div class="sep"></div>
   <button class="btn"    id="b-fill"    onclick="setTool('fill')"    title="塗りつぶし (G)">🪣</button>
+  <button class="btn"    id="b-eyedrop" onclick="setTool('eyedrop')" title="スポイト (I) / Shift+クリックで背景色">🔬</button>
   <div class="sep"></div>
   <button class="btn"    id="b-select"  onclick="setTool('select')"  title="矩形選択 (S)" style="font-size:13px">⬚</button>
   <button class="btn"    id="b-lasso"   onclick="setTool('lasso')"   title="自由選択 (A)" style="font-size:13px">⌒</button>
   <button class="btn"    id="b-wand"    onclick="setTool('wand')"    title="自動選択 (W)" style="font-size:14px">🪄</button>
   <button class="btn"    id="b-move"    onclick="setTool('move')"    title="移動 (V)" style="font-size:14px">✥</button>
+  <button class="btn"    id="b-rotate"  onclick="setTool('rotate')"  title="回転" style="font-size:14px">↻</button>
+  <button class="btn"    id="b-scale"   onclick="setTool('scale')"   title="拡縮" style="font-size:12px">⤢</button>
   <div class="sep"></div>
   <button class="btn"    id="b-line"    onclick="setTool('line')"    title="ライン (L)" style="font-size:12px">╱</button>
   <button class="btn"    id="b-rect"    onclick="setTool('rect')"    title="四角形 (R)" style="font-size:11px">▭</button>
@@ -218,6 +226,9 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
       <div class="cr" style="width:100%"><input type="checkbox" id="wAntiAlias" checked onchange="wandAntiAlias=this.checked"><label for="wAntiAlias">アンチエイリアス</label></div>
       <div class="cr" style="width:100%"><input type="checkbox" id="wAllLayers" onchange="wandAllLayers=this.checked"><label for="wAllLayers">全レイヤー対象</label></div>
     </div>
+    <div id="fillOpts" style="display:none;width:100%">
+      <div class="cr" style="width:100%"><input type="checkbox" id="fillAll" onchange="fillAllMode=this.checked"><label for="fillAll">🪣 全てを塗りつぶす</label></div>
+    </div>
   </div>
   <div class="ph">カラー</div>
   <div id="cp">
@@ -244,6 +255,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
         <button class="lb" onclick="mvUp()">↑</button>
         <button class="lb" onclick="mvDn()">↓</button>
         <button class="lb" onclick="mergeDn()" style="font-size:9px;padding:0 4px">統合</button>
+        <button class="lb" onclick="addMask()" title="マスク追加" style="font-size:9px;padding:0 4px">🎭追加</button>
       </div>
     </div>
     <div id="ll"></div>
@@ -267,7 +279,98 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
     <button class="mclose" onclick="G('expModal').style.display='none'">キャンセル</button>
   </div>
 </div>
-<!-- Mouse Config Modal -->
+<!-- Filter Modal -->
+<div id="filterModal" style="display:none;position:fixed;top:60px;right:10px;z-index:2000;background:var(--p2);border:1px solid var(--bdr);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.6);min-width:320px;max-width:380px;padding:12px 14px;">
+  <div style="display:flex;align-items:center;margin-bottom:10px;cursor:move" id="filterDragBar">
+    <h3 id="filterTitle" style="margin:0;font-size:13px;flex:1">フィルター</h3>
+    <button onclick="closeFilter()" style="background:none;border:none;color:var(--tx);cursor:pointer;font-size:16px;padding:0 4px">✕</button>
+  </div>
+
+    <!-- HSL -->
+    <div id="fHSL" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">色相 (H)</span>
+        <input type="range" style="flex:1" id="fH" min="-180" max="180" value="0" oninput="G('fHn').value=this.value;fPreview()">
+        <input type="number" id="fHn" value="0" min="-180" max="180" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px" oninput="G('fH').value=this.value;fPreview()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">彩度 (S)</span>
+        <input type="range" style="flex:1" id="fS" min="-100" max="100" value="0" oninput="G('fSn').value=this.value;fPreview()">
+        <input type="number" id="fSn" value="0" min="-100" max="100" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px" oninput="G('fS').value=this.value;fPreview()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">明度 (L)</span>
+        <input type="range" style="flex:1" id="fL" min="-100" max="100" value="0" oninput="G('fLn').value=this.value;fPreview()">
+        <input type="number" id="fLn" value="0" min="-100" max="100" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px" oninput="G('fL').value=this.value;fPreview()">
+      </div>
+    </div>
+
+    <!-- Levels -->
+    <div id="fLev" style="display:none">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:4px">入力・黒点</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <input type="range" style="flex:1" id="sLevBl" min="0" max="253" value="0" oninput="G('fLevBl').value=this.value;fPreview()">
+        <input type="number" id="fLevBl" value="0" min="0" max="253" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;text-align:center" oninput="G('sLevBl').value=this.value;fPreview()">
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:4px">入力・中間</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <input type="range" style="flex:1" id="sLevMd" min="1" max="999" value="100" oninput="G('fLevMd').value=this.value;fPreview()">
+        <input type="number" id="fLevMd" value="100" min="1" max="999" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;text-align:center" oninput="G('sLevMd').value=this.value;fPreview()">
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:4px">入力・白点</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <input type="range" style="flex:1" id="sLevWh" min="2" max="255" value="255" oninput="G('fLevWh').value=this.value;fPreview()">
+        <input type="number" id="fLevWh" value="255" min="2" max="255" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;text-align:center" oninput="G('sLevWh').value=this.value;fPreview()">
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:4px">出力・黒</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <input type="range" style="flex:1" id="sOutBl" min="0" max="254" value="0" oninput="G('fOutBl').value=this.value;fPreview()">
+        <input type="number" id="fOutBl" value="0" min="0" max="254" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;text-align:center" oninput="G('sOutBl').value=this.value;fPreview()">
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:4px">出力・白</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <input type="range" style="flex:1" id="sOutWh" min="1" max="255" value="255" oninput="G('fOutWh').value=this.value;fPreview()">
+        <input type="number" id="fOutWh" value="255" min="1" max="255" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;text-align:center" oninput="G('sOutWh').value=this.value;fPreview()">
+      </div>
+    </div>
+
+    <!-- Blur -->
+    <div id="fBlur" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">半径</span>
+        <input type="range" style="flex:1" id="fBlurR" min="1" max="50" value="3" oninput="G('fBlurRn').value=this.value;fPreview()">
+        <input type="number" id="fBlurRn" value="3" min="1" max="50" style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px" oninput="G('fBlurR').value=this.value;fPreview()">
+      </div>
+    </div>
+
+    <!-- Tile -->
+    <div id="fTile" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">X オフセット</span>
+        <input type="range" style="flex:1" id="fTX" min="-800" max="800" value="0" oninput="G('fTXn').value=this.value;fPreview()">
+        <input type="number" id="fTXn" value="0" style="width:56px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px" oninput="G('fTX').value=this.value;fPreview()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">Y オフセット</span>
+        <input type="range" style="flex:1" id="fTY" min="-600" max="600" value="0" oninput="G('fTYn').value=this.value;fPreview()">
+        <input type="number" id="fTYn" value="0" style="width:56px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px" oninput="G('fTY').value=this.value;fPreview()">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="tbtn" onclick="applyFilter()" style="flex:1;padding:6px">適用</button>
+      <button class="tbtn" onclick="closeFilter()" style="flex:1;padding:6px">キャンセル</button>
+    </div>
+</div>
+
+<!-- Filter Menu Dropdown -->
+<div id="filterMenu" style="display:none;position:fixed;background:var(--p2);border:1px solid var(--bdr);border-radius:4px;z-index:2000;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,.5)">
+  <div class="fmitem" onclick="openFilter('hsl')">色相・彩度・明度</div>
+  <div class="fmitem" onclick="openFilter('levels')">レベル補正</div>
+  <div class="fmitem" onclick="openFilter('blur')">ぼかし</div>
+  <div class="fmitem" onclick="applyInvert()">階調の反転</div>
+  <div class="fmitem" onclick="openFilter('tile')">タイル / オフセット</div>
+</div>
 <div id="mouseCfgModal" style="display:none" class="moverlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="mdlg" style="min-width:340px">
     <h3>🖱 マウスボタン設定</h3>
@@ -340,12 +443,13 @@ let float_=null;
 let drawing=false,startX=0,startY=0,prevX=0,prevY=0;
 let lassoPts=[];
 let hDrag=null,hDragO=null;
-let spaceDown=false,panning=false,panSX=0,panSY=0,panOX=0,panOY=0;
+let spaceDown=false,_shiftDown=false,panning=false,panSX=0,panSY=0,panOX=0,panOY=0;
 let txX=0,txY=0,txBDrag=false,txBSX=0,txBSY=0,txBOX=0,txBOY=0;
 let txSDrag=false,txSSX=0,txSOsz=20;
 let eyedrop=false;
 let cpTgt='fg',cpH=0,cpS=0,cpV=0,cpA=255;
 let wandTol=32,wandContiguous=true,wandAntiAlias=true,wandAllLayers=false;
+let fillAllMode=false;
 let svDrag=false,hDragCP=false,aDrag=false;
 let iClip=null;
 let dashOff=0;
@@ -355,7 +459,6 @@ let currentPressure=1.0,currentPointerType='mouse';
 let _penLiftTimer=null;
 let _activePointerId=null;
 let strokeSmooth=0.5; // 0=なし 1=最大
-// ストローク蓄積用
 let strokePts=[];  // [{x,y,r,op}]
 let wetCv=null,wetCtx=null; // 毎フレーム描き直す一時キャンバス
 // ═══ RAF THROTTLE
@@ -468,12 +571,34 @@ function addLayer(name,isBg){
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const ctx=cv.getContext('2d');
   if(isBg){ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);}
-  const l={id:lid++,name:name||'レイヤー'+(layers.length+1),cv,ctx,vis:true,opac:100,blend:'source-over'};
+  const l={id:lid++,name:name||'レイヤー'+(layers.length+1),cv,ctx,vis:true,opac:100,blend:'source-over',mask:null,maskEnabled:true};
   layers.splice(ali,0,l);renderLL();comp();
 }
-function delLayer(){if(layers.length<=1)return;layers.splice(ali,1);ali=Math.min(ali,layers.length-1);renderLL();comp();}
+function delLayer(){if(layers.length<=1)return;if(maskEditMode)maskEditMode=false;layers.splice(ali,1);ali=Math.min(ali,layers.length-1);renderLL();comp();}
 function mvUp(){if(ali<=0)return;[layers[ali],layers[ali-1]]=[layers[ali-1],layers[ali]];ali--;renderLL();comp();}
 function mvDn(){if(ali>=layers.length-1)return;[layers[ali],layers[ali+1]]=[layers[ali+1],layers[ali]];ali++;renderLL();comp();}
+
+// ─── マスク
+function addMask(){
+  const l=aL();if(!l||l.mask)return;
+  const mc=document.createElement('canvas');mc.width=W;mc.height=H;
+  // 全て白（完全表示）で初期化
+  const mctx=mc.getContext('2d');mctx.fillStyle='#fff';mctx.fillRect(0,0,W,H);
+  l.mask=mc;l.maskEnabled=true;
+  maskEditMode=true;
+  renderLL();comp();
+}
+function applyAndRemoveMask(l){
+  if(!l.mask)return;
+  // マスクをレイヤーに焼き込んで削除
+  const id=l.ctx.getImageData(0,0,W,H);
+  const md=l.mask.getContext('2d').getImageData(0,0,W,H).data;
+  for(let j=3;j<id.data.length;j+=4)id.data[j]=Math.round(id.data[j]*md[j-3]/255);
+  l.ctx.putImageData(id,0,0);
+  l.mask=null;l.maskEnabled=true;
+  if(maskEditMode)maskEditMode=false;
+  comp();
+}
 function mergeDn(){
   if(ali>=layers.length-1)return;
   const t=layers[ali],b=layers[ali+1];
@@ -485,31 +610,75 @@ function renderLL(){
   layers.forEach((l,i)=>{
     const d=document.createElement('div');d.className='li'+(i===ali?' on':'');
     const blendOpts=['source-over','lighter','screen','multiply'].map(v=>`<option value="${v}"${l.blend===v?' selected':''}>${{'source-over':'通常',lighter:'加算',screen:'スクリーン',multiply:'乗算'}[v]}</option>`).join('');
-    d.innerHTML=`<span class="lvis">${l.vis?'👁':'○'}</span><canvas class="lth" width="30" height="22"></canvas><span class="lnm">${l.name}</span><input class="lop" type="number" value="${l.opac}" min="0" max="100"><select class="lblend">${blendOpts}</select>`;
-    d.addEventListener('click',()=>{ali=i;renderLL();});
+    const maskHtml=l.mask
+      ?`<canvas class="lmth" width="22" height="22" title="マスク（クリックで編集）" style="border:2px solid ${maskEditMode&&i===ali?'#6af':'#555'};cursor:pointer;margin-left:2px;opacity:${l.maskEnabled?1:0.4}"></canvas>`
+      :`<span style="width:22px;height:22px;display:inline-block;margin-left:2px"></span>`;
+    const maskBtns=l.mask
+      ?`<span class="lmsk-toggle" title="${l.maskEnabled?'マスク無効化':'マスク有効化'}" style="cursor:pointer;font-size:10px;padding:0 2px;color:${l.maskEnabled?'#6af':'#888'}">${l.maskEnabled?'●':'○'}</span><span class="lmsk-del" title="マスク削除" style="cursor:pointer;font-size:10px;padding:0 2px;color:#f88">🗑</span><span class="lmsk-apply" title="マスクを焼き込んで削除" style="cursor:pointer;font-size:10px;padding:0 2px;color:#8f8">✔</span>`
+      :'';
+    d.innerHTML=`<span class="lvis">${l.vis?'👁':'○'}</span><canvas class="lth" width="30" height="22" title="レイヤー" style="cursor:pointer;border:2px solid ${!maskEditMode&&i===ali?'#6af':'transparent'}"></canvas>${maskHtml}${maskBtns}<span class="lnm">${l.name}${maskEditMode&&i===ali?'<span style="color:#6af;font-size:9px"> [マスク]</span>':''}</span><input class="lop" type="number" value="${l.opac}" min="0" max="100"><select class="lblend">${blendOpts}</select>`;
+    d.addEventListener('click',()=>{ali=i;maskEditMode=false;renderLL();});
     d.querySelector('.lvis').addEventListener('click',e=>{e.stopPropagation();l.vis=!l.vis;renderLL();comp();});
-    d.querySelector('.lnm').addEventListener('dblclick',e=>{e.stopPropagation();const n=prompt('レイヤー名:',l.name);if(n!==null){l.name=n;renderLL();}});
+    d.querySelector('.lnm').addEventListener('dblclick',e=>{e.stopPropagation();const n=prompt('レイヤー名:',l.name.replace(/ \[マスク\]/,''));if(n!==null){l.name=n;renderLL();}});
+    d.querySelector('.lth').addEventListener('click',e=>{e.stopPropagation();ali=i;maskEditMode=false;renderLL();});
+    d.querySelector('.lth').getContext('2d').drawImage(l.cv,0,0,30,22);
+    const mth=d.querySelector('.lmth');
+    if(mth&&l.mask){
+      mth.addEventListener('click',e=>{e.stopPropagation();ali=i;maskEditMode=true;renderLL();});
+      mth.getContext('2d').drawImage(l.mask,0,0,22,22);
+    }
+    // マスク操作ボタン
+    const tog=d.querySelector('.lmsk-toggle');
+    if(tog)tog.addEventListener('click',e=>{e.stopPropagation();l.maskEnabled=!l.maskEnabled;comp();renderLL();});
+    const del=d.querySelector('.lmsk-del');
+    if(del)del.addEventListener('click',e=>{e.stopPropagation();l.mask=null;if(maskEditMode&&ali===i)maskEditMode=false;comp();renderLL();});
+    const apl=d.querySelector('.lmsk-apply');
+    if(apl)apl.addEventListener('click',e=>{e.stopPropagation();applyAndRemoveMask(l);renderLL();});
     const lo=d.querySelector('.lop');
     lo.addEventListener('change',e=>{e.stopPropagation();l.opac=cl(parseInt(e.target.value)||100,0,100);comp();});
     lo.addEventListener('click',e=>e.stopPropagation());
     const lb=d.querySelector('.lblend');
     lb.addEventListener('change',e=>{e.stopPropagation();l.blend=e.target.value;comp();});
     lb.addEventListener('click',e=>e.stopPropagation());
-    d.querySelector('.lth').getContext('2d').drawImage(l.cv,0,0,30,22);
     ll.appendChild(d);
   });
 }
 const aL=()=>layers[ali];
-const aC2=()=>layers[ali]?.ctx;
+let maskEditMode=false; // true=マスク編集中
+function aC2(){
+  const l=layers[ali];if(!l)return null;
+  if(maskEditMode&&l.mask)return l.mask.getContext('2d');
+  return l.ctx;
+}
 
 // ═══ COMPOSITE
 function comp(){
   dx.clearRect(0,0,W,H);
   for(let i=layers.length-1;i>=0;i--){
     const l=layers[i];if(!l.vis)continue;
-    dx.save();dx.globalAlpha=l.opac/100;dx.globalCompositeOperation=l.blend;dx.drawImage(l.cv,0,0);dx.restore();
+    if(l.mask&&l.maskEnabled){
+      // マスクを適用してテンポラリキャンバスに合成
+      const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+      const tc=tmp.getContext('2d');tc.drawImage(l.cv,0,0);
+      const id=tc.getImageData(0,0,W,H);
+      const md=l.mask.getContext('2d').getImageData(0,0,W,H).data;
+      for(let j=3;j<id.data.length;j+=4)id.data[j]=Math.round(id.data[j]*md[j-3]/255);
+      tc.putImageData(id,0,0);
+      dx.save();dx.globalAlpha=l.opac/100;dx.globalCompositeOperation=l.blend;dx.drawImage(tmp,0,0);dx.restore();
+    }else{
+      dx.save();dx.globalAlpha=l.opac/100;dx.globalCompositeOperation=l.blend;dx.drawImage(l.cv,0,0);dx.restore();
+    }
   }
-  if(float_){px.clearRect(0,0,W,H);px.drawImage(float_.cv,float_.x,float_.y);}
+  if(float_){
+    px.clearRect(0,0,W,H);
+    px.save();
+    const fcx=float_.x+float_.w/2;
+    const fcy=float_.y+float_.h/2;
+    px.translate(fcx,fcy);
+    px.rotate(float_.angle||0);
+    px.drawImage(float_.origCv||float_.cv,-float_.w/2,-float_.h/2,float_.w,float_.h);
+    px.restore();
+  }
 }
 
 // ═══ HISTORY (2スタック方式)
@@ -560,23 +729,107 @@ function selAll(){sel={active:true,type:'rect',x:0,y:0,w:W,h:H,pts:[],path:mkRP(
 
 function getHnds(){
   if(!sel.active)return[];
+  if(float_){
+    const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
+    const hw=float_.w/2,hh=float_.h/2,a=float_.angle||0;
+    const cos=Math.cos(a),sin=Math.sin(a);
+    function rot(dx,dy){return{x:fcx+dx*cos-dy*sin,y:fcy+dx*sin+dy*cos};}
+    const tl=rot(-hw,-hh),tr=rot(hw,-hh),bl=rot(-hw,hh),br=rot(hw,hh);
+    const tc={x:(tl.x+tr.x)/2,y:(tl.y+tr.y)/2};
+    const bc={x:(bl.x+br.x)/2,y:(bl.y+br.y)/2};
+    const ml={x:(tl.x+bl.x)/2,y:(tl.y+bl.y)/2};
+    const mr={x:(tr.x+br.x)/2,y:(tr.y+br.y)/2};
+    return[
+      {id:'tl',x:tl.x,y:tl.y},{id:'tc',x:tc.x,y:tc.y},{id:'tr',x:tr.x,y:tr.y},
+      {id:'ml',x:ml.x,y:ml.y},{id:'mr',x:mr.x,y:mr.y},
+      {id:'bl',x:bl.x,y:bl.y},{id:'bc',x:bc.x,y:bc.y},{id:'br',x:br.x,y:br.y},
+    ];
+  }
   const{x,y,w,h}=sel;
-  return[{id:'tl',x,y},{id:'tc',x:x+w/2,y},{id:'tr',x:x+w,y},
-         {id:'ml',x,y:y+h/2},{id:'mr',x:x+w,y:y+h/2},
-         {id:'bl',x,y:y+h},{id:'bc',x:x+w/2,y:y+h},{id:'br',x:x+w,y:y+h}];
+  return[
+    {id:'tl',x,y},{id:'tc',x:x+w/2,y},{id:'tr',x:x+w,y},
+    {id:'ml',x,y:y+h/2},{id:'mr',x:x+w,y:y+h/2},
+    {id:'bl',x,y:y+h},{id:'bc',x:x+w/2,y:y+h},{id:'br',x:x+w,y:y+h},
+  ];
+}
+// float_のローカル座標に変換
+function _toLocal(cx,cy){
+  const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
+  const a=-(float_.angle||0),cos=Math.cos(a),sin=Math.sin(a);
+  return{x:(cx-fcx)*cos-(cy-fcy)*sin,y:(cx-fcx)*sin+(cy-fcy)*cos};
 }
 function hitHnd(cx,cy){
-  const r=7/zoom;
-  for(const h of getHnds())if(Math.abs(cx-h.x)<=r&&Math.abs(cy-h.y)<=r)return h.id;
+  const r=8/zoom;
+  for(const h of getHnds()){
+    if(Math.abs(cx-h.x)<=r&&Math.abs(cy-h.y)<=r)return h.id;
+  }
+  // float_がある場合: 破線外側20px以内 → 回転ゾーン
+  if(float_){
+    const loc=_toLocal(cx,cy);
+    const hw=float_.w/2,hh=float_.h/2,margin=20/zoom;
+    const ox=Math.abs(loc.x)-hw,oy=Math.abs(loc.y)-hh;
+    if(ox>=-r&&ox<=margin&&oy>=-r&&oy<=margin&&!(ox<0&&oy<0))return'float-rot';
+  }
   return null;
 }
-const hndCur={tl:'nwse-resize',tc:'ns-resize',tr:'nesw-resize',ml:'ew-resize',mr:'ew-resize',bl:'nesw-resize',bc:'ns-resize',br:'nwse-resize'};
+const hndCur={tl:'nwse-resize',tc:'ns-resize',tr:'nesw-resize',ml:'ew-resize',mr:'ew-resize',bl:'nesw-resize',bc:'ns-resize',br:'nwse-resize','float-rot':'crosshair'};
 function resizeH(hid,cx,cy){
+  // ── float_ 回転ゾーン
+  if(hid==='float-rot'){
+    if(!float_)return;
+    if(!_selRotOrigCv){
+      _selRotOrigCv=document.createElement('canvas');
+      _selRotOrigCv.width=float_.w;_selRotOrigCv.height=float_.h;
+      _selRotOrigCv.getContext('2d').drawImage(float_.origCv||float_.cv,0,0,float_.w,float_.h);
+      float_.origCv=_selRotOrigCv;
+    }
+    const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
+    let angle=Math.atan2(cy-fcy,cx-fcx)-_selRotStart;
+    if(_shiftDown){// 5度スナップ
+      const snap=5*Math.PI/180;
+      angle=Math.round(angle/snap)*snap;
+    }
+    float_.angle=angle;
+    comp();drawSelOv();return;
+  }
+  // ── float_ リサイズ（四隅・辺ハンドル）
+  if(float_){
+    const origW=hDragO.w,origH=hDragO.h;
+    const origCX=hDragO.x+origW/2,origCY=hDragO.y+origH/2;
+    const a=-(float_.angle||0),cos=Math.cos(a),sin=Math.sin(a);
+    // マウス位置を元の中心基準のローカル座標に変換
+    const lx=(cx-origCX)*cos-(cy-origCY)*sin;
+    const ly=(cx-origCX)*sin+(cy-origCY)*cos;
+    let nw=origW,nh=origH;
+    if(hid.includes('r'))nw=Math.max(4,lx*2);
+    if(hid.includes('l'))nw=Math.max(4,-lx*2);
+    if(hid.includes('b'))nh=Math.max(4,ly*2);
+    if(hid.includes('t'))nh=Math.max(4,-ly*2);
+    if(_shiftDown){// 縦横比維持
+      const ratio=origW/origH||1;
+      if(hid.length===2){// 四隅
+        const s=Math.max(Math.abs(nw)/origW,Math.abs(nh)/origH);
+        nw=origW*s;nh=origH*s;
+      }else if(hid.includes('r')||hid.includes('l'))nh=nw/ratio;
+      else nw=nh*ratio;
+    }
+    float_.w=Math.round(Math.abs(nw));
+    float_.h=Math.round(Math.abs(nh));
+    float_.x=origCX-float_.w/2;
+    float_.y=origCY-float_.h/2;
+    comp();drawSelOv();return;
+  }
+  // ── 通常選択リサイズ
   let{x,y,w,h}=hDragO;
   if(hid.includes('l')){const d=cx-hDragO.x;x=hDragO.x+d;w=hDragO.w-d;}
   if(hid.includes('r')){w=cx-hDragO.x;}
   if(hid.includes('t')){const d=cy-hDragO.y;y=hDragO.y+d;h=hDragO.h-d;}
   if(hid.includes('b')){h=cy-hDragO.y;}
+  if(_shiftDown){// 縦横比維持
+    const ratio=hDragO.w&&hDragO.h?hDragO.w/hDragO.h:1;
+    if(hid.includes('r')||hid.includes('l'))h=w/ratio;
+    else w=h*ratio;
+  }
   if(w<0){x+=w;w=-w;}if(h<0){y+=h;h=-h;}
   sel.x=x;sel.y=y;sel.w=w;sel.h=h;
   if(sel.type==='lasso'&&hDragO.pts.length>0){
@@ -977,12 +1230,12 @@ function beginMove(cx,cy){
     ctx.save();ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(255,255,255,1)';
     if(sel.type==='lasso')ctx.fill(sel.path);else ctx.fillRect(x,y,w,h);
     ctx.restore();
-    float_={cv:fcv,x,y,offX:cx-x,offY:cy-y,fromSel:true,selX:x,selY:y};
+    float_={cv:fcv,origCv:fcv,x,y,w,h,angle:0,offX:cx-x,offY:cy-y,fromSel:true,selX:x,selY:y};
   }else{
     const fcv=document.createElement('canvas');fcv.width=W;fcv.height=H;
     fcv.getContext('2d').drawImage(aL().cv,0,0);
     ctx.clearRect(0,0,W,H);
-    float_={cv:fcv,x:0,y:0,offX:cx,offY:cy,fromLayer:true};
+    float_={cv:fcv,origCv:fcv,x:0,y:0,w:W,h:H,angle:0,offX:cx,offY:cy,fromLayer:true};
   }
   comp();
 }
@@ -990,7 +1243,15 @@ function updateMove(cx,cy){if(!float_)return;float_.x=cx-float_.offX;float_.y=cy
 function commitMove(){
   if(!float_)return;
   const ctx=aC2();
-  if(ctx)ctx.drawImage(float_.cv,Math.round(float_.x),Math.round(float_.y));
+  if(ctx){
+    ctx.save();
+    const fcx=float_.x+float_.w/2;
+    const fcy=float_.y+float_.h/2;
+    ctx.translate(fcx,fcy);
+    ctx.rotate(float_.angle||0);
+    ctx.drawImage(float_.origCv||float_.cv,-float_.w/2,-float_.h/2,float_.w,float_.h);
+    ctx.restore();
+  }
   if(float_.fromSel){
     const dx2=Math.round(float_.x)-float_.selX,dy2=Math.round(float_.y)-float_.selY;
     sel.x+=dx2;sel.y+=dy2;
@@ -1023,8 +1284,12 @@ function showText(cx,cy){
 }
 function commitText(){
   const txt=txIn.innerText;txW.style.display='none';txIn.innerText='';
-  if(!txt.trim()||!aC2())return;
-  const ctx=aC2(),font=G('fntSel').value,dir=G('txDir').value;
+  if(!txt.trim())return;
+  // テキスト内容をレイヤー名に（最大15文字）
+  const layerName=txt.trim().replace(/\n/g,' ').slice(0,15);
+  addLayer(layerName);
+  const ctx=aC2();if(!ctx)return;
+  const font=G('fntSel').value,dir=G('txDir').value;
   wClip(ctx,()=>{
     ctx.save();ctx.font=`${bSz}px ${font}`;ctx.fillStyle=c2s(fg,fg.a);ctx.globalAlpha=bOp/100;
     if(dir==='v'){
@@ -1040,7 +1305,160 @@ txSz.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();txS
 txIn.addEventListener('keydown',e=>{if(e.key==='Escape')commitText();});
 
 // ═══ TOOLS
-const TNAMES={brush:'ブラシ',dotpen:'ドットペン',eraser:'消しゴム',blur:'ぼかし',fill:'塗りつぶし',select:'矩形選択',lasso:'自由選択',wand:'自動選択',move:'移動',line:'ライン',rect:'四角形',ellipse:'楕円',text:'テキスト'};
+const TNAMES={brush:'ブラシ',dotpen:'ドットペン',eraser:'消しゴム',blur:'ぼかし',fill:'塗りつぶし',eyedrop:'スポイト',select:'矩形選択',lasso:'自由選択',wand:'自動選択',move:'移動',rotate:'回転',scale:'拡縮',line:'ライン',rect:'四角形',ellipse:'楕円',text:'テキスト'};
+// ─── 回転ツール関数
+let _rotCX=0,_rotCY=0;
+let _rotStartAngle=0,_rotCurAngle=0,_rotOrigCv=null;
+let _selRotStart=0,_selRotOrigCv=null;
+
+// ─── 拡縮ツール
+let _scaleOrigCv=null,_scaleCX=0,_scaleCY=0,_scaleStartDist=1,_scaleCurSX=1,_scaleCurSY=1,_scaleStartX=0,_scaleStartY=0;
+
+function _getRotCenter(l){
+  // 1. 選択範囲がある → 選択中心
+  if(sel.active&&sel.w>0&&sel.h>0){
+    return{x:sel.x+sel.w/2, y:sel.y+sel.h/2};
+  }
+  // 2. レイヤーの不透明ピクセルのバウンディングボックス中心
+  if(l){
+    const d=l.cv.getContext('2d').getImageData(0,0,W,H).data;
+    let x1=W,y1=H,x2=0,y2=0,found=false;
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      if(d[(y*W+x)*4+3]>8){
+        if(x<x1)x1=x;if(x>x2)x2=x;
+        if(y<y1)y1=y;if(y>y2)y2=y;
+        found=true;
+      }
+    }
+    if(found)return{x:(x1+x2)/2, y:(y1+y2)/2};
+  }
+  // 3. フォールバック: キャンバス中心
+  return{x:W/2, y:H/2};
+}
+
+function _rotAngle(cx,cy){
+  return Math.atan2(cy-_rotCY, cx-_rotCX);
+}
+function beginRotate(cx,cy){
+  const l=aL();if(!l)return;
+  _rotOrigCv=document.createElement('canvas');
+  _rotOrigCv.width=W;_rotOrigCv.height=H;
+  _rotOrigCv.getContext('2d').drawImage(l.cv,0,0);
+  if(sel.active&&sel.w>1&&sel.h>1){
+    // 選択範囲を元レイヤーから消して、_rotOrigCvには選択範囲のみ残す
+    const ctx=l.cv.getContext('2d');
+    const mask=document.createElement('canvas');mask.width=W;mask.height=H;
+    const mc=mask.getContext('2d');mc.drawImage(l.cv,0,0);
+    // 選択範囲外を_rotOrigCvから透明に
+    const rc=_rotOrigCv.getContext('2d');
+    rc.globalCompositeOperation='destination-in';
+    if(sel.type==='lasso'&&sel.path){rc.fill(sel.path);}
+    else{rc.fillStyle='#fff';rc.fillRect(sel.x,sel.y,sel.w,sel.h);}
+    rc.globalCompositeOperation='source-over';
+    // 元レイヤーから選択範囲を消す
+    ctx.save();ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(255,255,255,1)';
+    if(sel.type==='lasso'&&sel.path)ctx.fill(sel.path);
+    else ctx.fillRect(sel.x,sel.y,sel.w,sel.h);
+    ctx.restore();
+    _rotCX=sel.x+sel.w/2;_rotCY=sel.y+sel.h/2;
+  }else{
+    const c=_getRotCenter(l);
+    _rotCX=c.x;_rotCY=c.y;
+  }
+  _rotStartAngle=_rotAngle(cx,cy);
+  _rotCurAngle=0;
+  updCur('grab');
+}
+function updateRotate(cx,cy){
+  const angle=_rotAngle(cx,cy)-_rotStartAngle;
+  _rotCurAngle=angle;
+  px.clearRect(0,0,W,H);
+  px.save();
+  px.translate(_rotCX,_rotCY);
+  px.rotate(angle);
+  px.drawImage(_rotOrigCv,-_rotCX,-_rotCY);
+  px.restore();
+  px.save();
+  px.strokeStyle='rgba(100,160,255,0.9)';px.lineWidth=1;
+  px.beginPath();px.moveTo(_rotCX-8,_rotCY);px.lineTo(_rotCX+8,_rotCY);
+  px.moveTo(_rotCX,_rotCY-8);px.lineTo(_rotCX,_rotCY+8);px.stroke();
+  px.fillStyle='rgba(100,160,255,0.9)';
+  px.font='12px sans-serif';
+  px.fillText(`${(angle*180/Math.PI).toFixed(1)}°`,8,18);
+  px.restore();
+}
+function commitRotate(){
+  if(!_rotOrigCv)return;
+  const l=aL();if(!l)return;
+  const c=l.cv.getContext('2d');
+  c.save();
+  c.translate(_rotCX,_rotCY);
+  c.rotate(_rotCurAngle);
+  c.drawImage(_rotOrigCv,-_rotCX,-_rotCY);
+  c.restore();
+  px.clearRect(0,0,W,H);
+  _rotOrigCv=null;_rotCurAngle=0;
+  comp();renderLL();
+}
+
+// ─── 拡縮ツール関数
+function beginScale(cx,cy){
+  const l=aL();if(!l)return;
+  _scaleOrigCv=document.createElement('canvas');
+  _scaleOrigCv.width=W;_scaleOrigCv.height=H;
+  _scaleOrigCv.getContext('2d').drawImage(l.cv,0,0);
+  const c=_getRotCenter(l); // 回転と同じ中心計算を流用
+  _scaleCX=c.x;_scaleCY=c.y;
+  _scaleStartX=cx;_scaleStartY=cy;
+  _scaleStartDist=Math.max(1,Math.hypot(cx-_scaleCX,cy-_scaleCY));
+  _scaleCurSX=1;_scaleCurSY=1;
+  updCur('nwse-resize');
+}
+function updateScale(cx,cy){
+  if(!_scaleOrigCv)return;
+  const dist=Math.max(1,Math.hypot(cx-_scaleCX,cy-_scaleCY));
+  const s=dist/_scaleStartDist;
+  // Shift: 縦横比維持（等倍）、通常: ドラッグ方向で縦横独立
+  let sx,sy;
+  if(_shiftDown){
+    sx=s;sy=s;
+  }else{
+    const dx=cx-_scaleCX,dy=cy-_scaleCY;
+    const ox=_scaleStartX-_scaleCX,oy=_scaleStartY-_scaleCY;
+    sx=Math.abs(ox)>4?dx/ox:s;
+    sy=Math.abs(oy)>4?dy/oy:s;
+  }
+  _scaleCurSX=sx;_scaleCurSY=sy;
+  px.clearRect(0,0,W,H);
+  px.save();
+  px.translate(_scaleCX,_scaleCY);
+  px.scale(sx,sy);
+  px.drawImage(_scaleOrigCv,-_scaleCX,-_scaleCY);
+  px.restore();
+  // 中心マーカー＋情報表示
+  px.save();
+  px.strokeStyle='rgba(100,160,255,0.9)';px.lineWidth=1;
+  px.beginPath();px.moveTo(_scaleCX-8,_scaleCY);px.lineTo(_scaleCX+8,_scaleCY);
+  px.moveTo(_scaleCX,_scaleCY-8);px.lineTo(_scaleCX,_scaleCY+8);px.stroke();
+  px.fillStyle='rgba(100,160,255,0.9)';px.font='12px sans-serif';
+  px.fillText(`${(sx*100).toFixed(0)}% × ${(sy*100).toFixed(0)}%`,8,18);
+  px.restore();
+}
+function commitScale(){
+  if(!_scaleOrigCv)return;
+  const l=aL();if(!l)return;
+  const c=l.cv.getContext('2d');
+  c.clearRect(0,0,W,H);
+  c.save();
+  c.translate(_scaleCX,_scaleCY);
+  c.scale(_scaleCurSX,_scaleCurSY);
+  c.drawImage(_scaleOrigCv,-_scaleCX,-_scaleCY);
+  c.restore();
+  px.clearRect(0,0,W,H);
+  _scaleOrigCv=null;
+  comp();renderLL();
+}
+
 function setTool(t){
   if(t!=='text')commitText();if(float_)commitMove();
   tool=t;
@@ -1053,6 +1471,7 @@ function updateUI(){
   G('txOpts').style.display=tool==='text'?'flex':'none';
   G('shOpts').style.display=['line','rect','ellipse'].includes(tool)?'flex':'none';
   G('wandOpts').style.display=tool==='wand'?'flex':'none';
+  G('fillOpts').style.display=tool==='fill'?'block':'none';
   const isBrush=['brush','dotpen'].includes(tool);
   const isErase=tool==='eraser';
   G('brushTypeRow').style.display=isBrush?'flex':'none';
@@ -1062,7 +1481,7 @@ function updateUI(){
 }
 function updCur(c){
   if(c){eC.style.cursor=c;return;}
-  eC.style.cursor={text:'text',move:'grab',select:'crosshair',lasso:'crosshair',wand:'crosshair'}[tool]||'crosshair';
+  eC.style.cursor={text:'text',move:'grab',rotate:'crosshair',scale:'crosshair',eyedrop:'crosshair',select:'crosshair',lasso:'crosshair',wand:'crosshair'}[tool]||'crosshair';
 }
 function syncO(t,v){
   v=parseInt(v);
@@ -1125,6 +1544,12 @@ function withPressure(fn){
   fn();
   bSz=origSz;bOp=origOp;
 }
+// マスク編集時は描画色をグレースケールに変換
+function getDrawCol(col){
+  if(!maskEditMode)return col;
+  const g=Math.round(col.r*0.299+col.g*0.587+col.b*0.114);
+  return{r:g,g,b:g,a:255};
+}
 
 function onDown(e){
   e.preventDefault();
@@ -1132,7 +1557,13 @@ function onDown(e){
   currentPressure=(e.pressure!=null)?e.pressure:1.0;
   currentPointerType=e.pointerType||'mouse';
   const cp=cPos(e);
-  if(e.altKey){pickCol(cp.x,cp.y);eyedrop=true;return;}
+  if(e.altKey){
+    const tgt=e.shiftKey?'bg':'fg';
+    const prev=cpTgt;cpTgt=tgt;
+    pickCol(cp.x,cp.y);
+    cpTgt=prev;
+    eyedrop=true;return;
+  }
 
   const action=spaceDown?'pan':getBtnAction(e.button);
 
@@ -1142,7 +1573,21 @@ function onDown(e){
   // 選択ハンドル（現在ツールに関わらず）
   if(sel.active){
     const h=hitHnd(cp.x,cp.y);
-    if(h){hDrag=h;hDragO={...sel,pts:[...sel.pts]};eC.style.cursor=hndCur[h]||'crosshair';return;}
+    if(h){
+      // float_がまだない場合、ハンドル操作前に自動でfloat化する
+      if(!float_&&sel.w>1&&sel.h>1){
+        beginMove(cp.x,cp.y);
+        // beginMoveはoffXを使って移動にするが、ここではハンドル操作なのでoffXをリセット
+        if(float_){float_.offX=0;float_.offY=0;}
+      }
+      if(h==='float-rot'&&float_){
+        const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
+        _selRotStart=Math.atan2(cp.y-fcy,cp.x-fcx)-(float_.angle||0);
+        _selRotOrigCv=null;
+      }
+      hDrag=h;hDragO={...sel,x:float_?float_.x:sel.x,y:float_?float_.y:sel.y,w:float_?float_.w:sel.w,h:float_?float_.h:sel.h,pts:[...sel.pts]};
+      eC.style.cursor=hndCur[h]||'crosshair';return;
+    }
   }
 
   // ボタンアクションで使う色
@@ -1151,13 +1596,32 @@ function onDown(e){
   const overTool={eraser:'eraser',blur:'blur',lasso:'lasso',line:'line'}[action]||null;
   const actTool=overTool||tool;
 
+  // スポイトツール
+  if(actTool==='eyedrop'||tool==='eyedrop'){
+    const tgt=e.shiftKey?'bg':'fg';
+    const prev=cpTgt;cpTgt=tgt;pickCol(cp.x,cp.y);cpTgt=prev;
+    eyedrop=true;drawing=true;return;
+  }
+
   drawing=true;startX=cp.x;startY=cp.y;prevX=cp.x;prevY=cp.y;
 
   if(actTool==='select'){if(float_)commitMove();clearSel();lassoPts=[];}
   else if(actTool==='lasso'){if(float_)commitMove();clearSel();lassoPts=[{x:cp.x,y:cp.y}];}
   else if(actTool==='wand'){if(float_)commitMove();wandSelect(cp.x,cp.y);drawing=false;}
   else if(actTool==='move'){beginMove(cp.x,cp.y);}
-  else if(actTool==='fill'){saveH();floodFill(aC2(),cp.x,cp.y,useCol);comp();renderLL();drawing=false;}
+  else if(actTool==='rotate'){saveH();beginRotate(cp.x,cp.y);}
+  else if(actTool==='scale'){saveH();beginScale(cp.x,cp.y);}
+  else if(actTool==='fill'){
+    saveH();
+    if(fillAllMode){
+      const ctx=aC2();if(!ctx)return;
+      ctx.save();ctx.globalAlpha=bOp/100;ctx.fillStyle=c2s(useCol,useCol.a);
+      if(sel.active&&sel.w>0)ctx.fillRect(sel.x,sel.y,sel.w,sel.h);
+      else ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }else floodFill(aC2(),cp.x,cp.y,useCol);
+    comp();renderLL();drawing=false;
+  }
   else if(actTool==='text'){showText(cp.x,cp.y);drawing=false;}
   else if(['line','rect','ellipse'].includes(actTool)){saveH();}
   else{
@@ -1165,8 +1629,9 @@ function onDown(e){
     if(actTool==='eraser')withPressure(()=>applyErase(aC2(),cp.x,cp.y,cp.x,cp.y));
     else if(actTool==='blur')applyBlur(aC2(),cp.x,cp.y);
     else{
-      if(useWet()){initWet();addWetPt(cp.x,cp.y,bSz,bOp/100);}
-      else withPressure(()=>applyBrush(aC2(),cp.x,cp.y,cp.x,cp.y,useCol));
+      const dc=getDrawCol(useCol);
+      if(useWet()&&!maskEditMode){initWet();addWetPt(cp.x,cp.y,bSz,bOp/100);}
+      else withPressure(()=>applyBrush(aC2(),cp.x,cp.y,cp.x,cp.y,dc));
     }
     comp();
   }
@@ -1184,7 +1649,6 @@ function onMove(e){
       clearTimeout(_penLiftTimer);
       _penLiftTimer=setTimeout(()=>{if(drawing)onUp({pointerId:null});},150);
     }
-    // pressure < threshold のときはタイマーをリセットしない→切れて自動停止
   }
   if(txBDrag){const dx2=(e.clientX-txBSX)/zoom,dy2=(e.clientY-txBSY)/zoom;const nx=txBOX+dx2,ny=txBOY+dy2;txW.style.left=nx+'px';txW.style.top=ny+'px';txX=nx;txY=ny;return;}
   if(txSDrag){syncO('sz',Math.max(6,Math.round(txSOsz+(e.clientY-txSSX)/zoom)));return;}
@@ -1192,32 +1656,36 @@ function onMove(e){
   if(eyedrop){const cp=cPos(e);pickCol(cp.x,cp.y);return;}
   const cp=cPos(e);G('stPos').textContent=`X:${cp.x} Y:${cp.y}`;
   if(hDrag){resizeH(hDrag,cp.x,cp.y);return;}
-  if(sel.active&&!drawing){const h=hitHnd(cp.x,cp.y);eC.style.cursor=h?hndCur[h]:({text:'text',move:'grab'}[tool]||'crosshair');}
+  if(sel.active&&!drawing){const h=hitHnd(cp.x,cp.y);eC.style.cursor=h?h==='float-rot'?'grab':(hndCur[h]||'crosshair'):({text:'text',move:'grab'}[tool]||'crosshair');}
   if(!drawing)return;
   const actTool=eC._actTool||tool;
   const useCol=eC._useCol||fg;
   const ctx=aC2();
+  const dc=getDrawCol(useCol);
   if(actTool==='select'){
+    let ex=cp.x,ey=cp.y;
+    if(_shiftDown){const s=Math.min(Math.abs(ex-startX),Math.abs(ey-startY));ex=startX+(ex>=startX?s:-s);ey=startY+(ey>=startY?s:-s);}
     px.clearRect(0,0,W,H);px.save();px.strokeStyle='rgba(100,160,255,.9)';px.lineWidth=1/zoom;
     px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;
-    px.strokeRect(Math.min(startX,cp.x),Math.min(startY,cp.y),Math.abs(cp.x-startX),Math.abs(cp.y-startY));px.restore();
+    px.strokeRect(Math.min(startX,ex),Math.min(startY,ey),Math.abs(ex-startX),Math.abs(ey-startY));px.restore();
   }else if(actTool==='lasso'){
     const last=lassoPts[lassoPts.length-1];if(Math.hypot(cp.x-last.x,cp.y-last.y)>2)lassoPts.push({x:cp.x,y:cp.y});
     px.clearRect(0,0,W,H);px.save();px.strokeStyle='rgba(100,160,255,.9)';px.lineWidth=1.5/zoom;
     px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;
     px.beginPath();px.moveTo(lassoPts[0].x,lassoPts[0].y);lassoPts.forEach(p=>px.lineTo(p.x,p.y));px.stroke();px.restore();
   }else if(actTool==='move'){updateMove(cp.x,cp.y);}
+  else if(actTool==='rotate'){updateRotate(cp.x,cp.y);}
+  else if(actTool==='scale'){updateScale(cp.x,cp.y);}
   else if(['line','rect','ellipse'].includes(actTool)){px.clearRect(0,0,W,H);drawShape(px,startX,startY,cp.x,cp.y,useCol,actTool);}
   else if(['brush','dotpen'].includes(actTool)){if(ctx){
-    if(useWet()&&tool==='brush'){
+    if(useWet()&&tool==='brush'&&!maskEditMode){
       withPressure(()=>addWetPt(cp.x,cp.y,bSz,bOp/100));
-      redrawWet(useCol);
-      // wetCvをプレビューとしてpCに表示
+      redrawWet(dc);
       px.clearRect(0,0,W,H);
       px.save();px.drawImage(wetCv,0,0);px.restore();
       scheduleComp();
     }else{
-      withPressure(()=>{applyBrush(ctx,prevX,prevY,cp.x,cp.y,useCol);});
+      withPressure(()=>{applyBrush(ctx,prevX,prevY,cp.x,cp.y,dc);});
       prevX=cp.x;prevY=cp.y;scheduleComp();
     }
   }}
@@ -1228,22 +1696,34 @@ function onUp(e){
   clearTimeout(_penLiftTimer);
   eyedrop=false;txBDrag=false;txSDrag=false;
   if(panning){endPan();return;}
-  if(hDrag){hDrag=null;hDragO=null;updCur();return;}
+  if(hDrag){
+    if(hDrag==='float-rot'){_selRotOrigCv=null;}
+    hDrag=null;hDragO=null;updCur();return;
+  }
   if(!drawing)return;drawing=false;
   const cp=cPos(e),ctx=aC2();
   const actTool=eC._actTool||tool;
   const useCol=eC._useCol||fg;
   eC._actTool=null;eC._useCol=null;
-  if(actTool==='select'){px.clearRect(0,0,W,H);setSR(startX,startY,cp.x,cp.y);}
+  if(actTool==='select'){
+    let ex=cp.x,ey=cp.y;
+    if(_shiftDown){const s=Math.min(Math.abs(ex-startX),Math.abs(ey-startY));ex=startX+(ex>=startX?s:-s);ey=startY+(ey>=startY?s:-s);}
+    px.clearRect(0,0,W,H);setSR(startX,startY,ex,ey);
+  }
   else if(actTool==='lasso'){px.clearRect(0,0,W,H);setSL(lassoPts);lassoPts=[];}
   else if(actTool==='move'){commitMove();}
+  else if(actTool==='rotate'){commitRotate();}
+  else if(actTool==='scale'){commitScale();}
   else if(['line','rect','ellipse'].includes(actTool)){px.clearRect(0,0,W,H);if(ctx){drawShape(ctx,startX,startY,cp.x,cp.y,useCol,actTool);comp();renderLL();}}
-  else if(actTool==='brush'&&useWet()&&strokePts.length>0){
+  else if(actTool==='brush'&&useWet()&&strokePts.length>0&&!maskEditMode){
     px.clearRect(0,0,W,H);
     commitWet(ctx,eC._useCol||fg);
     comp();renderLL();
   }
-  else renderLL();
+  else{
+    if(maskEditMode)renderLL(); // マスクサムネイル更新
+    renderLL();
+  }
 }
 function onWheel(e){
   e.preventDefault();
@@ -1263,6 +1743,7 @@ function endPan(){panning=false;updCur();}
 // ═══ KEYBOARD
 document.addEventListener('keydown',e=>{
   if(e.target===txIn)return;
+  if(e.key==='Shift'){_shiftDown=true;return;}
   if(e.key===' '){e.preventDefault();spaceDown=true;if(!panning)eC.style.cursor='grab';return;}
   if(e.ctrlKey||e.metaKey){
     if(e.key==='z'||e.key==='Z'){e.preventDefault();undo();return;}
@@ -1285,7 +1766,10 @@ document.addEventListener('keydown',e=>{
   if(e.key==='-')setZ(zoom/1.15);
   if(e.key==='0')setZ(1);
 });
-document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;updCur();}});
+document.addEventListener('keyup',e=>{
+  if(e.key===' '){spaceDown=false;updCur();}
+  if(e.key==='Shift'){_shiftDown=false;}
+});
 
 // ═══ CLIPBOARD
 function copyOp(){
@@ -1330,7 +1814,22 @@ function copyOp(){
   cv.toBlob(blob=>{try{navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);}catch{}});
 }
 function cutOp(){copyOp();delOp();}
+function pasteToNewLayer(img,ox,oy){
+  addLayer('ペースト');
+  const ctx=aC2();if(!ctx)return;
+  ctx.drawImage(img,ox||0,oy||0);
+  sel=mkE();G('cropBtn').style.display='none';
+  comp();renderLL();
+}
+
 async function pasteOp(){
+  // 内部クリップボード優先（許可不要）
+  if(iClip){
+    saveH();
+    pasteToNewLayer(iClip.cv,sel.active?sel.x:0,sel.active?sel.y:0);
+    return;
+  }
+  // 外部クリップボード（すでに許可済みの場合のみ試みる）
   try{
     const items=await navigator.clipboard.read();
     for(const item of items)for(const type of item.types){
@@ -1338,15 +1837,30 @@ async function pasteOp(){
         const blob=await item.getType(type);
         const url=URL.createObjectURL(blob);
         const img=new Image();
-        img.onload=()=>{saveH();const ctx=aC2();if(!ctx)return;ctx.drawImage(img,sel.active?sel.x:0,sel.active?sel.y:0);comp();renderLL();URL.revokeObjectURL(url);};
+        img.onload=()=>{saveH();pasteToNewLayer(img,sel.active?sel.x:0,sel.active?sel.y:0);URL.revokeObjectURL(url);};
         img.src=url;return;
       }
     }
   }catch{}
-  if(!iClip)return;
-  saveH();const ctx=aC2();if(!ctx)return;
-  ctx.drawImage(iClip.cv,sel.active?sel.x:0,sel.active?sel.y:0);comp();renderLL();
 }
+
+// ネイティブのpasteイベントで外部画像を許可なしに受け取る
+document.addEventListener('paste',e=>{
+  if(e.target===G('txIn'))return;
+  const items=e.clipboardData&&e.clipboardData.items;
+  if(!items)return;
+  for(const item of items){
+    if(item.type.startsWith('image/')){
+      const blob=item.getAsFile();
+      if(!blob)continue;
+      const url=URL.createObjectURL(blob);
+      const img=new Image();
+      img.onload=()=>{saveH();pasteToNewLayer(img,sel.active?sel.x:0,sel.active?sel.y:0);URL.revokeObjectURL(url);};
+      img.src=url;
+      e.preventDefault();return;
+    }
+  }
+});
 function delOp(){
   if(!sel.active||sel.w<=0)return;if(float_)commitMove();
   saveH();const ctx=aC2();if(!ctx)return;
@@ -1455,11 +1969,26 @@ function aCk(e){const r=aC.getBoundingClientRect();cpA=Math.round(cl((e.clientX-
 
 // ═══ IMPORT/EXPORT
 function importImg(){G('fileIn').click();}
-function showExport(){G('expModal').style.display='flex';}
-G('jpgQ').addEventListener('input',function(){G('jpgQL').textContent=this.value;});
-function onFileIn(e){
-  const f=e.target.files[0];if(!f)return;
-  if(f.name.toLowerCase().endsWith('.psl')){loadPSL(f);e.target.value='';return;}
+
+// ─── ドラッグ＆ドロップで画像を開く
+(function(){
+  const top=G('top');
+  top.addEventListener('dragover',e=>{e.preventDefault();top.style.outline='2px solid var(--acc)';});
+  top.addEventListener('dragleave',()=>{top.style.outline='';});
+  top.addEventListener('drop',e=>{
+    e.preventDefault();top.style.outline='';
+    const f=e.dataTransfer.files[0];
+    if(!f||(!/^image\//.test(f.type)&&!f.name.toLowerCase().endsWith('.psl')))return;
+    if(undoStack.length>0){
+      const ok=confirm('作業中の内容が保存されていません。\n保存してから開きますか？\n\n「OK」→ 保存ダイアログを開く\n「キャンセル」→ 保存せず開く');
+      if(ok){showExport();return;}
+    }
+    loadFile(f);
+  });
+})();
+
+function loadFile(f){
+  if(f.name.toLowerCase().endsWith('.psl')){loadPSL(f);return;}
   const reader=new FileReader();
   reader.onload=ev=>{
     const img=new Image();
@@ -1468,7 +1997,30 @@ function onFileIn(e){
       layers=[];ali=0;lid=0;undoStack=[];redoStack=[];sel=mkE();float_=null;
       setSz(iw,ih);addLayer('画像');aC2().drawImage(img,0,0);comp();renderLL();fitView();
     };img.src=ev.target.result;
-  };reader.readAsDataURL(f);e.target.value='';
+  };reader.readAsDataURL(f);
+}
+
+// ─── 90度回転（全レイヤー）
+function rotateCanvas(deg){
+  saveH();
+  const cw2=deg===90||deg===-90?H:W;
+  const ch2=deg===90||deg===-90?W:H;
+  layers.forEach(l=>{
+    const tmp=document.createElement('canvas');tmp.width=cw2;tmp.height=ch2;
+    const tc=tmp.getContext('2d');
+    tc.translate(cw2/2,ch2/2);
+    tc.rotate(deg*Math.PI/180);
+    tc.drawImage(l.cv,-W/2,-H/2);
+    l.cv.width=cw2;l.cv.height=ch2;
+    l.cv.getContext('2d').drawImage(tmp,0,0);
+  });
+  setSz(cw2,ch2);clearSel();comp();renderLL();fitView();
+}
+function showExport(){G('expModal').style.display='flex';}
+G('jpgQ').addEventListener('input',function(){G('jpgQL').textContent=this.value;});
+function onFileIn(e){
+  const f=e.target.files[0];if(!f)return;
+  loadFile(f);e.target.value='';
 }
 function flatAll(){const cv=document.createElement('canvas');cv.width=W;cv.height=H;cv.getContext('2d').drawImage(dC,0,0);return cv;}
 function flatBg(){const cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,W,H);c.drawImage(dC,0,0);return cv;}
@@ -1536,12 +2088,10 @@ function applyRz(){
 function animLoop(){dashOff=(dashOff+0.4)%20;drawSelOv();requestAnimationFrame(animLoop);}
 function drawSelOv(){
   sx.clearRect(0,0,W,H);if(!sel.active)return;
-  if(sel.type==='wand'&&sel.maskCv){
-    // Draw selection as blue tinted mask overlay
+  if(sel.type==='wand'&&sel.maskCv&&!float_){
     sx.save();
     sx.drawImage(sel.maskCv,0,0);
     sx.globalCompositeOperation='source-in';
-    // Animate hue slightly using dashOff
     const alpha=0.28+Math.sin(dashOff*0.18)*0.08;
     sx.fillStyle=`rgba(80,140,255,${alpha})`;
     sx.fillRect(0,0,W,H);
@@ -1549,13 +2099,30 @@ function drawSelOv(){
     return;
   }
   const lw=1.5/zoom;sx.save();
-  sx.strokeStyle='rgba(0,0,0,.6)';sx.lineWidth=lw*3;sx.setLineDash([]);
-  if(sel.type==='rect')sx.strokeRect(sel.x,sel.y,sel.w,sel.h);else if(sel.path)sx.stroke(sel.path);
-  sx.strokeStyle='rgba(255,255,255,.95)';sx.lineWidth=lw;sx.setLineDash([6/zoom,4/zoom]);sx.lineDashOffset=-dashOff/zoom;
-  if(sel.type==='rect')sx.strokeRect(sel.x,sel.y,sel.w,sel.h);else if(sel.path)sx.stroke(sel.path);
-  sx.setLineDash([]);
+  if(float_){
+    // float_の回転に合わせた破線矩形を描画
+    const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
+    sx.translate(fcx,fcy);
+    sx.rotate(float_.angle||0);
+    sx.strokeStyle='rgba(0,0,0,.6)';sx.lineWidth=lw*3;sx.setLineDash([]);
+    sx.strokeRect(-float_.w/2,-float_.h/2,float_.w,float_.h);
+    sx.strokeStyle='rgba(255,255,255,.95)';sx.lineWidth=lw;sx.setLineDash([6/zoom,4/zoom]);sx.lineDashOffset=-dashOff/zoom;
+    sx.strokeRect(-float_.w/2,-float_.h/2,float_.w,float_.h);
+    sx.setLineDash([]);
+    sx.resetTransform();sx.scale(1,1); // resetTransformが使えない場合の代替
+    sx.restore();sx.save();
+  }else{
+    sx.strokeStyle='rgba(0,0,0,.6)';sx.lineWidth=lw*3;sx.setLineDash([]);
+    if(sel.type==='rect')sx.strokeRect(sel.x,sel.y,sel.w,sel.h);else if(sel.path)sx.stroke(sel.path);
+    sx.strokeStyle='rgba(255,255,255,.95)';sx.lineWidth=lw;sx.setLineDash([6/zoom,4/zoom]);sx.lineDashOffset=-dashOff/zoom;
+    if(sel.type==='rect')sx.strokeRect(sel.x,sel.y,sel.w,sel.h);else if(sel.path)sx.stroke(sel.path);
+    sx.setLineDash([]);
+  }
   const hs=5.5/zoom;
-  for(const h of getHnds()){sx.fillStyle='#fff';sx.strokeStyle='#333';sx.lineWidth=1/zoom;sx.fillRect(h.x-hs/2,h.y-hs/2,hs,hs);sx.strokeRect(h.x-hs/2,h.y-hs/2,hs,hs);}
+  for(const h of getHnds()){
+    sx.fillStyle='#fff';sx.strokeStyle='#333';sx.lineWidth=1/zoom;
+    sx.fillRect(h.x-hs/2,h.y-hs/2,hs,hs);sx.strokeRect(h.x-hs/2,h.y-hs/2,hs,hs);
+  }
   sx.restore();
 }
 
@@ -1568,6 +2135,125 @@ function hsv2rgb(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,M
 
 new ResizeObserver(()=>{svC.width=svC.offsetWidth||200;hC.width=hC.offsetWidth||200;aC.width=aC.offsetWidth||200;cpRender();}).observe(G('cp'));
 window.addEventListener('load',()=>setTimeout(init,60));
+
+// ═══ FILTER
+let _filterOrig=null,_filterType='';
+
+function showFilter(){
+  const r=event.target.getBoundingClientRect();
+  const m=G('filterMenu');
+  m.style.left=r.left+'px';m.style.top=(r.bottom+4)+'px';
+  m.style.display=m.style.display==='block'?'none':'block';
+  setTimeout(()=>document.addEventListener('click',()=>G('filterMenu').style.display='none',{once:true}),10);
+}
+
+function openFilter(type){
+  G('filterMenu').style.display='none';
+  const l=aL();if(!l)return;
+  _filterType=type;
+  // 元データを保存（プレビュー用）
+  _filterOrig=l.ctx.getImageData(0,0,W,H);
+  // 各パネル表示切替
+  ['fHSL','fLev','fBlur','fTile'].forEach(id=>G(id).style.display='none');
+  const titles={hsl:'色相・彩度・明度',levels:'レベル補正',blur:'ぼかし',tile:'タイル / オフセット'};
+  G('filterTitle').textContent=titles[type]||'フィルター';
+  if(type==='hsl'){G('fHSL').style.display='block';G('fH').value=0;G('fS').value=0;G('fL').value=0;G('fHn').value=0;G('fSn').value=0;G('fLn').value=0;}
+  if(type==='levels'){G('fLev').style.display='block';G('fLevBl').value=0;G('fLevMd').value=100;G('fLevWh').value=255;G('fOutBl').value=0;G('fOutWh').value=255;}
+  if(type==='blur'){G('fBlur').style.display='block';G('fBlurR').value=3;G('fBlurRn').value=3;}
+  if(type==='tile'){G('fTile').style.display='block';G('fTX').value=0;G('fTXn').value=0;G('fTY').value=0;G('fTYn').value=0;}
+  G('filterModal').style.display='block';
+  // パネルのドラッグ移動
+  const bar=G('filterDragBar');
+  let fdx=0,fdy=0,fx=0,fy=0;
+  bar.onmousedown=ev=>{
+    ev.preventDefault();fx=ev.clientX;fy=ev.clientY;
+    const r=G('filterModal').getBoundingClientRect();fdx=r.left;fdy=r.top;
+    document.onmousemove=em=>{G('filterModal').style.left=(fdx+em.clientX-fx)+'px';G('filterModal').style.top=(fdy+em.clientY-fy)+'px';};
+    document.onmouseup=()=>{document.onmousemove=null;document.onmouseup=null;};
+  };
+}
+
+function closeFilter(){
+  // キャンセル時は元に戻す
+  const l=aL();
+  if(l&&_filterOrig){l.ctx.putImageData(_filterOrig,0,0);comp();renderLL();}
+  _filterOrig=null;
+  G('filterModal').style.display='none';
+}
+
+function fPreview(){
+  const l=aL();if(!l||!_filterOrig)return;
+  l.ctx.putImageData(_filterOrig,0,0);
+  _applyFilterToLayer(l,false);
+  comp();
+}
+
+function applyFilter(){
+  const l=aL();if(!l)return;
+  saveH();
+  if(_filterOrig)l.ctx.putImageData(_filterOrig,0,0);
+  _applyFilterToLayer(l,true);
+  _filterOrig=null;
+  G('filterModal').style.display='none';
+  comp();renderLL();
+}
+
+function _applyFilterToLayer(l,commit){
+  const type=_filterType;
+  const ctx=l.ctx;
+  if(type==='hsl'){
+    const dh=parseInt(G('fH').value),ds=parseInt(G('fS').value)/100,dl=parseInt(G('fL').value)/100;
+    if(dh===0&&ds===0&&dl===0)return;
+    const id=ctx.getImageData(0,0,W,H);const d=id.data;
+    for(let i=0;i<d.length;i+=4){
+      if(d[i+3]===0)continue;
+      let[h,s,v]=rgb2hsv(d[i],d[i+1],d[i+2]);
+      h=(h+dh+360)%360;
+      s=Math.max(0,Math.min(1,s+ds));
+      v=Math.max(0,Math.min(1,v+dl));
+      const[r2,g2,b2]=hsv2rgb(h,s,v);
+      d[i]=r2;d[i+1]=g2;d[i+2]=b2;
+    }
+    ctx.putImageData(id,0,0);
+  }else if(type==='levels'){
+    const bl=parseInt(G('fLevBl').value),md=parseFloat(G('fLevMd').value)/100,wh=parseInt(G('fLevWh').value);
+    const obl=parseInt(G('fOutBl').value),owh=parseInt(G('fOutWh').value);
+    const lut=new Uint8Array(256);
+    for(let i=0;i<256;i++){
+      let v=Math.max(0,(i-bl)/(Math.max(1,wh-bl)));
+      v=Math.pow(v,1/Math.max(0.1,md));
+      v=obl/255+(owh-obl)/255*Math.min(1,v);
+      lut[i]=Math.round(v*255);
+    }
+    const id=ctx.getImageData(0,0,W,H);const d=id.data;
+    for(let i=0;i<d.length;i+=4){d[i]=lut[d[i]];d[i+1]=lut[d[i+1]];d[i+2]=lut[d[i+2]];}
+    ctx.putImageData(id,0,0);
+  }else if(type==='blur'){
+    const r=parseFloat(G('fBlurR').value);
+    const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+    const tc=tmp.getContext('2d');
+    tc.filter=`blur(${r}px)`;tc.drawImage(l.cv,0,0);
+    ctx.clearRect(0,0,W,H);ctx.drawImage(tmp,0,0);
+  }else if(type==='tile'){
+    const ox=((parseInt(G('fTX').value)%W)+W)%W;
+    const oy=((parseInt(G('fTY').value)%H)+H)%H;
+    if(ox===0&&oy===0)return;
+    const src=l.cv;
+    ctx.clearRect(0,0,W,H);
+    // 4タイル描画でラップアラウンド
+    for(let dx2=-1;dx2<=1;dx2++)for(let dy2=-1;dy2<=1;dy2++){
+      ctx.drawImage(src,ox+dx2*W,oy+dy2*H);
+    }
+  }
+}
+
+function applyInvert(){
+  G('filterMenu').style.display='none';
+  const l=aL();if(!l)return;saveH();
+  const id=l.ctx.getImageData(0,0,W,H),d=id.data;
+  for(let i=0;i<d.length;i+=4){d[i]=255-d[i];d[i+1]=255-d[i+1];d[i+2]=255-d[i+2];}
+  l.ctx.putImageData(id,0,0);comp();renderLL();
+}
 </script>
 </body>
 </html>
