@@ -2022,8 +2022,32 @@ function onFileIn(e){
   const f=e.target.files[0];if(!f)return;
   loadFile(f);e.target.value='';
 }
-function flatAll(){const cv=document.createElement('canvas');cv.width=W;cv.height=H;cv.getContext('2d').drawImage(dC,0,0);return cv;}
-function flatBg(){const cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,W,H);c.drawImage(dC,0,0);return cv;}
+// 全レイヤー合成（透過あり・マスク反映）
+function flatAll(){
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const c=cv.getContext('2d');
+  for(let i=layers.length-1;i>=0;i--){
+    const l=layers[i];if(!l.vis)continue;
+    if(l.mask&&l.maskEnabled){
+      const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+      const tc=tmp.getContext('2d');tc.drawImage(l.cv,0,0);
+      const id=tc.getImageData(0,0,W,H);
+      const md=l.mask.getContext('2d').getImageData(0,0,W,H).data;
+      for(let j=3;j<id.data.length;j+=4)id.data[j]=Math.round(id.data[j]*md[j-3]/255);
+      tc.putImageData(id,0,0);
+      c.save();c.globalAlpha=l.opac/100;c.globalCompositeOperation=l.blend;c.drawImage(tmp,0,0);c.restore();
+    }else{
+      c.save();c.globalAlpha=l.opac/100;c.globalCompositeOperation=l.blend;c.drawImage(l.cv,0,0);c.restore();
+    }
+  }
+  return cv;
+}
+// 白背景合成（JPEG・BMP用）
+function flatBg(){
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,W,H);
+  c.drawImage(flatAll(),0,0);return cv;
+}
 function doExport(fmt){
   G('expModal').style.display='none';
   if(fmt==='png')dlCv(flatAll(),'paintstudio.png','image/png');
