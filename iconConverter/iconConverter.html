@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICO 多サイズ同梱 出力ツール</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #1a1a1a;
+  color: #ccc;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+#header {
+  padding: 10px 16px 10px;
+  background: #252525;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+#header h2 { font-size: 15px; color: #eee; margin-bottom: 5px; }
+#desc { font-size: 11px; color: #888; margin-bottom: 5px; line-height: 1.6; }
+#statusBar { font-size: 12px; color: #7ab8f5; margin-bottom: 8px; min-height: 16px; }
+#buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button {
+  padding: 5px 16px;
+  background: #3a3a3a;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button:hover { background: #4a4a4a; }
+label.file-btn {
+  padding: 5px 16px;
+  background: #3a3a3a;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-block;
+}
+label.file-btn:hover { background: #4a4a4a; }
+#fileInput { display: none; }
+#main {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 0;
+}
+#main.drag-over { background: #1a2e1a; }
+#grid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 10px;
+}
+.cell {
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.cell-label { font-size: 11px; color: #999; letter-spacing: 0.5px; }
+.preview-wrap {
+  border: 1px solid #3a3a3a;
+  background: #141414;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.preview-canvas { display: block; image-rendering: pixelated; }
+.cell-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #999;
+  cursor: pointer;
+}
+.cell-check input[type=checkbox] { cursor: pointer; }
+#footer {
+  padding: 6px 16px;
+  font-size: 11px;
+  color: #555;
+  background: #202020;
+  border-top: 1px solid #2a2a2a;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h2>ICO 多サイズ同梱 出力ツール</h2>
+  <div id="desc">
+    画像をドラッグ＆ドロップ。拡大はしない／縮小のみで各枠に割当。既に登録してる画像がある場合、その画像より大きい場合は削除しない。
+  </div>
+  <div id="statusBar">未読込</div>
+  <div id="buttons">
+    <button id="btnOutput">出力</button>
+    <button id="btnClear">クリア</button>
+    <label class="file-btn">ファイルを開く<input type="file" id="fileInput" accept=".png,.bmp,.gif,.jpg,.jpeg,.tga,.ico"></label>
+  </div>
+</div>
+
+<div id="main">
+  <div id="grid"></div>
+</div>
+
+<div id="footer">
+  チェックされたサイズのみを1つのICOに同梱（PNG-in-ICO）。対応: PNG / BMP / GIF / JPG / JPEG / TGA / ICO　※TIFFはブラウザ非対応のため除外
+</div>
+
+<script>
+'use strict';
+
+const SIZES = [256, 128, 64, 32, 16, 8];
+
+// 状態
+const assigned = {};   // size -> canvas (ネイティブサイズ) | null
+const previews = {};   // size -> canvas element (表示用)
+const checks   = {};   // size -> checkbox element
+SIZES.forEach(s => { assigned[s] = null; });
+
+// ── UI構築 ──────────────────────────────────────────────────────
+const gridEl = document.getElementById('grid');
+SIZES.forEach(s => {
+  const dispSize = Math.min(s, 128);
+
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'cell-label';
+  lbl.textContent = s + ' x ' + s;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'preview-wrap';
+  wrap.style.width  = dispSize + 'px';
+  wrap.style.height = dispSize + 'px';
+
+  const cvs = document.createElement('canvas');
+  cvs.width  = dispSize;
+  cvs.height = dispSize;
+  cvs.className = 'preview-canvas';
+  wrap.appendChild(cvs);
+  previews[s] = cvs;
+
+  const checkLbl = document.createElement('label');
+  checkLbl.className = 'cell-check';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = true;
+  checks[s] = cb;
+  checkLbl.appendChild(cb);
+  checkLbl.appendChild(document.createTextNode('このサイズを同梱'));
+
+  cell.appendChild(lbl);
+  cell.appendChild(wrap);
+  cell.appendChild(checkLbl);
+  gridEl.appendChild(cell);
+
+  drawPlaceholder(cvs, s);
+});
+
+// ── ドラッグ＆ドロップ ──────────────────────────────────────────
+const mainEl = document.getElementById('main');
+let dragCount = 0;
+
+document.addEventListener('dragenter', e => {
+  if (!hasSupportedFile(e)) return;
+  dragCount++;
+  mainEl.classList.add('drag-over');
+});
+document.addEventListener('dragleave', e => {
+  dragCount--;
+  if (dragCount <= 0) { dragCount = 0; mainEl.classList.remove('drag-over'); }
+});
+document.addEventListener('dragover', e => {
+  if (hasSupportedFile(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+});
+document.addEventListener('drop', async e => {
+  e.preventDefault();
+  dragCount = 0;
+  mainEl.classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (!files || files.length === 0) return;
+  await processFile(files[0]);
+});
+
+function hasSupportedFile(e) {
+  if (!e.dataTransfer) return false;
+  const items = e.dataTransfer.items;
+  if (items) {
+    for (const item of items) {
+      if (item.kind === 'file') return true;
+    }
+  }
+  return false;
+}
+
+function isSupported(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  return ['png','bmp','gif','jpg','jpeg','tga','ico'].includes(ext);
+}
+
+// ── ファイル入力 ──────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', async e => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  await processFile(files[0]);
+  e.target.value = '';
+});
+
+// ── ファイル処理 ──────────────────────────────────────────────
+async function processFile(file) {
+  if (!isSupported(file.name)) { alert('未対応のファイル形式です。\n対応: PNG / BMP / GIF / JPG / JPEG / TGA / ICO'); return; }
+  try {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    let srcCanvas;
+    if (ext === 'tga') {
+      const buf = await readArrayBuffer(file);
+      srcCanvas = loadTGA(buf);
+    } else if (ext === 'ico') {
+      const buf = await readArrayBuffer(file);
+      srcCanvas = await loadICOLargest(buf);
+    } else {
+      srcCanvas = await loadImageAsCanvas(file);
+    }
+    if (!srcCanvas) throw new Error('未対応または破損ファイルです。');
+    setStatus('読込: ' + file.name + ' [' + srcCanvas.width + 'x' + srcCanvas.height + ']');
+    mergeAssignments(srcCanvas);
+    refreshPreviews();
+  } catch (ex) {
+    alert('読み込み失敗: ' + ex.message);
+  }
+}
+
+function readArrayBuffer(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload  = e => res(e.target.result);
+    fr.onerror = () => rej(new Error('ファイル読み込み失敗'));
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+function loadImageAsCanvas(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement('canvas');
+      cvs.width  = img.naturalWidth;
+      cvs.height = img.naturalHeight;
+      cvs.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      res(cvs);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('画像読み込み失敗')); };
+    img.src = url;
+  });
+}
+
+// ── マージ（既存保持ロジック） ──────────────────────────────────
+function mergeAssignments(srcCanvas) {
+  const minSide = Math.min(srcCanvas.width, srcCanvas.height);
+  const squared = centerCropToSquare(srcCanvas);
+  SIZES.forEach(s => {
+    if (minSide >= s) {
+      // 縮小のみ許可。既存があっても上書き（新画像の方が大きい or 同じ）
+      assigned[s] = resizeCanvas(squared, s, s);
+    }
+    // minSide < s → 既存を保持
+  });
+}
+
+// ── プレビュー更新 ──────────────────────────────────────────────
+function refreshPreviews() {
+  SIZES.forEach(s => {
+    const cvs  = previews[s];
+    const bmp  = assigned[s];
+    const disp = Math.min(s, 128);
+    if (!bmp) {
+      drawPlaceholder(cvs, s);
+      cvs.title = '空（拡大しないため未割当）';
+    } else {
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0, 0, disp, disp);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(bmp, 0, 0, disp, disp);
+      cvs.title = '割当済み ' + s + 'x' + s;
+    }
+  });
+}
+
+// ── クリア ────────────────────────────────────────────────────
+document.getElementById('btnClear').addEventListener('click', () => {
+  SIZES.forEach(s => {
+    assigned[s] = null;
+    drawPlaceholder(previews[s], s);
+    previews[s].title = '空';
+  });
+  setStatus('未読込');
+});
+
+// ── 出力 ──────────────────────────────────────────────────────
+document.getElementById('btnOutput').addEventListener('click', () => {
+  const entries = SIZES
+    .filter(s => checks[s].checked && assigned[s] !== null)
+    .map(s => ({ size: s, pngBytes: canvasToPngBytes(assigned[s]) }));
+
+  if (entries.length === 0) {
+    alert('出力対象なし。画像読込とサイズチェックを確認。');
+    return;
+  }
+
+  const icoBytes = buildIco(entries);
+  const blob = new Blob([icoBytes], { type: 'image/x-icon' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'icon.ico';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
+// ── Canvas ユーティリティ ──────────────────────────────────────
+function centerCropToSquare(src) {
+  const size = Math.min(src.width, src.height);
+  const x = Math.floor((src.width  - size) / 2);
+  const y = Math.floor((src.height - size) / 2);
+  const dst = document.createElement('canvas');
+  dst.width  = size;
+  dst.height = size;
+  const ctx  = dst.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, x, y, size, size, 0, 0, size, size);
+  return dst;
+}
+
+function resizeCanvas(src, w, h) {
+  const dst = document.createElement('canvas');
+  dst.width  = w;
+  dst.height = h;
+  const ctx  = dst.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, w, h);
+  return dst;
+}
+
+function drawPlaceholder(canvas, size) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+  ctx.fillStyle = '#444';
+  const fontSize = Math.max(8, Math.min(13, Math.floor(w / 7)));
+  ctx.font = fontSize + 'px Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(size + 'x' + size, w / 2, h / 2);
+}
+
+function setStatus(text) {
+  document.getElementById('statusBar').textContent = text;
+}
+
+// ── ICO 書き込み（PNG-in-ICO） ─────────────────────────────────
+function canvasToPngBytes(canvas) {
+  const dataUrl = canvas.toDataURL('image/png');
+  const base64  = dataUrl.split(',')[1];
+  const binary  = atob(base64);
+  const bytes   = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function buildIco(entries) {
+  const count      = entries.length;
+  const headerSize = 6;
+  const dirSize    = 16 * count;
+  const totalPng   = entries.reduce((a, e) => a + e.pngBytes.length, 0);
+  const buf        = new ArrayBuffer(headerSize + dirSize + totalPng);
+  const view       = new DataView(buf);
+  const u8         = new Uint8Array(buf);
+
+  // ヘッダ
+  view.setUint16(0, 0, true); // reserved
+  view.setUint16(2, 1, true); // type = icon
+  view.setUint16(4, count, true);
+
+  // ディレクトリ
+  let dataOffset = headerSize + dirSize;
+  entries.forEach((e, i) => {
+    const p = headerSize + i * 16;
+    const w = e.size === 256 ? 0 : e.size;
+    const h = e.size === 256 ? 0 : e.size;
+    view.setUint8(p + 0, w);
+    view.setUint8(p + 1, h);
+    view.setUint8(p + 2, 0);         // colorCount
+    view.setUint8(p + 3, 0);         // reserved
+    view.setUint16(p + 4, 0,  true); // planes
+    view.setUint16(p + 6, 32, true); // bitCount
+    view.setUint32(p + 8,  e.pngBytes.length, true);
+    view.setUint32(p + 12, dataOffset, true);
+    dataOffset += e.pngBytes.length;
+  });
+
+  // PNGデータ書き込み
+  let offset = headerSize + dirSize;
+  entries.forEach(e => {
+    u8.set(e.pngBytes, offset);
+    offset += e.pngBytes.length;
+  });
+
+  return u8;
+}
+
+// ── TGA リーダー（24/32bit、非圧縮/RLE） ──────────────────────
+function loadTGA(arrayBuffer) {
+  const view = new DataView(arrayBuffer);
+  let pos = 0;
+  const idLength        = view.getUint8(pos++);
+  const colorMapType    = view.getUint8(pos++);
+  const imageType       = view.getUint8(pos++);
+  pos += 5; // カラーマップ仕様
+  pos += 2; // xOrigin
+  pos += 2; // yOrigin
+  const width           = view.getUint16(pos, true); pos += 2;
+  const height          = view.getUint16(pos, true); pos += 2;
+  const pixelDepth      = view.getUint8(pos++);
+  const imageDescriptor = view.getUint8(pos++);
+  if (idLength > 0) pos += idLength;
+
+  if (colorMapType !== 0) throw new Error('TGAのカラーマップは未対応');
+  if (pixelDepth !== 24 && pixelDepth !== 32) throw new Error('TGAは24/32bitのみ対応');
+  if (imageType !== 2 && imageType !== 10) throw new Error('未対応のTGAタイプ（対応: 2=非圧縮, 10=RLE）');
+
+  const rle       = (imageType === 10);
+  const originTop = (imageDescriptor & 0x20) !== 0;
+
+  const cvs = document.createElement('canvas');
+  cvs.width  = width;
+  cvs.height = height;
+  const ctx  = cvs.getContext('2d');
+  const id   = ctx.createImageData(width, height);
+  const px   = id.data;
+  const src  = new Uint8Array(arrayBuffer, pos);
+  let srcPos = 0;
+
+  function writePixel(x, y, b, g, r, a) {
+    const row = originTop ? y : (height - 1 - y);
+    const idx = (row * width + x) * 4;
+    px[idx]     = r;
+    px[idx + 1] = g;
+    px[idx + 2] = b;
+    px[idx + 3] = a;
+  }
+
+  if (!rle) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const b = src[srcPos++], g = src[srcPos++], r = src[srcPos++];
+        const a = pixelDepth === 32 ? src[srcPos++] : 255;
+        writePixel(x, y, b, g, r, a);
+      }
+    }
+  } else {
+    const total = width * height;
+    let written = 0, curX = 0, curY = 0;
+    while (written < total) {
+      const packet = src[srcPos++];
+      const run    = (packet & 0x80) !== 0;
+      const count  = (packet & 0x7F) + 1;
+      if (run) {
+        const b = src[srcPos++], g = src[srcPos++], r = src[srcPos++];
+        const a = pixelDepth === 32 ? src[srcPos++] : 255;
+        for (let i = 0; i < count; i++) {
+          writePixel(curX, curY, b, g, r, a);
+          written++; curX++;
+          if (curX >= width) { curX = 0; curY++; }
+        }
+      } else {
+        for (let i = 0; i < count; i++) {
+          const b = src[srcPos++], g = src[srcPos++], r = src[srcPos++];
+          const a = pixelDepth === 32 ? src[srcPos++] : 255;
+          writePixel(curX, curY, b, g, r, a);
+          written++; curX++;
+          if (curX >= width) { curX = 0; curY++; }
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(id, 0, 0);
+  return cvs;
+}
+
+// ── ICO リーダー（最大フレーム取得） ──────────────────────────
+async function loadICOLargest(arrayBuffer) {
+  const view  = new DataView(arrayBuffer);
+  const type  = view.getUint16(2, true);
+  const count = view.getUint16(4, true);
+  if (type !== 1 || count === 0) throw new Error('ICOヘッダ不正');
+
+  const entries = [];
+  for (let i = 0; i < count; i++) {
+    const p           = 6 + i * 16;
+    const w           = view.getUint8(p)     || 256;
+    const h           = view.getUint8(p + 1) || 256;
+    const bytesInRes  = view.getInt32(p + 8,  true);
+    const imageOffset = view.getInt32(p + 12, true);
+    entries.push({ w, h, bytesInRes, imageOffset });
+  }
+  entries.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+  const best = entries[0];
+
+  const imgData = new Uint8Array(arrayBuffer, best.imageOffset, best.bytesInRes);
+  // PNGシグネチャ確認
+  const isPng = imgData[0] === 0x89 && imgData[1] === 0x50 &&
+                imgData[2] === 0x4E && imgData[3] === 0x47;
+  const blob  = isPng
+    ? new Blob([imgData], { type: 'image/png' })
+    : new Blob([arrayBuffer], { type: 'image/x-icon' });
+
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement('canvas');
+      cvs.width  = img.naturalWidth;
+      cvs.height = img.naturalHeight;
+      cvs.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      res(cvs);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('ICO読み込み失敗')); };
+    img.src = url;
+  });
+}
+</script>
+</body>
+</html>
