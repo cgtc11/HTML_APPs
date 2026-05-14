@@ -7,6 +7,9 @@ https://cgtc11.github.io/HTML_APPs/DotEditor/DotEditor.html<br>
 PaintStudio　お絵描き<br>
 https://cgtc11.github.io/HTML_APPs/PaintStudio/PaintStudio.html<br>
 <br>
+iconConverter　画像からアイコン変換<br>
+https://cgtc11.github.io/HTML_APPs/PaintStudio/iconConverter.html<br>
+<br>
 LoPolyEdit　ローポリ3Dモデル作成<br>
 https://cgtc11.github.io/HTML_APPs/LoPolyEdit/LoPolyEdit.html<br>
 <br>
