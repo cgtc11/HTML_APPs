@@ -22,7 +22,7 @@ https://cgtc11.github.io/HTML_APPs/loop_studio/loop_studio.html<br>
 SVPlayer　動画プレイヤー<br>
 https://cgtc11.github.io/HTML_APPs/SVPlayer/SVPlayer.html<br>
 <br>
-Game<br>
+Game　ミニゲームいろいろ<br>
 https://cgtc11.github.io/HTML_APPs/Game/mahjong.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/7narabe.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/poker.html<br>
