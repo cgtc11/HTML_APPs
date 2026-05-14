@@ -22,7 +22,7 @@ https://cgtc11.github.io/HTML_APPs/loop_studio/loop_studio.html<br>
 SVPlayer　動画プレイヤー<br>
 https://cgtc11.github.io/HTML_APPs/SVPlayer/SVPlayer.html<br>
 <br>
-OneFileText　動画プレイヤー<br>
+OneFileText　複数テキストを1つにまとめる<br>
 https://cgtc11.github.io/HTML_APPs/OneFileText/OneFileText.html<br>
 <br>
 Game　ミニゲームいろいろ<br>
