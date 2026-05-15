@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3DView</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/",
+    "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.1.2/lib/three-vrm.module.js"
+  }
+}
+</script>
+<input type="file" id="hdr-input" accept=".hdr,.exr" style="display:none">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0d0d0f;
+  --panel: rgba(13,13,20,0.92);
+  --border: rgba(255,255,255,0.08);
+  --border-hi: rgba(255,255,255,0.18);
+  --accent: #5b8def;
+  --accent2: #9b6fef;
+  --text: #c8ccd4;
+  --text-dim: #5a5e6a;
+  --text-hi: #eceef2;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Noto Sans JP', sans-serif;
+  --radius: 8px;
+}
+
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+canvas { display: block; }
+
+/* ── Progress ── */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 2px; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.25s ease; z-index: 1000; pointer-events: none;
+}
+
+/* ── Drop Overlay ── */
+#drop-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8,8,12,0.97);
+  transition: opacity 0.3s, visibility 0.3s;
+}
+#drop-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+#drop-zone {
+  position: relative;
+  border: 1px solid var(--border-hi);
+  border-radius: 16px;
+  padding: 64px 80px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: rgba(255,255,255,0.02);
+  max-width: 520px;
+}
+#drop-zone::before {
+  content: '';
+  position: absolute; inset: -1px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, rgba(91,141,239,0.15), rgba(155,111,239,0.1), transparent 60%);
+  pointer-events: none;
+}
+#drop-zone:hover, #drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(91,141,239,0.05);
+}
+#drop-zone .icon { font-size: 2.5rem; margin-bottom: 20px; opacity: 0.7; }
+#drop-zone h2 {
+  font-size: 1.3rem; font-weight: 500; color: var(--text-hi);
+  margin-bottom: 8px; letter-spacing: -0.02em;
+}
+#drop-zone p { color: var(--text-dim); font-size: 0.85rem; line-height: 1.6; }
+
+.fmt-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 6px; margin-top: 28px;
+}
+.fmt-badge {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 4px;
+  font-family: var(--mono); font-size: 0.7rem;
+  color: var(--text-dim); text-align: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fmt-badge:hover { border-color: var(--accent); color: var(--accent); }
+
+#file-input { display: none; }
+
+/* ── Canvas ── */
+#canvas-wrap { position: fixed; inset: 0; }
+
+/* ── Panel Base ── */
+.panel {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+
+/* ── Info Panel (left) ── */
+#panel-info {
+  top: 16px; left: 16px;
+  width: 220px;
+  padding: 0;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-header .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.panel-header span { font-size: 0.7rem; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+.panel-body { padding: 12px 14px; }
+
+#model-name {
+  font-size: 0.8rem; color: var(--text-hi); font-weight: 500;
+  word-break: break-all; margin-bottom: 10px; line-height: 1.4;
+}
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 5px;
+}
+.info-label { font-size: 0.68rem; font-family: var(--mono); color: var(--text-dim); }
+.info-value { font-size: 0.72rem; font-family: var(--mono); color: var(--text); }
+
+#open-btn {
+  width: 100%; margin-top: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text); font-size: 0.75rem; font-family: var(--sans);
+  padding: 7px; border-radius: 6px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+#open-btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hi); }
+
+#right-col .panel { position: relative; }
+#right-col {
+  position: fixed;
+  top: 16px; right: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto; overflow-x: hidden;
+  width: 244px;
+  scrollbar-width: none;
+}
+#right-col::-webkit-scrollbar { display: none; }
+
+/* ── Anim Panel (right) ── */
+#panel-anim {
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  display: none;
+}
+#anim-list {
+  padding: 8px;
+  max-height: 180px; overflow-y: auto;
+}
+#anim-list::-webkit-scrollbar { width: 4px; }
+#anim-list::-webkit-scrollbar-track { background: transparent; }
+#anim-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+.anim-item {
+  padding: 6px 8px; border-radius: 5px; cursor: pointer;
+  font-size: 0.75rem; font-family: var(--mono); color: var(--text-dim);
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.anim-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+.anim-item.active { background: rgba(91,141,239,0.12); color: var(--accent); }
+
+.anim-controls {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.icon-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text); border-radius: 5px;
+  width: 30px; height: 28px;
+  cursor: pointer; font-size: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hi); color: var(--text-hi); }
+.icon-btn.active { background: rgba(91,141,239,0.15); border-color: rgba(91,141,239,0.4); color: var(--accent); }
+
+.speed-wrap {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+}
+.speed-wrap input[type=range] {
+  flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+  background: var(--border-hi); border-radius: 2px; outline: none;
+}
+.speed-wrap input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+}
+.speed-label { font-size: 0.65rem; font-family: var(--mono); color: var(--text-dim); min-width: 30px; text-align: right; }
+
+/* ── Sleep / Idle UI fade ── */
+#panel-info, #right-col, #toolbar, #vrm-badge {
+  transition: opacity 1.5s ease, visibility 1.5s ease;
+}
+body.ui-sleeping #panel-info,
+body.ui-sleeping #right-col,
+body.ui-sleeping #toolbar,
+body.ui-sleeping #vrm-badge {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+body.ui-sleeping { cursor: none; }
+
+/* ── Bottom Toolbar ── */
+#toolbar {
+  position: fixed;
+  bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: none;
+  flex-direction: column; gap: 0;
+  padding: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  z-index: 100;
+}
+.toolbar-row {
+  display: flex; flex-direction: row; align-items: center; gap: 2px;
+  padding: 5px 6px;
+}
+.toolbar-row + .toolbar-row {
+  border-top: 1px solid var(--border);
+  padding: 6px 10px; gap: 10px;
+}
+.tool-btn {
+  background: transparent; border: none;
+  color: var(--text-dim); font-size: 0.72rem; font-family: var(--mono);
+  padding: 6px 12px; border-radius: 5px; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.tool-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.tool-btn.active { color: var(--accent); background: rgba(91,141,239,0.1); }
+
+.tool-sep { width: 1px; background: var(--border); margin: 4px 2px; border-radius: 1px; }
+
+/* ── Toolbar inline slider ── */
+.tool-slider-group {
+  display: flex; align-items: center; gap: 7px;
+}
+.tool-slider-label {
+  font-size: 0.62rem; font-family: var(--mono);
+  color: var(--text-dim); white-space: nowrap;
+}
+.tool-slider-group input[type=range] {
+  width: 90px; height: 3px;
+  -webkit-appearance: none; appearance: none;
+  background: var(--border-hi); border-radius: 2px;
+  outline: none; cursor: pointer;
+}
+.tool-slider-group input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+}
+.tool-slider-val {
+  font-size: 0.62rem; font-family: var(--mono);
+  color: var(--text-dim); min-width: 28px;
+}
+
+.hdr-load-row {
+  display: flex; gap: 6px; align-items: stretch; margin-bottom: 8px;
+}
+.hdr-load-row .hdr-zone { flex: 1; margin-bottom: 0; }
+.hdr-clear-btn {
+  flex-shrink: 0; width: 28px;
+  background: rgba(255,80,80,0.07);
+  border: 1px solid rgba(255,80,80,0.25);
+  color: rgba(255,100,100,0.7); border-radius: 5px;
+  cursor: pointer; font-size: 0.75rem;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  display: none;
+}
+.hdr-clear-btn:hover {
+  background: rgba(255,80,80,0.18);
+  border-color: rgba(255,80,80,0.5);
+  color: #ff6060;
+}
+.hdr-clear-btn.visible { display: block; }
+
+/* ── Light Panel ── */
+#panel-light {
+  width: 100%; padding: 0;
+  overflow: hidden; display: none;
+}
+.light-section { padding: 8px 12px; border-bottom: 1px solid var(--border); transition: opacity 0.2s; }
+.light-section:last-child { border-bottom: none; }
+.light-section.dimmed {
+  opacity: 0.28;
+  pointer-events: none;
+  user-select: none;
+}
+.light-section-title {
+  font-size: 0.62rem; font-family: var(--mono); color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 7px; display: flex; align-items: center; gap: 6px;
+}
+.light-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+.lrow {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+}
+.lrow:last-child { margin-bottom: 0; }
+.lrow label { font-size: 0.62rem; font-family: var(--mono); color: var(--text-dim); min-width: 36px; }
+.lrow input[type=range] {
+  flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+  background: var(--border-hi); border-radius: 2px; outline: none; cursor: pointer;
+}
+.lrow input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+}
+.lrow .lval { font-size: 0.62rem; font-family: var(--mono); color: var(--text-dim); min-width: 34px; text-align: right; }
+
+/* HDR section */
+.hdr-zone {
+  border: 1px dashed var(--border-hi); border-radius: 5px;
+  padding: 8px; text-align: center; cursor: pointer;
+  font-size: 0.7rem; font-family: var(--mono); color: var(--text-dim);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  margin-bottom: 8px;
+}
+.hdr-zone:hover { border-color: var(--accent); color: var(--accent); background: rgba(91,141,239,0.04); }
+.hdr-zone.loaded { border-style: solid; border-color: rgba(91,141,239,0.4); color: var(--accent); }
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 5px;
+}
+.toggle-row label { font-size: 0.65rem; font-family: var(--mono); color: var(--text-dim); }
+.toggle {
+  position: relative; width: 32px; height: 17px; cursor: pointer;
+}
+.toggle input { display: none; }
+.toggle-track {
+  position: absolute; inset: 0; background: var(--border-hi);
+  border-radius: 9px; transition: background 0.2s;
+}
+.toggle input:checked + .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 2.5px; left: 2.5px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: white; transition: transform 0.2s; pointer-events: none;
+}
+.toggle input:checked ~ .toggle-thumb { transform: translateX(15px); }
+
+/* ── Status Toast ── */
+#status {
+  position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+  background: rgba(13,13,20,0.9); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 14px;
+  font-size: 0.73rem; font-family: var(--mono); color: var(--text-dim);
+  opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 300;
+  white-space: nowrap;
+}
+#status.show { opacity: 1; }
+
+/* ── VRM Badge ── */
+#vrm-badge {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(155,111,239,0.12);
+  border: 1px solid rgba(155,111,239,0.3);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: 0.7rem; font-family: var(--mono); color: var(--accent2);
+  display: none; z-index: 100;
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<!-- Drop Overlay -->
+<div id="drop-overlay">
+  <div id="drop-zone">
+    <div class="icon">◈</div>
+    <h2>3D モデルビューア</h2>
+    <p>ファイルをドラッグ＆ドロップ<br>またはクリックして選択</p>
+    <div class="fmt-grid">
+      <div class="fmt-badge">OBJ</div>
+      <div class="fmt-badge">FBX</div>
+      <div class="fmt-badge">GLTF</div>
+      <div class="fmt-badge">GLB</div>
+      <div class="fmt-badge">VRM</div>
+    </div>
+    <p style="margin-top:16px;font-size:0.72rem;color:var(--text-dim)">OBJ+MTLは複数ファイル同時ドロップ可</p>
+  </div>
+  <input type="file" id="file-input" multiple accept=".obj,.fbx,.gltf,.glb,.vrm,.mtl">
+</div>
+
+<!-- Canvas -->
+<div id="canvas-wrap"></div>
+
+<!-- VRM Badge -->
+<div id="vrm-badge">▸ VRM</div>
+
+<!-- Info Panel -->
+<div class="panel" id="panel-info" style="display:none">
+  <div class="panel-header">
+    <div class="dot"></div>
+    <span>Model Info</span>
+  </div>
+  <div class="panel-body">
+    <div id="model-name">—</div>
+    <div class="info-row">
+      <span class="info-label">FORMAT</span>
+      <span class="info-value" id="info-fmt">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">VERTICES</span>
+      <span class="info-value" id="info-vert">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">TRIANGLES</span>
+      <span class="info-value" id="info-tri">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">MESHES</span>
+      <span class="info-value" id="info-mesh">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">BONES</span>
+      <span class="info-value" id="info-bone">—</span>
+    </div>
+    <button id="open-btn">📂 別のファイルを開く</button>
+  </div>
+</div>
+
+<div id="right-col">
+
+<!-- Light Panel -->
+<div class="panel" id="panel-light">
+  <div class="panel-header">
+    <div class="dot" style="background:#f0c060;box-shadow:0 0 6px #f0c060"></div>
+    <span>Lighting</span>
+  </div>
+
+  <!-- Key Light -->
+  <div class="light-section" id="sec-key">
+    <div class="light-section-title">
+      <div class="light-dot" style="background:#fff5e8"></div>Key Light
+    </div>
+    <div class="lrow">
+      <label>INTENS</label>
+      <input type="range" id="key-int" min="0" max="8" step="0.05" value="2.2">
+      <span class="lval" id="key-int-v">2.20</span>
+    </div>
+    <div class="lrow">
+      <label>AZIMUTH</label>
+      <input type="range" id="key-az" min="0" max="360" step="1" value="45">
+      <span class="lval" id="key-az-v">45°</span>
+    </div>
+    <div class="lrow">
+      <label>ELEV</label>
+      <input type="range" id="key-el" min="0" max="90" step="1" value="55">
+      <span class="lval" id="key-el-v">55°</span>
+    </div>
+  </div>
+
+  <!-- Fill Light -->
+  <div class="light-section" id="sec-fill">
+    <div class="light-section-title">
+      <div class="light-dot" style="background:#8ab0ff"></div>Fill Light
+    </div>
+    <div class="lrow">
+      <label>INTENS</label>
+      <input type="range" id="fill-int" min="0" max="5" step="0.05" value="0.7">
+      <span class="lval" id="fill-int-v">0.70</span>
+    </div>
+    <div class="lrow">
+      <label>AZIMUTH</label>
+      <input type="range" id="fill-az" min="0" max="360" step="1" value="225">
+      <span class="lval" id="fill-az-v">225°</span>
+    </div>
+    <div class="lrow">
+      <label>ELEV</label>
+      <input type="range" id="fill-el" min="0" max="90" step="1" value="30">
+      <span class="lval" id="fill-el-v">30°</span>
+    </div>
+  </div>
+
+  <!-- Rim Light -->
+  <div class="light-section" id="sec-rim">
+    <div class="light-section-title">
+      <div class="light-dot" style="background:#ff9060"></div>Rim Light
+    </div>
+    <div class="lrow">
+      <label>INTENS</label>
+      <input type="range" id="rim-int" min="0" max="5" step="0.05" value="0.4">
+      <span class="lval" id="rim-int-v">0.40</span>
+    </div>
+    <div class="lrow">
+      <label>AZIMUTH</label>
+      <input type="range" id="rim-az" min="0" max="360" step="1" value="180">
+      <span class="lval" id="rim-az-v">180°</span>
+    </div>
+    <div class="lrow">
+      <label>ELEV</label>
+      <input type="range" id="rim-el" min="0" max="90" step="1" value="50">
+      <span class="lval" id="rim-el-v">50°</span>
+    </div>
+  </div>
+
+  <!-- Ambient -->
+  <div class="light-section" id="sec-amb">
+    <div class="light-section-title">
+      <div class="light-dot" style="background:#666"></div>Ambient
+    </div>
+    <div class="lrow">
+      <label>INTENS</label>
+      <input type="range" id="amb-int" min="0" max="4" step="0.05" value="0.5">
+      <span class="lval" id="amb-int-v">0.50</span>
+    </div>
+  </div>
+
+  <!-- Exposure -->
+  <div class="light-section">
+    <div class="light-section-title">
+      <div class="light-dot" style="background:#aaa"></div>Renderer
+    </div>
+    <div class="lrow">
+      <label>EXPOSURE</label>
+      <input type="range" id="exposure" min="0.1" max="4" step="0.05" value="1.1">
+      <span class="lval" id="exposure-v">1.10</span>
+    </div>
+  </div>
+
+  <!-- HDR -->
+  <div class="light-section">
+    <div class="light-section-title">
+      <div class="light-dot" style="background:var(--accent2)"></div>HDR Environment
+    </div>
+    <div class="hdr-load-row">
+      <div class="hdr-zone" id="hdr-zone">▸ .hdr / .exr をドロップまたはクリック</div>
+      <button class="hdr-clear-btn" id="hdr-clear" title="HDRを解除">✕</button>
+    </div>
+    <div class="lrow" style="margin-bottom:6px">
+      <label>ENV INT</label>
+      <input type="range" id="env-int" min="0" max="4" step="0.05" value="1">
+      <span class="lval" id="env-int-v">1.00</span>
+    </div>
+    <div class="lrow" style="margin-bottom:6px">
+      <label>ROTATE</label>
+      <input type="range" id="hdr-rot" min="0" max="360" step="1" value="0">
+      <span class="lval" id="hdr-rot-v">0°</span>
+    </div>
+    <div class="toggle-row">
+      <label>HDR時ライトをOFF</label>
+      <label class="toggle">
+        <input type="checkbox" id="hdr-lights-off" checked>
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <label>HDRを背景に表示</label>
+      <label class="toggle">
+        <input type="checkbox" id="hdr-as-bg">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+</div>
+
+<!-- Anim Panel -->
+<div class="panel" id="panel-anim">
+  <div class="panel-header">
+    <div class="dot" style="background:var(--accent2);box-shadow:0 0 6px var(--accent2)"></div>
+    <span>Animation</span>
+  </div>
+  <div id="anim-list"></div>
+  <div class="anim-controls">
+    <button class="icon-btn" id="play-btn" title="再生/一時停止">▶</button>
+    <button class="icon-btn" id="stop-btn" title="停止">■</button>
+    <button class="icon-btn" id="loop-btn" title="ループ" class="active">↺</button>
+    <div class="speed-wrap">
+      <input type="range" id="speed-slider" min="0.1" max="3" step="0.05" value="1">
+      <span class="speed-label" id="speed-val">1.0x</span>
+    </div>
+  </div>
+</div><!-- /right-col -->
+
+<!-- Bottom Toolbar -->
+<div id="toolbar">
+  <div class="toolbar-row">
+    <button class="tool-btn active" id="btn-grid">GRID</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-axes">AXES</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-wire">WIRE</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-light">LIGHT</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-reset">RESET CAM</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-bg">BG</button>
+  </div>
+  <div class="toolbar-row">
+    <div class="tool-slider-group">
+      <span class="tool-slider-label">IDLE</span>
+      <input type="range" id="idle-time" min="3" max="60" step="1" value="10">
+      <span class="tool-slider-val" id="idle-time-v">10s</span>
+    </div>
+    <div class="tool-sep" style="height:14px;width:1px;margin:0 4px"></div>
+    <div class="tool-slider-group">
+      <span class="tool-slider-label">ROT SPD</span>
+      <input type="range" id="rot-speed" min="0.05" max="3" step="0.05" value="0.4">
+      <span class="tool-slider-val" id="rot-speed-v">0.40</span>
+    </div>
+  </div>
+</div>
+
+<!-- Status -->
+<div id="status"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }   from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader }       from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader }       from 'three/addons/loaders/MTLLoader.js';
+import { FBXLoader }       from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader }      from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader }      from 'three/addons/loaders/RGBELoader.js';
+import { EXRLoader }       from 'three/addons/loaders/EXRLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+// ════════════════════════════════════════
+//  Renderer
+// ════════════════════════════════════════
+const wrap = document.getElementById('canvas-wrap');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+wrap.appendChild(renderer.domElement);
+
+// ════════════════════════════════════════
+//  Scene
+// ════════════════════════════════════════
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0d0f);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 2000);
+camera.position.set(0, 1.5, 4);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 0.01;
+controls.maxDistance = 1000;
+
+// ════════════════════════════════════════
+//  Lighting (PBR)
+// ════════════════════════════════════════
+const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xfff5e8, 2.2);
+keyLight.position.set(4, 7, 4);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 0.1;
+keyLight.shadow.camera.far = 100;
+keyLight.shadow.bias = -0.0005;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x8ab0ff, 0.7);
+fillLight.position.set(-5, 3, -2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xff9060, 0.4);
+rimLight.position.set(0, 4, -6);
+scene.add(rimLight);
+
+// PMREM environment for IBL / PBR reflections
+const pmremGen = new THREE.PMREMGenerator(renderer);
+pmremGen.compileEquirectangularShader();
+const roomEnv = new RoomEnvironment();
+const envTex = pmremGen.fromScene(roomEnv).texture;
+scene.environment = envTex;
+roomEnv.dispose();
+
+// ════════════════════════════════════════
+//  Helpers
+// ════════════════════════════════════════
+const gridHelper = new THREE.GridHelper(20, 40, 0x333344, 0x222233);
+scene.add(gridHelper);
+
+const axesHelper = new THREE.AxesHelper(1.0);
+axesHelper.visible = false;
+scene.add(axesHelper);
+
+// ════════════════════════════════════════
+//  State
+// ════════════════════════════════════════
+let currentModel  = null;
+let mixer         = null;
+let currentAction = null;
+let animations    = [];
+let vrm           = null;
+let clock         = new THREE.Clock();
+let wireMode      = false;
+let bgIdx         = 0;
+let loopMode      = true;
+const bgColors    = [0x0d0d0f, 0x1a1a2e, 0x161620, 0x202020, 0xffffff];
+let pendingFiles  = {};
+
+// ════════════════════════════════════════
+//  UI Elements
+// ════════════════════════════════════════
+const dropOverlay = document.getElementById('drop-overlay');
+const dropZone    = document.getElementById('drop-zone');
+const fileInput   = document.getElementById('file-input');
+const panelInfo   = document.getElementById('panel-info');
+const panelAnim   = document.getElementById('panel-anim');
+const toolbar     = document.getElementById('toolbar');
+const animList    = document.getElementById('anim-list');
+const playBtn     = document.getElementById('play-btn');
+const stopBtn     = document.getElementById('stop-btn');
+const loopBtn     = document.getElementById('loop-btn');
+const speedSlider = document.getElementById('speed-slider');
+const speedValEl  = document.getElementById('speed-val');
+const statusEl    = document.getElementById('status');
+const progressBar = document.getElementById('progress-bar');
+const vrmBadge    = document.getElementById('vrm-badge');
+
+// ════════════════════════════════════════
+//  Helpers: Status & Progress
+// ════════════════════════════════════════
+let statusTimer;
+function toast(msg, dur = 3000) {
+  statusEl.textContent = msg;
+  statusEl.classList.add('show');
+  clearTimeout(statusTimer);
+  if (dur > 0) statusTimer = setTimeout(() => statusEl.classList.remove('show'), dur);
+}
+function setProgress(v) {
+  progressBar.style.width = (Math.min(v, 1) * 100) + '%';
+  if (v >= 1) setTimeout(() => { progressBar.style.width = '0%'; }, 600);
+}
+
+// ════════════════════════════════════════
+//  File Handling
+// ════════════════════════════════════════
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => processFiles(Array.from(e.target.files)));
+
+document.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+document.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  processFiles(Array.from(e.dataTransfer.files));
+});
+
+document.getElementById('open-btn').addEventListener('click', () => {
+  dropOverlay.classList.remove('hidden');
+  fileInput.click();
+});
+
+function processFiles(files) {
+  if (!files.length) return;
+  pendingFiles = {};
+  for (const f of files) {
+    const ext = f.name.split('.').pop().toLowerCase();
+    pendingFiles[ext] = f;
+    pendingFiles[f.name.toLowerCase()] = f;
+  }
+  const primary = files.find(f => /\.(obj|fbx|gltf|glb|vrm)$/i.test(f.name));
+  if (!primary) { toast('対応形式: OBJ / FBX / GLTF / GLB / VRM'); return; }
+  startLoad(primary);
+}
+
+// ════════════════════════════════════════
+//  Scene Reset
+// ════════════════════════════════════════
+function clearScene() {
+  if (currentModel) { scene.remove(currentModel); currentModel = null; }
+  if (mixer) { mixer.stopAllAction(); mixer = null; }
+  currentAction = null;
+  animations = [];
+  vrm = null;
+  animList.innerHTML = '';
+  vrmBadge.style.display = 'none';
+}
+
+// ════════════════════════════════════════
+//  Dispatch by extension
+// ════════════════════════════════════════
+function startLoad(file) {
+  clearScene();
+  dropOverlay.classList.add('hidden');
+  toast('読み込み中...', 0);
+  setProgress(0.05);
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const url  = URL.createObjectURL(file);
+
+  if (ext === 'obj')               loadOBJ(file, url);
+  else if (ext === 'fbx')          loadFBX(url, file.name);
+  else if (ext === 'gltf' || ext === 'glb') loadGLTF(url, file.name, false);
+  else if (ext === 'vrm')          loadGLTF(url, file.name, true);
+  else toast('未対応フォーマット: ' + ext);
+}
+
+// ════════════════════════════════════════
+//  OBJ Loader
+// ════════════════════════════════════════
+async function loadOBJ(file, url) {
+  const objLoader = new OBJLoader();
+  const mtlFile   = pendingFiles['mtl'];
+
+  if (mtlFile) {
+    try {
+      const mtlText = await mtlFile.text();
+      const mtlLoader = new MTLLoader();
+      const mats = mtlLoader.parse(mtlText, '');
+      mats.preload();
+      objLoader.setMaterials(mats);
+    } catch(e) { console.warn('[MTL] parse failed:', e); }
+  }
+
+  objLoader.load(url, obj => {
+    obj.traverse(c => {
+      if (!c.isMesh) return;
+      c.castShadow = true; c.receiveShadow = true;
+      if (!mtlFile) {
+        c.material = new THREE.MeshStandardMaterial({
+          color: 0xb0b8c8, roughness: 0.65, metalness: 0.05
+        });
+      }
+    });
+    onLoaded(obj, file.name, 'OBJ');
+  },
+  xhr => setProgress(xhr.total ? xhr.loaded / xhr.total * 0.95 : 0.5),
+  err => toast('OBJ読み込みエラー: ' + (err.message || err)));
+}
+
+// ════════════════════════════════════════
+//  FBX Loader
+// ════════════════════════════════════════
+function loadFBX(url, name) {
+  const loader = new FBXLoader();
+  loader.load(url, fbx => {
+    fbx.traverse(c => {
+      if (!c.isMesh) return;
+      c.castShadow = true; c.receiveShadow = true;
+      // Ensure PBR material
+      if (c.material && !c.material.isMeshStandardMaterial && !c.material.isMeshPhysicalMaterial) {
+        const old = Array.isArray(c.material) ? c.material : [c.material];
+        c.material = old.map(m => {
+          const std = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.0 });
+          if (m.color) std.color.copy(m.color);
+          if (m.map)   std.map = m.map;
+          return std;
+        });
+        if (c.material.length === 1) c.material = c.material[0];
+      }
+    });
+    if (fbx.animations?.length) {
+      mixer = new THREE.AnimationMixer(fbx);
+      animations = fbx.animations;
+    }
+    onLoaded(fbx, name, 'FBX');
+  },
+  xhr => setProgress(xhr.total ? xhr.loaded / xhr.total * 0.95 : 0.5),
+  err => toast('FBX読み込みエラー: ' + (err.message || err)));
+}
+
+// ════════════════════════════════════════
+//  GLTF / GLB / VRM Loader
+// ════════════════════════════════════════
+function loadGLTF(url, name, isVRM) {
+  const loader = new GLTFLoader();
+  if (isVRM) loader.register(parser => new VRMLoaderPlugin(parser));
+
+  loader.load(url, gltf => {
+    let model = gltf.scene;
+
+    if (isVRM && gltf.userData.vrm) {
+      vrm = gltf.userData.vrm;
+      VRMUtils.rotateVRM0(vrm);
+      model = vrm.scene;
+      vrmBadge.style.display = '';
+    }
+
+    model.traverse(c => {
+      if (!c.isMesh) return;
+      c.castShadow = true; c.receiveShadow = true;
+    });
+
+    if (gltf.animations?.length) {
+      mixer = new THREE.AnimationMixer(model);
+      animations = gltf.animations;
+    }
+    onLoaded(model, name, isVRM ? 'VRM' : name.toLowerCase().endsWith('.glb') ? 'GLB' : 'GLTF');
+  },
+  xhr => setProgress(xhr.total ? xhr.loaded / xhr.total * 0.95 : 0.5),
+  err => toast('GLTF読み込みエラー: ' + (err.message || err)));
+}
+
+// ════════════════════════════════════════
+//  Post-Load Setup
+// ════════════════════════════════════════
+function onLoaded(model, name, fmt) {
+  scene.add(model);
+  currentModel = model;
+  setProgress(1);
+
+  // ── Compute stats ──
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+  // Center at origin base
+  model.position.sub(center);
+  model.position.y += size.y / 2;
+
+  // Camera fit
+  const fitDist = maxDim * 1.8;
+  camera.position.set(fitDist * 0.5, size.y * 0.5, fitDist);
+  camera.near = maxDim * 0.001;
+  camera.far  = maxDim * 200;
+  camera.updateProjectionMatrix();
+  controls.target.set(0, size.y * 0.4, 0);
+  controls.update();
+
+  // Grid scale
+  const gridSize = Math.max(10, maxDim * 3);
+  gridHelper.scale.setScalar(gridSize / 20);
+  axesHelper.scale.setScalar(maxDim * 0.15);
+
+  // ── Count stats ──
+  let verts = 0, tris = 0, meshes = 0, bones = 0;
+  model.traverse(c => {
+    if (c.isMesh && c.geometry) {
+      meshes++;
+      const geo = c.geometry;
+      const pos = geo.attributes.position;
+      if (pos) verts += pos.count;
+      tris += geo.index ? geo.index.count / 3 : pos ? pos.count / 3 : 0;
+    }
+    if (c.isBone) bones++;
+  });
+
+  document.getElementById('model-name').textContent = name;
+  document.getElementById('info-fmt').textContent  = fmt;
+  document.getElementById('info-vert').textContent = verts.toLocaleString();
+  document.getElementById('info-tri').textContent  = Math.round(tris).toLocaleString();
+  document.getElementById('info-mesh').textContent = meshes;
+  document.getElementById('info-bone').textContent = bones || '—';
+
+  // ── Animations ──
+  if (animations.length) {
+    panelAnim.style.display = '';
+    animations.forEach((clip, i) => {
+      const el = document.createElement('div');
+      el.className = 'anim-item';
+      el.title = clip.name;
+      el.textContent = clip.name || `clip_${i}`;
+      el.addEventListener('click', () => playClip(i, el));
+      animList.appendChild(el);
+    });
+    playClip(0, animList.firstChild);
+  } else {
+    panelAnim.style.display = 'none';
+  }
+
+  panelInfo.style.display = '';
+  toolbar.style.display   = 'flex';
+  if (wireMode) applyWire(true);
+  wakeUp();   // モデルロード後からカウント開始
+  toast(`✓  ${name} を読み込みました`);
+}
+
+// ════════════════════════════════════════
+//  Animation Controls
+// ════════════════════════════════════════
+function playClip(i, el) {
+  if (!mixer || !animations[i]) return;
+  if (currentAction) currentAction.fadeOut(0.2);
+  currentAction = mixer.clipAction(animations[i]);
+  currentAction.setLoop(loopMode ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+  currentAction.clampWhenFinished = !loopMode;
+  currentAction.reset().fadeIn(0.2).play();
+  document.querySelectorAll('.anim-item').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  playBtn.textContent = '⏸';
+}
+
+playBtn.addEventListener('click', () => {
+  if (!currentAction) return;
+  currentAction.paused = !currentAction.paused;
+  playBtn.textContent = currentAction.paused ? '▶' : '⏸';
+});
+
+stopBtn.addEventListener('click', () => {
+  if (!currentAction) return;
+  currentAction.stop(); currentAction = null;
+  playBtn.textContent = '▶';
+  document.querySelectorAll('.anim-item').forEach(e => e.classList.remove('active'));
+});
+
+loopBtn.addEventListener('click', () => {
+  loopMode = !loopMode;
+  loopBtn.classList.toggle('active', loopMode);
+  if (currentAction) {
+    currentAction.setLoop(loopMode ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    currentAction.clampWhenFinished = !loopMode;
+  }
+});
+
+speedSlider.addEventListener('input', () => {
+  const v = parseFloat(speedSlider.value);
+  speedValEl.textContent = v.toFixed(2) + 'x';
+  if (mixer) mixer.timeScale = v;
+});
+
+// ════════════════════════════════════════
+//  Lighting Panel
+// ════════════════════════════════════════
+const panelLight = document.getElementById('panel-light');
+let hdrEnvTex    = null;   // loaded HDR texture
+let roomEnvTex   = envTex; // default room env
+
+// ── helpers ──
+function sph2cart(azDeg, elDeg, r) {
+  const az = azDeg * Math.PI / 180;
+  const el = elDeg * Math.PI / 180;
+  return new THREE.Vector3(
+    r * Math.cos(el) * Math.sin(az),
+    r * Math.sin(el),
+    r * Math.cos(el) * Math.cos(az)
+  );
+}
+function applyLightDir(light, azDeg, elDeg) {
+  const pos = sph2cart(azDeg, elDeg, 10);
+  light.position.copy(pos);
+}
+
+// ── Wire sliders to lights ──
+function bindLightSlider(sliderId, valId, onChange) {
+  const sl = document.getElementById(sliderId);
+  const vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    const v = parseFloat(sl.value);
+    vl.textContent = onChange(v);
+  });
+}
+
+bindLightSlider('key-int', 'key-int-v', v => { keyLight.intensity = v; return v.toFixed(2); });
+bindLightSlider('key-az',  'key-az-v',  v => { applyLightDir(keyLight,  v, parseFloat(document.getElementById('key-el').value)); return v + '°'; });
+bindLightSlider('key-el',  'key-el-v',  v => { applyLightDir(keyLight,  parseFloat(document.getElementById('key-az').value), v); return v + '°'; });
+
+bindLightSlider('fill-int', 'fill-int-v', v => { fillLight.intensity = v; return v.toFixed(2); });
+bindLightSlider('fill-az',  'fill-az-v',  v => { applyLightDir(fillLight, v, parseFloat(document.getElementById('fill-el').value)); return v + '°'; });
+bindLightSlider('fill-el',  'fill-el-v',  v => { applyLightDir(fillLight, parseFloat(document.getElementById('fill-az').value), v); return v + '°'; });
+
+bindLightSlider('rim-int', 'rim-int-v', v => { rimLight.intensity = v; return v.toFixed(2); });
+bindLightSlider('rim-az',  'rim-az-v',  v => { applyLightDir(rimLight,  v, parseFloat(document.getElementById('rim-el').value)); return v + '°'; });
+bindLightSlider('rim-el',  'rim-el-v',  v => { applyLightDir(rimLight,  parseFloat(document.getElementById('rim-az').value), v); return v + '°'; });
+
+bindLightSlider('amb-int', 'amb-int-v', v => { ambient.intensity = v; return v.toFixed(2); });
+
+// ── Initialize positions from default slider values ──
+applyLightDir(keyLight,  45,  55);
+applyLightDir(fillLight, 225, 30);
+applyLightDir(rimLight,  180, 50);
+
+// ── Exposure ──
+const exposureSlider = document.getElementById('exposure');
+const exposureVal    = document.getElementById('exposure-v');
+exposureSlider.addEventListener('input', () => {
+  const v = parseFloat(exposureSlider.value);
+  renderer.toneMappingExposure = v;
+  exposureVal.textContent = v.toFixed(2);
+});
+
+// ── HDR lights-off / bg toggles ──
+const hdrLightsOffChk = document.getElementById('hdr-lights-off');
+const hdrAsBgChk      = document.getElementById('hdr-as-bg');
+const envIntSlider    = document.getElementById('env-int');
+const envIntVal       = document.getElementById('env-int-v');
+
+// ── ライトセクションのグレーアウト制御 ──
+const lightSections = ['sec-key','sec-fill','sec-rim','sec-amb'].map(id => document.getElementById(id));
+
+function updateLightSectionDim() {
+  const dim = !!hdrEnvTex && hdrLightsOffChk.checked;
+  lightSections.forEach(el => el.classList.toggle('dimmed', dim));
+}
+
+function applyHDRToggles() {
+  const hasHDR = !!hdrEnvTex;
+  if (hasHDR && hdrLightsOffChk.checked) {
+    keyLight.visible  = false;
+    fillLight.visible = false;
+    rimLight.visible  = false;
+    ambient.visible   = false;
+  } else {
+    keyLight.visible  = true;
+    fillLight.visible = true;
+    rimLight.visible  = true;
+    ambient.visible   = true;
+  }
+  if (hasHDR && hdrAsBgChk.checked) {
+    scene.background = hdrEnvTex;
+  } else if (hasHDR) {
+    scene.background = new THREE.Color(bgColors[bgIdx]);
+  }
+  updateLightSectionDim();
+}
+hdrLightsOffChk.addEventListener('change', applyHDRToggles);
+hdrAsBgChk.addEventListener('change', applyHDRToggles);
+
+envIntSlider.addEventListener('input', () => {
+  const v = parseFloat(envIntSlider.value);
+  scene.environmentIntensity = v;
+  envIntVal.textContent = v.toFixed(2);
+});
+
+// ── HDR Load ──
+const hdrZone     = document.getElementById('hdr-zone');
+const hdrInput    = document.getElementById('hdr-input');
+const hdrClearBtn = document.getElementById('hdr-clear');
+const hdrRotSl    = document.getElementById('hdr-rot');
+const hdrRotVal   = document.getElementById('hdr-rot-v');
+
+hdrZone.addEventListener('click', () => hdrInput.click());
+hdrInput.addEventListener('change', e => { if (e.target.files[0]) loadHDR(e.target.files[0]); });
+
+// HDR rotation
+hdrRotSl.addEventListener('input', () => {
+  const deg = parseFloat(hdrRotSl.value);
+  hdrRotVal.textContent = deg + '°';
+  const rad = deg * Math.PI / 180;
+  scene.environmentRotation.y = rad;
+  scene.backgroundRotation.y  = rad;
+});
+
+// HDR clear
+hdrClearBtn.addEventListener('click', () => {
+  if (!hdrEnvTex) return;
+  hdrEnvTex.dispose();
+  hdrEnvTex = null;
+  scene.environment = roomEnvTex;
+  scene.background  = new THREE.Color(bgColors[bgIdx]);
+  // スライダーリセット
+  hdrRotSl.value = 0;
+  hdrRotVal.textContent = '0°';
+  scene.environmentRotation.y = 0;
+  scene.backgroundRotation.y  = 0;
+  // UIリセット
+  hdrZone.textContent = '▸ .hdr / .exr をドロップまたはクリック';
+  hdrZone.classList.remove('loaded');
+  hdrClearBtn.classList.remove('visible');
+  hdrInput.value = '';
+  // ライト復元
+  applyHDRToggles();
+  toast('HDR を解除しました');
+});
+
+// HDR drag-and-drop on scene (outside model overlay)
+renderer.domElement.addEventListener('dragover',  e => e.preventDefault());
+renderer.domElement.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = Array.from(e.dataTransfer.files).find(f => /\.(hdr|exr)$/i.test(f.name));
+  if (f) loadHDR(f);
+});
+
+function loadHDR(file) {
+  const url = URL.createObjectURL(file);
+  const ext = file.name.split('.').pop().toLowerCase();
+  const loader = ext === 'exr' ? new EXRLoader() : new RGBELoader();
+  toast('HDR 読み込み中...', 0);
+  setProgress(0.3);
+  loader.load(url, tex => {
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    if (hdrEnvTex) hdrEnvTex.dispose();
+    hdrEnvTex = tex;
+    scene.environment = tex;
+    // 回転を現在のスライダー値に合わせる
+    const rad = parseFloat(hdrRotSl.value) * Math.PI / 180;
+    scene.environmentRotation.y = rad;
+    scene.backgroundRotation.y  = rad;
+    hdrZone.textContent = '✓ ' + file.name;
+    hdrZone.classList.add('loaded');
+    hdrClearBtn.classList.add('visible');
+    applyHDRToggles();
+    setProgress(1);
+    URL.revokeObjectURL(url);
+    toast(`✓ HDR: ${file.name}`);
+  }, undefined, err => toast('HDR読み込みエラー: ' + (err.message || err)));
+}
+
+// ════════════════════════════════════════
+//  Toolbar
+// ════════════════════════════════════════
+const btnGrid  = document.getElementById('btn-grid');
+const btnAxes  = document.getElementById('btn-axes');
+const btnWire  = document.getElementById('btn-wire');
+const btnLight = document.getElementById('btn-light');
+const btnReset = document.getElementById('btn-reset');
+const btnBg    = document.getElementById('btn-bg');
+
+btnGrid.addEventListener('click', () => {
+  gridHelper.visible = !gridHelper.visible;
+  btnGrid.classList.toggle('active');
+});
+btnAxes.addEventListener('click', () => {
+  axesHelper.visible = !axesHelper.visible;
+  btnAxes.classList.toggle('active');
+});
+btnWire.addEventListener('click', () => {
+  wireMode = !wireMode;
+  btnWire.classList.toggle('active');
+  applyWire(wireMode);
+});
+btnLight.addEventListener('click', () => {
+  const visible = panelLight.style.display === 'block';
+  panelLight.style.display = visible ? 'none' : 'block';
+  btnLight.classList.toggle('active', !visible);
+});
+btnReset.addEventListener('click', resetCamera);
+btnBg.addEventListener('click', () => {
+  if (hdrEnvTex && hdrAsBgChk.checked) return; // HDR背景固定中はスキップ
+  bgIdx = (bgIdx + 1) % bgColors.length;
+  scene.background = new THREE.Color(bgColors[bgIdx]);
+});
+
+function applyWire(on) {
+  if (!currentModel) return;
+  currentModel.traverse(c => {
+    if (!c.isMesh) return;
+    const mats = Array.isArray(c.material) ? c.material : [c.material];
+    mats.forEach(m => { if (m) m.wireframe = on; });
+  });
+}
+
+function resetCamera() {
+  if (!currentModel) return;
+  const box = new THREE.Box3().setFromObject(currentModel);
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const fitDist = maxDim * 1.8;
+  camera.position.set(fitDist * 0.5, size.y * 0.5, fitDist);
+  controls.target.set(0, size.y * 0.4, 0);
+  controls.update();
+}
+
+// ════════════════════════════════════════
+//  Idle Sleep & Auto-Rotate
+// ════════════════════════════════════════
+let IDLE_MS    = 10000;
+let idleTimer  = null;
+let isSleeping = false;
+
+controls.autoRotate      = false;
+controls.autoRotateSpeed = 0.4;
+
+function goSleep() {
+  if (isSleeping) return;
+  isSleeping = true;
+  document.body.classList.add('ui-sleeping');
+  controls.autoRotate = true;
+}
+
+function wakeUp() {
+  if (isSleeping) {
+    isSleeping = false;
+    document.body.classList.remove('ui-sleeping');
+    controls.autoRotate = false;
+  }
+  clearTimeout(idleTimer);
+  if (currentModel) {
+    idleTimer = setTimeout(goSleep, IDLE_MS);
+  }
+}
+
+// ── Auto Sleep スライダー ──
+const idleTimeSl  = document.getElementById('idle-time');
+const idleTimeVal = document.getElementById('idle-time-v');
+const rotSpeedSl  = document.getElementById('rot-speed');
+const rotSpeedVal = document.getElementById('rot-speed-v');
+
+idleTimeSl.addEventListener('input', () => {
+  const v = parseInt(idleTimeSl.value);
+  IDLE_MS = v * 1000;
+  idleTimeVal.textContent = v + 's';
+  wakeUp(); // タイマーを新しい値でリセット
+});
+
+rotSpeedSl.addEventListener('input', () => {
+  const v = parseFloat(rotSpeedSl.value);
+  controls.autoRotateSpeed = v;
+  rotSpeedVal.textContent = v.toFixed(2);
+});
+
+// アクティビティ検知
+['mousemove','mousedown','touchstart','keydown','wheel'].forEach(evt => {
+  window.addEventListener(evt, wakeUp, { passive: true });
+});
+
+// ════════════════════════════════════════
+//  Loop button initial state
+// ════════════════════════════════════════
+loopBtn.classList.add('active');
+
+// ════════════════════════════════════════
+//  Resize
+// ════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ════════════════════════════════════════
+//  Render Loop
+// ════════════════════════════════════════
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = clock.getDelta();
+  controls.update();
+  if (mixer) mixer.update(delta);
+  if (vrm)   vrm.update(delta);
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
