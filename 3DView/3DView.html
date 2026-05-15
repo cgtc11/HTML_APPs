@@ -165,6 +165,20 @@ canvas { display: block; }
 }
 #right-col::-webkit-scrollbar { display: none; }
 
+/* ── Physics Panel ── */
+#panel-physics {
+  width: 100%; padding: 0;
+  overflow: hidden; display: none;
+}
+.phys-vrm-badge {
+  margin: 10px 12px;
+  background: rgba(155,111,239,0.1);
+  border: 1px solid rgba(155,111,239,0.3);
+  border-radius: 5px; padding: 6px 10px;
+  font-size: 0.7rem; font-family: var(--mono);
+  color: var(--accent2); text-align: center;
+}
+
 /* ── Anim Panel (right) ── */
 #panel-anim {
   width: 100%;
@@ -249,8 +263,9 @@ body.ui-sleeping { cursor: none; }
   z-index: 100;
 }
 .toolbar-row {
-  display: flex; flex-direction: row; align-items: center; gap: 2px;
-  padding: 5px 6px;
+  display: flex; flex-direction: row; align-items: center;
+  gap: 2px; padding: 5px 6px;
+  flex-wrap: wrap; justify-content: center;
 }
 .toolbar-row + .toolbar-row {
   border-top: 1px solid var(--border);
@@ -596,6 +611,65 @@ body.ui-sleeping { cursor: none; }
   </div>
 </div>
 
+<!-- Physics Panel -->
+<div class="panel" id="panel-physics">
+  <div class="panel-header">
+    <div class="dot" style="background:#6ee7a0;box-shadow:0 0 6px #6ee7a0"></div>
+    <span>Physics</span>
+  </div>
+  <!-- VRM用 -->
+  <div id="phys-vrm-info" style="display:none">
+    <div class="phys-vrm-badge">✓ VRM SpringBone 内蔵物理</div>
+  </div>
+  <!-- FBX/GLTF用 -->
+  <div id="phys-sim-settings" style="display:none">
+    <div class="light-section">
+      <div class="light-section-title">
+        <div class="light-dot" style="background:#6ee7a0"></div>
+        <span id="phys-chain-label">Spring Chains: 0</span>
+      </div>
+      <div class="lrow">
+        <label>STIFF</label>
+        <input type="range" id="phys-stiff" min="0.01" max="1" step="0.01" value="0.18">
+        <span class="lval" id="phys-stiff-v">0.18</span>
+      </div>
+      <div class="lrow">
+        <label>DAMP</label>
+        <input type="range" id="phys-damp" min="0.5" max="0.99" step="0.01" value="0.88">
+        <span class="lval" id="phys-damp-v">0.88</span>
+      </div>
+      <div class="lrow">
+        <label>DRIVE</label>
+        <input type="range" id="phys-drive" min="0.5" max="50" step="0.5" value="6">
+        <span class="lval" id="phys-drive-v">6.0</span>
+      </div>
+      <div class="lrow">
+        <label>ROOT DRV</label>
+        <input type="range" id="phys-root-bias" min="0" max="1" step="0.05" value="0.15">
+        <span class="lval" id="phys-root-bias-v">0.15</span>
+      </div>
+      <div class="lrow">
+        <label>ROOT°</label>
+        <input type="range" id="phys-root" min="0.5" max="45" step="0.5" value="2">
+        <span class="lval" id="phys-root-v">2.0°</span>
+      </div>
+      <div class="lrow">
+        <label>TIP×</label>
+        <input type="range" id="phys-tip" min="1" max="12" step="0.5" value="6">
+        <span class="lval" id="phys-tip-v">6.0×</span>
+      </div>
+      <div class="lrow">
+        <label>GRAVITY</label>
+        <input type="range" id="phys-grav" min="0" max="1" step="0.05" value="0.2">
+        <span class="lval" id="phys-grav-v">0.20</span>
+      </div>
+    </div>
+  </div>
+  <div id="phys-none" style="padding:10px 12px;font-size:0.68rem;font-family:var(--mono);color:var(--text-dim)">
+    ボーンが検出されませんでした
+  </div>
+</div>
+
 <!-- Anim Panel -->
 <div class="panel" id="panel-anim">
   <div class="panel-header">
@@ -619,17 +693,24 @@ body.ui-sleeping { cursor: none; }
   <div class="toolbar-row">
     <button class="tool-btn active" id="btn-grid">GRID</button>
     <div class="tool-sep"></div>
-    <button class="tool-btn" id="btn-axes">AXES</button>
-    <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-wire">WIRE</button>
     <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-xray">XRAY</button>
+    <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-light">LIGHT</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-physics">PHYSICS</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn active" id="btn-anim-off">ANIM</button>
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-reset">RESET CAM</button>
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-bg">BG</button>
   </div>
   <div class="toolbar-row">
+    <button class="tool-btn active" id="btn-rot-cam">ROT:CAM</button>
+    <button class="tool-btn" id="btn-rot-obj">ROT:OBJ</button>
+    <div class="tool-sep"></div>
     <div class="tool-slider-group">
       <span class="tool-slider-label">IDLE</span>
       <input type="range" id="idle-time" min="3" max="60" step="1" value="10">
@@ -821,6 +902,14 @@ function clearScene() {
   vrm = null;
   animList.innerHTML = '';
   vrmBadge.style.display = 'none';
+  springSim = null;
+  panelPhysics.style.display = 'none';
+  // Xray cleanup
+  if (skeletonHelper) { scene.remove(skeletonHelper); skeletonHelper = null; }
+  xrayBackup.length = 0;
+  xrayMode = 0;
+  btnXray.textContent = 'XRAY';
+  btnXray.classList.remove('active');
 }
 
 // ════════════════════════════════════════
@@ -1009,7 +1098,20 @@ function onLoaded(model, name, fmt) {
   panelInfo.style.display = '';
   toolbar.style.display   = 'flex';
   if (wireMode) applyWire(true);
-  wakeUp();   // モデルロード後からカウント開始
+
+  // ── Skeleton Helper ──
+  if (skeletonHelper) { scene.remove(skeletonHelper); skeletonHelper = null; }
+  skeletonHelper = new THREE.SkeletonHelper(model);
+  skeletonHelper.material.depthTest  = false;
+  skeletonHelper.material.linewidth  = 1;
+  skeletonHelper.renderOrder = 999;
+  skeletonHelper.visible = false;
+  scene.add(skeletonHelper);
+
+  // ── Physics setup ──
+  setupPhysicsPanel(fmt);
+
+  wakeUp();
   toast(`✓  ${name} を読み込みました`);
 }
 
@@ -1018,6 +1120,7 @@ function onLoaded(model, name, fmt) {
 // ════════════════════════════════════════
 function playClip(i, el) {
   if (!mixer || !animations[i]) return;
+  lastClipIndex = i;
   if (currentAction) currentAction.fadeOut(0.2);
   currentAction = mixer.clipAction(animations[i]);
   currentAction.setLoop(loopMode ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
@@ -1236,20 +1339,16 @@ function loadHDR(file) {
 // ════════════════════════════════════════
 //  Toolbar
 // ════════════════════════════════════════
-const btnGrid  = document.getElementById('btn-grid');
-const btnAxes  = document.getElementById('btn-axes');
-const btnWire  = document.getElementById('btn-wire');
-const btnLight = document.getElementById('btn-light');
-const btnReset = document.getElementById('btn-reset');
-const btnBg    = document.getElementById('btn-bg');
+const btnGrid    = document.getElementById('btn-grid');
+const btnWire    = document.getElementById('btn-wire');
+const btnLight   = document.getElementById('btn-light');
+const btnReset   = document.getElementById('btn-reset');
+const btnBg      = document.getElementById('btn-bg');
+const btnAnimOff = document.getElementById('btn-anim-off');
 
 btnGrid.addEventListener('click', () => {
   gridHelper.visible = !gridHelper.visible;
   btnGrid.classList.toggle('active');
-});
-btnAxes.addEventListener('click', () => {
-  axesHelper.visible = !axesHelper.visible;
-  btnAxes.classList.toggle('active');
 });
 btnWire.addEventListener('click', () => {
   wireMode = !wireMode;
@@ -1263,9 +1362,35 @@ btnLight.addEventListener('click', () => {
 });
 btnReset.addEventListener('click', resetCamera);
 btnBg.addEventListener('click', () => {
-  if (hdrEnvTex && hdrAsBgChk.checked) return; // HDR背景固定中はスキップ
+  if (hdrEnvTex && hdrAsBgChk.checked) return;
   bgIdx = (bgIdx + 1) % bgColors.length;
   scene.background = new THREE.Color(bgColors[bgIdx]);
+});
+
+// ── ANIM ──
+// active = アニメ再生中, 非active = 停止中
+let animEnabled    = true;
+let lastClipIndex  = 0; // 停止前の最後のクリップを記憶
+
+btnAnimOff.addEventListener('click', () => {
+  animEnabled = !animEnabled;
+  btnAnimOff.classList.toggle('active', animEnabled);
+
+  if (!animEnabled) {
+    // 停止
+    if (mixer) {
+      mixer.stopAllAction();
+      currentAction = null;
+      playBtn.textContent = '▶';
+      document.querySelectorAll('.anim-item').forEach(e => e.classList.remove('active'));
+    }
+  } else {
+    // 再開: 最後に選択していたクリップを再生
+    if (mixer && animations.length) {
+      const el = animList.children[lastClipIndex];
+      playClip(lastClipIndex, el || null);
+    }
+  }
 });
 
 function applyWire(on) {
@@ -1289,6 +1414,367 @@ function resetCamera() {
 }
 
 // ════════════════════════════════════════
+//  X-Ray / Bone View
+// ════════════════════════════════════════
+let xrayMode       = 0;        // 0=off 1=xray 2=bone
+let skeletonHelper = null;
+const xrayBackup   = [];       // {m, transparent, opacity, depthWrite}
+
+const btnXray = document.getElementById('btn-xray');
+
+function applyXrayMaterials() {
+  if (!currentModel) return;
+  xrayBackup.length = 0;
+  currentModel.traverse(c => {
+    if (!c.isMesh) return;
+    const mats = Array.isArray(c.material) ? c.material : [c.material];
+    mats.forEach(m => {
+      xrayBackup.push({ m,
+        transparent: m.transparent,
+        opacity:     m.opacity,
+        depthWrite:  m.depthWrite,
+      });
+      m.transparent = true;
+      m.opacity     = 0.12;
+      m.depthWrite  = false;
+    });
+  });
+}
+
+function restoreXrayMaterials() {
+  xrayBackup.forEach(({ m, transparent, opacity, depthWrite }) => {
+    m.transparent = transparent;
+    m.opacity     = opacity;
+    m.depthWrite  = depthWrite;
+  });
+  xrayBackup.length = 0;
+  if (currentModel) {
+    currentModel.traverse(c => { if (c.isMesh) c.visible = true; });
+  }
+}
+
+function setXrayMode(mode) {
+  // まず全リセット
+  restoreXrayMaterials();
+  if (skeletonHelper) skeletonHelper.visible = false;
+
+  xrayMode = mode;
+
+  if (mode === 0) {
+    // OFF
+    btnXray.textContent = 'XRAY';
+    btnXray.classList.remove('active');
+  } else if (mode === 1) {
+    // XRAY: 半透明 + 骨
+    applyXrayMaterials();
+    if (skeletonHelper) skeletonHelper.visible = true;
+    btnXray.textContent = 'XRAY ON';
+    btnXray.classList.add('active');
+  } else if (mode === 2) {
+    // BONE: メッシュ非表示 + 骨のみ
+    if (currentModel) {
+      currentModel.traverse(c => { if (c.isMesh) c.visible = false; });
+    }
+    if (skeletonHelper) skeletonHelper.visible = true;
+    btnXray.textContent = 'BONE';
+    btnXray.classList.add('active');
+  }
+}
+
+btnXray.addEventListener('click', () => {
+  setXrayMode((xrayMode + 1) % 3);
+});
+
+// ════════════════════════════════════════
+//  Rotation Mode (CAM / OBJ)
+// ════════════════════════════════════════
+let rotMode = 'cam'; // 'cam' | 'obj'
+
+const btnRotCam = document.getElementById('btn-rot-cam');
+const btnRotObj = document.getElementById('btn-rot-obj');
+
+btnRotCam.addEventListener('click', () => {
+  rotMode = 'cam';
+  controls.enableRotate = true;
+  btnRotCam.classList.add('active');
+  btnRotObj.classList.remove('active');
+  if (springSim) springSim.reset();
+});
+btnRotObj.addEventListener('click', () => {
+  rotMode = 'obj';
+  controls.enableRotate = false;
+  btnRotObj.classList.add('active');
+  btnRotCam.classList.remove('active');
+});
+
+// ── OBJ mode: 左ドラッグ=回転 / 右ドラッグ=パン ──
+let _isDragging  = false;
+let _isRightDrag = false;
+let _lastPtrX    = 0;
+let _lastPtrY    = 0;
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (rotMode !== 'obj') return;
+  _isDragging  = true;
+  _isRightDrag = e.button === 2;
+  _lastPtrX    = e.clientX;
+  _lastPtrY    = e.clientY;
+});
+renderer.domElement.addEventListener('contextmenu', e => {
+  if (rotMode === 'obj') e.preventDefault();
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!_isDragging || rotMode !== 'obj') return;
+  const dx = e.clientX - _lastPtrX;
+  const dy = e.clientY - _lastPtrY;
+  _lastPtrX = e.clientX;
+  _lastPtrY = e.clientY;
+
+  if (_isRightDrag) {
+    // 右ドラッグ: オブジェクト自体をカメラ平面に沿って移動
+    if (!currentModel) return;
+    const panSpeed = 0.004;
+    const right = new THREE.Vector3();
+    const up    = new THREE.Vector3(0, 1, 0);
+    camera.getWorldDirection(right);
+    right.cross(up).normalize();
+    const moveX = right.multiplyScalar(dx * panSpeed);
+    const moveY = up.multiplyScalar(-dy * panSpeed);
+    currentModel.position.add(moveX).add(moveY);
+  } else if (currentModel) {
+    // 左ドラッグ: オブジェクト回転
+    currentModel.rotation.y += dx * 0.008;
+  }
+});
+renderer.domElement.addEventListener('pointerup',   () => { _isDragging = false; });
+renderer.domElement.addEventListener('pointerleave',() => { _isDragging = false; });
+
+// ════════════════════════════════════════
+//  Physics Panel
+// ════════════════════════════════════════
+const panelPhysics = document.getElementById('panel-physics');
+let springSim    = null;
+let physicsEnabled = true;
+
+const btnPhysics = document.getElementById('btn-physics');
+btnPhysics.addEventListener('click', () => {
+  physicsEnabled = !physicsEnabled;
+  btnPhysics.classList.toggle('active', physicsEnabled);
+  if (!physicsEnabled && springSim) springSim.reset();
+});
+
+// ── Secondary bone keywords ──
+const PRIMARY_KW = /spine|chest|hips|pelvis|neck|head|shoulder|arm|elbow|wrist|hand|finger|leg|thigh|knee|ankle|foot|toe|eye|jaw|tongue|root|center|master/i;
+const SECONDARY_KW = /hair|skirt|cloth|tail|ribbon|breast|bust|cape|coat|sleeve|scarf|bang|ahoge|side|front|back|fly|pony|braid|pigtail|twintail|drill|bob|wing|ear|dangle|fringe|hem|ruffle|flap|strap|lace|spring|bone|joint/i;
+
+function detectSecondaryChains(model) {
+  const chains = [];
+  const visited = new Set();
+
+  // キーワード一致ノード: SkinnedMesh・カメラ・ライト・シーン以外なら含める
+  function isSpringNode(node) {
+    return node.isObject3D && !node.isSkinnedMesh && !node.isCamera && !node.isLight && !node.isScene;
+  }
+
+  function traceChain(node) {
+    const chain = [];
+    let cur = node;
+    while (cur && isSpringNode(cur)) {
+      chain.push(cur);
+      visited.add(cur.uuid);
+      const kids = cur.children.filter(c => isSpringNode(c) && !visited.has(c.uuid) && !PRIMARY_KW.test(c.name));
+      if (kids.length === 1) {
+        cur = kids[0];
+      } else {
+        if (kids.length > 1) {
+          for (const kid of kids) {
+            if (!visited.has(kid.uuid)) traceChain(kid);
+          }
+        }
+        break;
+      }
+    }
+    if (chain.length >= 1) chains.push(chain);
+  }
+
+  model.traverse(node => {
+    if (!isSpringNode(node)) return;
+    if (visited.has(node.uuid)) return;
+    if (PRIMARY_KW.test(node.name)) return;
+
+    const parentIsSpring = node.parent && isSpringNode(node.parent) && !PRIMARY_KW.test(node.parent.name);
+    // キーワード一致 OR (親がspring系かつ自分も非primary)
+    const isSec = SECONDARY_KW.test(node.name) ||
+                  (parentIsSpring && SECONDARY_KW.test(node.parent.name));
+
+    if (isSec && !visited.has(node.uuid)) {
+      traceChain(node);
+    }
+  });
+
+  // Fallback: PRIMARY以外のボーンを全部チェーンとして拾う
+  if (chains.length === 0) {
+    const fallbackVisited = new Set();
+    model.traverse(node => {
+      if (!node.isBone) return;
+      if (PRIMARY_KW.test(node.name)) return;
+      if (fallbackVisited.has(node.uuid)) return;
+      let chain = [];
+      let cur = node;
+      while (cur && cur.isBone && !PRIMARY_KW.test(cur.name) && !fallbackVisited.has(cur.uuid)) {
+        chain.push(cur);
+        fallbackVisited.add(cur.uuid);
+        const kids = cur.children.filter(c => c.isBone && !PRIMARY_KW.test(c.name));
+        cur = kids.length === 1 ? kids[0] : null;
+      }
+      if (chain.length >= 1) chains.push(chain);
+    });
+  }
+  return chains;
+}
+
+// ── Spring Simulation ──
+class SimpleSpringSim {
+  constructor(chains) {
+    this.chains = chains.map(bones => ({
+      bones,
+      restQuats: bones.map(b => b.quaternion.clone()),
+      angles:    new Float32Array(bones.length),
+      vels:      new Float32Array(bones.length),
+    }));
+    this.stiffness     = 0.18;
+    this.damping       = 0.88;
+    this.driveStrength = 6.0;
+    this.rootBias      = 0.15;
+    this.rootAngle     = 2.0;
+    this.tipMult       = 6.0;
+    this.gravity       = 0.20;
+    this._prevRotY     = 0;
+    this._smoothDelta  = 0;
+    // 再利用する一時オブジェクト
+    this._q            = new THREE.Quaternion();
+    this._invPQ        = new THREE.Quaternion();
+  }
+
+  update(delta, modelRotY) {
+    const rotDelta = modelRotY - this._prevRotY;
+    this._prevRotY = modelRotY;
+    this._smoothDelta += (rotDelta - this._smoothDelta) * 0.5;
+
+    for (const chain of this.chains) {
+      const n = chain.bones.length;
+
+      // チェーン根本のワールド位置からスウィング軸を決定
+      // Y軸回転の慣性ラグ方向 = -(ω × r) = (-dz, 0, dx) / |r|
+      const rootWorldPos = new THREE.Vector3();
+      chain.bones[0].getWorldPosition(rootWorldPos);
+      const dx = rootWorldPos.x;
+      const dz = rootWorldPos.z;
+      const len = Math.sqrt(dx * dx + dz * dz);
+
+      let worldSwingAxis;
+      if (len > 0.001) {
+        // 中心から離れている → 位置に応じた正しい軸
+        worldSwingAxis = new THREE.Vector3(-dz / len, 0, dx / len);
+      } else {
+        // 中心付近 → モデル前方に対して垂直なデフォルト軸
+        worldSwingAxis = new THREE.Vector3(
+          Math.cos(modelRotY), 0, -Math.sin(modelRotY)
+        );
+      }
+
+      for (let i = 0; i < n; i++) {
+        const t = n > 1 ? i / (n - 1) : 1;
+        const maxRad      = (this.rootAngle * (1 + this.tipMult * t)) * Math.PI / 180;
+        const tipFactor   = this.rootBias + (1.0 - this.rootBias) * t;
+        const driveTarget = Math.max(-maxRad, Math.min(maxRad,
+          -this._smoothDelta * this.driveStrength * tipFactor));
+        const gravTarget  = this.gravity * t * 0.5;
+        const target      = Math.max(-maxRad, Math.min(maxRad, driveTarget + gravTarget));
+        const springForce = (target - chain.angles[i]) * this.stiffness;
+        chain.vels[i]     = chain.vels[i] * this.damping + springForce;
+        chain.angles[i]   = Math.max(-maxRad, Math.min(maxRad,
+          chain.angles[i] + chain.vels[i]));
+
+        const bone = chain.bones[i];
+        bone.quaternion.copy(chain.restQuats[i]);
+
+        // ワールドスウィング軸をボーン親のローカル空間に変換
+        if (bone.parent) {
+          bone.parent.getWorldQuaternion(this._invPQ);
+          this._invPQ.invert();
+        } else {
+          this._invPQ.identity();
+        }
+        const localAxis = worldSwingAxis.clone().applyQuaternion(this._invPQ).normalize();
+        this._q.setFromAxisAngle(localAxis, chain.angles[i]);
+        bone.quaternion.multiply(this._q);
+      }
+    }
+  }
+  reset() {
+    for (const chain of this.chains) {
+      chain.angles.fill(0);
+      chain.vels.fill(0);
+      chain.bones.forEach((b, i) => b.quaternion.copy(chain.restQuats[i]));
+    }
+    this._smoothDelta = 0;
+  }
+}
+
+function setupPhysicsPanel(fmt) {
+  const isVRM  = fmt === 'VRM';
+  const vrmInfo  = document.getElementById('phys-vrm-info');
+  const simSets  = document.getElementById('phys-sim-settings');
+  const noneMsg  = document.getElementById('phys-none');
+  const chainLbl = document.getElementById('phys-chain-label');
+
+  vrmInfo.style.display = 'none';
+  simSets.style.display = 'none';
+  noneMsg.style.display = 'none';
+  springSim = null;
+
+  if (isVRM) {
+    vrmInfo.style.display = '';
+    panelPhysics.style.display = 'block';
+    btnPhysics.classList.toggle('active', physicsEnabled);
+    return;
+  }
+
+  const chains = currentModel ? detectSecondaryChains(currentModel) : [];
+  if (chains.length > 0) {
+    springSim = new SimpleSpringSim(chains);
+    chainLbl.textContent = `Spring Chains: ${chains.length}`;
+    simSets.style.display = '';
+    panelPhysics.style.display = 'block';
+    btnPhysics.classList.toggle('active', physicsEnabled);
+  } else {
+    noneMsg.style.display = '';
+    panelPhysics.style.display = 'block';
+    btnPhysics.classList.remove('active');
+  }
+}
+
+// ── Physics slider bindings ──
+function bindPhysSlider(id, valId, decimals, unit, setter) {
+  const sl = document.getElementById(id);
+  const vl = document.getElementById(valId);
+  if (!sl) return;
+  sl.addEventListener('input', () => {
+    const v = parseFloat(sl.value);
+    vl.textContent = v.toFixed(decimals) + unit;
+    if (springSim) setter(springSim, v);
+  });
+}
+bindPhysSlider('phys-stiff',     'phys-stiff-v',     2, '',  (s,v) => s.stiffness     = v);
+bindPhysSlider('phys-damp',      'phys-damp-v',      2, '',  (s,v) => s.damping       = v);
+bindPhysSlider('phys-drive',     'phys-drive-v',     1, '',  (s,v) => s.driveStrength = v);
+bindPhysSlider('phys-root-bias', 'phys-root-bias-v', 2, '',  (s,v) => s.rootBias      = v);
+bindPhysSlider('phys-root',      'phys-root-v',      1, '°', (s,v) => s.rootAngle     = v);
+bindPhysSlider('phys-tip',       'phys-tip-v',       1, '×', (s,v) => s.tipMult       = v);
+bindPhysSlider('phys-grav',      'phys-grav-v',      2, '',  (s,v) => s.gravity       = v);
+
+// ════════════════════════════════════════
 //  Idle Sleep & Auto-Rotate
 // ════════════════════════════════════════
 let IDLE_MS    = 10000;
@@ -1297,12 +1783,16 @@ let isSleeping = false;
 
 controls.autoRotate      = false;
 controls.autoRotateSpeed = 0.4;
+let objRotSpeed = 0.4; // rad/s相当 (autoRotateSpeedと同値で管理)
 
 function goSleep() {
   if (isSleeping) return;
   isSleeping = true;
   document.body.classList.add('ui-sleeping');
-  controls.autoRotate = true;
+  if (rotMode === 'cam') {
+    controls.autoRotate = true;
+  }
+  // OBJ modeはrenderLoop内でmodelを回す
 }
 
 function wakeUp() {
@@ -1310,6 +1800,7 @@ function wakeUp() {
     isSleeping = false;
     document.body.classList.remove('ui-sleeping');
     controls.autoRotate = false;
+    if (springSim) springSim.reset();
   }
   clearTimeout(idleTimer);
   if (currentModel) {
@@ -1327,12 +1818,13 @@ idleTimeSl.addEventListener('input', () => {
   const v = parseInt(idleTimeSl.value);
   IDLE_MS = v * 1000;
   idleTimeVal.textContent = v + 's';
-  wakeUp(); // タイマーを新しい値でリセット
+  wakeUp();
 });
 
 rotSpeedSl.addEventListener('input', () => {
   const v = parseFloat(rotSpeedSl.value);
   controls.autoRotateSpeed = v;
+  objRotSpeed = v;
   rotSpeedVal.textContent = v.toFixed(2);
 });
 
@@ -1362,8 +1854,17 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
   controls.update();
-  if (mixer) mixer.update(delta);
+  if (mixer && animEnabled) mixer.update(delta);
   if (vrm)   vrm.update(delta);
+
+  if (isSleeping && rotMode === 'obj' && currentModel) {
+    currentModel.rotation.y += objRotSpeed * delta * 0.5;
+  }
+
+  if (rotMode === 'obj' && physicsEnabled && springSim && currentModel) {
+    springSim.update(delta, currentModel.rotation.y);
+  }
+
   renderer.render(scene, camera);
 }
 animate();
