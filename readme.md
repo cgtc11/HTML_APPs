@@ -102,7 +102,7 @@
 </tr>
 <tr>
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/mahjong.html">
 <img src="https://github.com/cgtc11/image/blob/main/11_ico.png" width="120"><br>
 <b>mahjong</b>
 </a>
@@ -110,7 +110,15 @@
 麻雀ゲーム
 </td>
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/7narabe.html">
+<img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
+<b>poker</b>
+</a>
+<br>
+７ならべ
+</td>
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/poker.html">
 <img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
 <b>poker</b>
 </a>
@@ -118,20 +126,12 @@
 ポーカーゲーム
 </td>
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/texas.html">
 <img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
 <b>poker</b>
 </a>
 <br>
-ポーカーゲーム
-</td>
-<td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
-<img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
-<b>poker</b>
-</a>
-<br>
-ポーカーゲーム
+テキサスポーカーゲーム
 </td>
 </tr>
 </table>
