@@ -89,6 +89,19 @@
 複数テキストを1つにまとめる
 </td>
 <td align="center">
+<b></b>
+</a>
+<br>
+</td>
+<td align="center">
+<br>
+<b></b>
+</a>
+<br>
+</td>
+</tr>
+<tr>
+<td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
 <img src="https://github.com/cgtc11/image/blob/main/11_ico.png" width="120"><br>
 <b>mahjong</b>
@@ -104,39 +117,21 @@
 <br>
 ポーカーゲーム
 </td>
-</tr>
-<tr>
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/websculpt/websculpt.html">
-<img src="https://github.com/cgtc11/image/blob/main/05_ico.png" width="120"><br>
-<b>websculpt</b>
+<a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
+<img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
+<b>poker</b>
 </a>
 <br>
-スカルプトモデル作成
+ポーカーゲーム
 </td>
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/3DView/3DView.html">
-<img src="https://github.com/cgtc11/image/blob/main/06_ico.png" width="120"><br>
-<b>3DView</b>
+<a href="https://cgtc11.github.io/HTML_APPs/Game/Game.html">
+<img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
+<b>poker</b>
 </a>
 <br>
-3Dモデルビューア
-</td>
-<td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/AEmini/AEmini.html">
-<img src="https://github.com/cgtc11/image/blob/main/07_ico.png" width="120"><br>
-<b>AEmini</b>
-</a>
-<br>
-動画編集
-</td>
-<td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/loop_studio/loop_studio.html">
-<img src="https://github.com/cgtc11/image/blob/main/08_ico.png" width="120"><br>
-<b>loop_studio</b>
-</a>
-<br>
-音楽編集
+ポーカーゲーム
 </td>
 </tr>
 </table>
