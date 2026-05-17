@@ -1307,7 +1307,7 @@ txIn.addEventListener('keydown',e=>{if(e.key==='Escape')commitText();});
 // ═══ TOOLS
 const TNAMES={brush:'ブラシ',dotpen:'ドットペン',eraser:'消しゴム',blur:'ぼかし',fill:'塗りつぶし',eyedrop:'スポイト',select:'矩形選択',lasso:'自由選択',wand:'自動選択',move:'移動',rotate:'回転',scale:'拡縮',line:'ライン',rect:'四角形',ellipse:'楕円',text:'テキスト'};
 // ─── 回転ツール関数
-let _rotCX=0,_rotCY=0;
+let _movingSelOnly=false,_selMoveOX=0,_selMoveOY=0,_selMoveStartX=0,_selMoveStartY=0;
 let _rotStartAngle=0,_rotCurAngle=0,_rotOrigCv=null;
 let _selRotStart=0,_selRotOrigCv=null;
 
@@ -1605,6 +1605,18 @@ function onDown(e){
 
   drawing=true;startX=cp.x;startY=cp.y;prevX=cp.x;prevY=cp.y;
 
+  // 選択ツールで選択範囲内をドラッグ → 選択枠だけ移動（中身は動かない）
+  if(actTool==='select'&&sel.active&&sel.w>0&&sel.h>0){
+    const inside=cp.x>=sel.x&&cp.x<=sel.x+sel.w&&cp.y>=sel.y&&cp.y<=sel.y+sel.h;
+    if(inside){
+      _movingSelOnly=true;
+      _selMoveStartX=cp.x;_selMoveStartY=cp.y;
+      _selMoveOX=sel.x;_selMoveOY=sel.y;
+      sel._basePts=sel.pts.map(p=>({...p}));
+      drawing=true;eC._actTool='move';return;
+    }
+  }
+
   if(actTool==='select'){if(float_)commitMove();clearSel();lassoPts=[];}
   else if(actTool==='lasso'){if(float_)commitMove();clearSel();lassoPts=[{x:cp.x,y:cp.y}];}
   else if(actTool==='wand'){if(float_)commitMove();wandSelect(cp.x,cp.y);drawing=false;}
@@ -1656,7 +1668,12 @@ function onMove(e){
   if(eyedrop){const cp=cPos(e);pickCol(cp.x,cp.y);return;}
   const cp=cPos(e);G('stPos').textContent=`X:${cp.x} Y:${cp.y}`;
   if(hDrag){resizeH(hDrag,cp.x,cp.y);return;}
-  if(sel.active&&!drawing){const h=hitHnd(cp.x,cp.y);eC.style.cursor=h?h==='float-rot'?'grab':(hndCur[h]||'crosshair'):({text:'text',move:'grab'}[tool]||'crosshair');}
+  if(sel.active&&!drawing){
+    const h=hitHnd(cp.x,cp.y);
+    if(h){eC.style.cursor=h==='float-rot'?'grab':(hndCur[h]||'crosshair');}
+    else if(tool==='select'&&sel.w>0&&cp.x>=sel.x&&cp.x<=sel.x+sel.w&&cp.y>=sel.y&&cp.y<=sel.y+sel.h){eC.style.cursor='grab';}
+    else eC.style.cursor={text:'text',move:'grab'}[tool]||'crosshair';
+  }
   if(!drawing)return;
   const actTool=eC._actTool||tool;
   const useCol=eC._useCol||fg;
@@ -1673,7 +1690,17 @@ function onMove(e){
     px.clearRect(0,0,W,H);px.save();px.strokeStyle='rgba(100,160,255,.9)';px.lineWidth=1.5/zoom;
     px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;
     px.beginPath();px.moveTo(lassoPts[0].x,lassoPts[0].y);lassoPts.forEach(p=>px.lineTo(p.x,p.y));px.stroke();px.restore();
-  }else if(actTool==='move'){updateMove(cp.x,cp.y);}
+  }else if(actTool==='move'){
+    if(_movingSelOnly){
+      const dx2=cp.x-_selMoveStartX,dy2=cp.y-_selMoveStartY;
+      sel.x=_selMoveOX+dx2;sel.y=_selMoveOY+dy2;
+      if(sel.type==='lasso'&&sel._basePts){
+        sel.pts=sel._basePts.map(p=>({x:p.x+dx2,y:p.y+dy2}));
+        sel.path=mkLP(sel.pts);
+      }else sel.path=mkRP(sel.x,sel.y,sel.w,sel.h);
+      drawSelOv();
+    }else updateMove(cp.x,cp.y);
+  }
   else if(actTool==='rotate'){updateRotate(cp.x,cp.y);}
   else if(actTool==='scale'){updateScale(cp.x,cp.y);}
   else if(['line','rect','ellipse'].includes(actTool)){px.clearRect(0,0,W,H);drawShape(px,startX,startY,cp.x,cp.y,useCol,actTool);}
@@ -1711,7 +1738,10 @@ function onUp(e){
     px.clearRect(0,0,W,H);setSR(startX,startY,ex,ey);
   }
   else if(actTool==='lasso'){px.clearRect(0,0,W,H);setSL(lassoPts);lassoPts=[];}
-  else if(actTool==='move'){commitMove();}
+  else if(actTool==='move'){
+    if(_movingSelOnly){_movingSelOnly=false;sel._basePts=null;}
+    else commitMove();
+  }
   else if(actTool==='rotate'){commitRotate();}
   else if(actTool==='scale'){commitScale();}
   else if(['line','rect','ellipse'].includes(actTool)){px.clearRect(0,0,W,H);if(ctx){drawShape(ctx,startX,startY,cp.x,cp.y,useCol,actTool);comp();renderLL();}}
