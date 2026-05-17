@@ -6,7 +6,7 @@
 <tr>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/DotEditor/DotEditor.html">
-<img src="DotEditor/icon.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/01_ico.png" width="120"><br>
 <b>DotEditor</b>
 </a>
 <br>
