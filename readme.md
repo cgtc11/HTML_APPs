@@ -112,7 +112,7 @@
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/7narabe.html">
 <img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
-<b>poker</b>
+<b>7narabe</b>
 </a>
 <br>
 ７ならべ
@@ -128,7 +128,7 @@
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/texas.html">
 <img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
-<b>poker</b>
+<b>texas</b>
 </a>
 <br>
 テキサスポーカーゲーム
