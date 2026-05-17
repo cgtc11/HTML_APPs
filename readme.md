@@ -1,7 +1,4 @@
-<p align="center">
-<img src="https://github.com/cgtc11/image/blob/main/ChatGPT1.png">
-</p>
-
+<p align="center"><img src="https://github.com/cgtc11/image/blob/main/ChatGPT1.png"></p>
 <table>
 <tr>
 <td align="center">
