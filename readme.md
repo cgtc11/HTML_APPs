@@ -1,13 +1,6 @@
-<p align="center">
-<img src="https://github.com/cgtc11/image/blob/main/htmlapp.png">
-</p>
-
-<br>
-
-Claude(Ai) を使って作成<br>
-ブラウザで動くクリエイティブ系アプリを置いてます<br>
-
-<br>
+<p align="center"><img src="https://github.com/cgtc11/image/blob/main/htmlapp.png"></p><br>
+アイコンはチャッピー、プログラムは Claude(Ai) を使って作成<br>
+ブラウザで動くアプリを置いてます<br>
 
 <table>
 <tr>
