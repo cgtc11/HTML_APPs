@@ -706,6 +706,8 @@ body.ui-sleeping { cursor: none; }
     <button class="tool-btn" id="btn-reset">RESET CAM</button>
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-bg">BG</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-fs">⛶ FULL</button>
   </div>
   <div class="toolbar-row">
     <button class="tool-btn active" id="btn-rot-cam">ROT:CAM</button>
@@ -1367,7 +1369,20 @@ btnBg.addEventListener('click', () => {
   scene.background = new THREE.Color(bgColors[bgIdx]);
 });
 
-// ── ANIM ──
+// ── Fullscreen ──
+const btnFs = document.getElementById('btn-fs');
+btnFs.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+document.addEventListener('fullscreenchange', () => {
+  const isFs = !!document.fullscreenElement;
+  btnFs.classList.toggle('active', isFs);
+  btnFs.textContent = isFs ? '⛶ EXIT' : '⛶ FULL';
+});
 // active = アニメ再生中, 非active = 停止中
 let animEnabled    = true;
 let lastClipIndex  = 0; // 停止前の最後のクリップを記憶
