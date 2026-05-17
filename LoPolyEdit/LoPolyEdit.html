@@ -698,7 +698,7 @@ function rsz(){const w=VP.clientWidth,h=VP.clientHeight;if(!w||!h)return;R.setSi
 window.addEventListener('resize',rsz);new ResizeObserver(rsz).observe(VP);
 init_box(2);rebuild();setMode('vertex');setTool('move');rsz();upd_ui();
 setStatus('準備完了 — 頂点クリック/ドラッグで移動、XYZマニピュレーターで軸拘束移動');
-toggleMobileUI();
+// PCモードで起動
 (function loop(){requestAnimationFrame(loop);try{gz_place();R.render(SC,CAM);vc_draw();}catch(e){}})();
 </script>
 </body>
