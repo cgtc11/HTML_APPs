@@ -9,7 +9,7 @@
 body{background:var(--bg);color:var(--tx);font-family:var(--sa);display:flex;height:100vh;overflow:hidden;user-select:none;}
 #sb{width:196px;min-width:196px;background:var(--sf);border-left:1px solid var(--bd);display:flex;flex-direction:column;padding:10px 8px;gap:3px;overflow-y:auto;transition:width .2s,min-width .2s,padding .2s;order:1;}
 #sb.hidden{width:0;min-width:0;padding:0;overflow:hidden;}
-.logo{font-family:var(--mo);font-size:13px;color:var(--ac);padding:4px 6px 10px;border-bottom:1px solid var(--bd);margin-bottom:4px;letter-spacing:3px;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.logo{font-family:var(--mo);font-size:13px;color:var(--ac);padding:4px 6px 10px;border-bottom:1px solid var(--bd);margin-bottom:4px;letter-spacing:3px;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;}
 .logo-dot{width:8px;height:8px;background:var(--ac);border-radius:1px;flex-shrink:0;}
 .slbl{font-size:9px;letter-spacing:2.5px;color:var(--td);padding:8px 6px 4px;text-transform:uppercase;font-family:var(--mo);white-space:nowrap;}
 .ssub{font-size:8px;letter-spacing:1.5px;color:var(--td);padding:4px 6px 2px;text-transform:uppercase;font-family:var(--mo);opacity:.7;white-space:nowrap;}
@@ -39,10 +39,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
 #cc{flex:1;position:relative;overflow:hidden;background:#060608;}
 #gc,#cv{position:absolute;top:0;left:0;width:100%;height:100%;}
 #cv{pointer-events:none;}
-#uiBtn{position:fixed;top:8px;right:8px;z-index:400;background:rgba(10,10,12,.9);border:1px solid var(--bd);color:var(--ac);font-family:var(--mo);font-size:10px;padding:5px 10px;border-radius:3px;cursor:pointer;letter-spacing:1px;transition:all .15s;}
+#uiBtn{background:none;border:1px solid var(--bd);color:var(--ac);font-family:var(--mo);font-size:9px;padding:3px 7px;border-radius:3px;cursor:pointer;letter-spacing:1px;transition:all .15s;flex-shrink:0;white-space:nowrap;}
 #uiBtn:hover{border-color:var(--ac);color:var(--av);}
-#mi{position:absolute;top:10px;left:10px;background:rgba(10,10,12,.85);border:1px solid var(--bd);padding:5px 12px;border-radius:3px;font-size:10px;font-family:var(--mo);color:var(--ac);letter-spacing:2px;pointer-events:none;transition:color .15s,border-color .15s;}
-#mi.inv{color:var(--rd);border-color:var(--rd);}#mi.smo{color:var(--bl);border-color:var(--bl);}
 #info{position:absolute;bottom:10px;right:10px;background:rgba(10,10,12,.8);border:1px solid var(--bd);padding:8px 12px;border-radius:3px;font-size:9.5px;font-family:var(--mo);color:var(--td);line-height:2;pointer-events:none;}
 #info .k{color:var(--ac);}#info .ks{color:var(--yw);}
 #so{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:500;}
@@ -68,9 +66,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
 </style>
 </head>
 <body>
-<button id="uiBtn" onclick="toggleUI()">◀ HIDE</button>
 <div id="sb">
-  <div class="logo"><div class="logo-dot"></div>WEBSCULPT</div>
+  <div class="logo"><button id="uiBtn" onclick="toggleUI()">◀ HIDE</button><div class="logo-dot"></div>WEBSCULPT</div>
   <div class="slbl">FILE</div>
   <div class="ssub">INTERNAL</div>
   <div class="g2"><button id="saveBtn" class="fhb">💾 SAVE</button><button id="loadBtn" class="fhb">📂 LOAD</button></div>
@@ -89,7 +86,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
     <button class="bb" data-brush="move">MOVE</button>
   </div>
   <div class="slbl">PARAMETERS</div>
-  <div class="sg"><div class="sr"><span>SIZE<span class="sk" id="skS"></span></span><span class="vl" id="vS">0.30</span></div><input type="range" id="slS" min=".04" max=".85" step=".01" value=".30"></div>
+  <div class="sg"><div class="sr"><span>SIZE<span class="sk" id="skS"></span></span><span class="vl" id="vS" title="ダブルクリックで入力" style="cursor:text" ondblclick="editVal('size','slS','vS')">0.10</span></div><input type="range" id="slS" min=".01" max=".5" step=".01" value=".10"></div>
   <div class="sg"><div class="sr"><span>STRENGTH<span class="sk" id="skT"></span></span><span class="vl" id="vT">0.50</span></div><input type="range" id="slT" min=".01" max="1" step=".01" value=".50"></div>
   <div class="sg"><div class="sr"><span>FOCAL<span class="sk" id="skF"></span></span><span class="vl" id="vF">0.00</span></div><input type="range" id="slF" min="-1" max="1" step=".05" value="0"></div>
   <div class="dv"></div>
@@ -125,9 +122,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
 <div id="cc">
   <canvas id="gc"></canvas>
   <canvas id="cv"></canvas>
-  <div id="mi">STANDARD</div>
   <div id="info">
-    <span class="k">LMB</span> 盛り上げ &nbsp;<span class="k">Ctrl+LMB</span> 下げる<br>
+    <span class="k">LMB</span> 盛り上げ &nbsp;<span class="k">Alt+LMB</span> 下げる<br>
     <span class="k">Shift+LMB</span> スムース<br>
     <span class="k">RMB drag</span> カメラ回転 &nbsp;<span class="k">MMB drag</span> パン &nbsp;<span class="k">Wheel</span> ズーム<br>
     <span class="ks" id="infoSk"></span> Size/Str/Focal
@@ -164,10 +160,13 @@ let flatN=64;         // only used for flat bilinear subdivide
 let curShape='flat';
 
 // ── SCULPT STATE ────────────────────────────────────────────────
-const P={brush:'standard',size:.30,str:.50,focal:.0,sym:true,ctrl:false,shift:false,sculpting:false,orbiting:false,lmx:0,lmy:0,prevHit:null,hoverHit:null};
+const P={brush:'standard',size:.10,str:.50,focal:.0,sym:true,ctrl:false,shift:false,sculpting:false,orbiting:false,lmx:0,lmy:0,prevHit:null,hoverHit:null};
 const cam={theta:.4,phi:.52,r:3.6,panX:0,panY:0};
 let camPos=[0,0,0];
 let dirty=false,showWire=true,stgOpen=false,sculptrisPro=false;
+const UNDO_MAX=20;
+const undoStack=[];
+let undoSaved=false; // 1ストローク1回だけ保存
 let matHex='#dfc9b0',texGL=null,useTex=false;
 
 // ── MATRIX MATH ────────────────────────────────────────────────
@@ -227,6 +226,7 @@ vec3 pbrLight(vec3 N,vec3 V,vec3 L,vec3 Lc,vec3 albedo,float metallic,float roug
 
 void main(){
   vec3 N=normalize(vN);
+  if(!gl_FrontFacing) N=-N; // 裏面三角形の法線を反転
   if(uHasNrm>0.5){
     vec3 tn=texture2D(uTNrm,vU).xyz*2.0-1.0;
     vec3 T=normalize(vTan);vec3 B=normalize(vBit);
@@ -362,23 +362,49 @@ function mkBox(M){
 // SPHERE: UV sphere, (segsLon+1)×(segsLat+1) verts
 // Standard winding gives outward normals (verified mathematically)
 function mkSphere(segs){
-  const sLon=segs,sLat=segs,G=sLon+1,vc=G*(sLat+1),tc=sLon*sLat*2;
+  // 重複頂点ゼロの球体:
+  //   - 北極/南極は頂点1個 (ファン三角形)
+  //   - リングはsLon個 (シーム重複なし、wrap-around接続)
+  //   - weldVerts不使用
+  const sLon=segs,sLat=segs,nR=sLat-1;
+  const vc=2+nR*sLon;
+  const tc=sLon+(nR-1)*sLon*2+sLon;
   const V=new Float32Array(vc*3),U=new Float32Array(vc*2);
   const T=new Uint32Array(tc*3);
-  for(let y=0;y<=sLat;y++){
-    const th=y/sLat*Math.PI,sT=Math.sin(th),cT=Math.cos(th);
-    for(let x=0;x<=sLon;x++){
-      const ph=x/sLon*Math.PI*2,i=y*G+x;
-      V[i*3]=sT*Math.cos(ph);V[i*3+1]=cT;V[i*3+2]=sT*Math.sin(ph);
-      U[i*2]=x/sLon;U[i*2+1]=y/sLat;
+  // 北極 index=0
+  V[0]=0;V[1]=1;V[2]=0;U[0]=.5;U[1]=0;
+  // 中間リング (wrap-around: x=0..sLon-1、最後はx=0に戻る)
+  for(let r=0;r<nR;r++){
+    const phi=(r+1)/sLat*Math.PI,sP=Math.sin(phi),cP=Math.cos(phi);
+    for(let x=0;x<sLon;x++){
+      const th=x/sLon*Math.PI*2,vi=1+r*sLon+x;
+      V[vi*3]=sP*Math.cos(th);V[vi*3+1]=cP;V[vi*3+2]=sP*Math.sin(th);
+      U[vi*2]=x/sLon;U[vi*2+1]=(r+1)/sLat;
     }
   }
+  // 南極 index=1+nR*sLon
+  const sI=1+nR*sLon;
+  V[sI*3]=0;V[sI*3+1]=-1;V[sI*3+2]=0;U[sI*2]=.5;U[sI*2+1]=1;
   let k=0;
-  for(let y=0;y<sLat;y++)for(let x=0;x<sLon;x++){
-    const a=y*G+x,b=y*G+x+1,c=(y+1)*G+x,d=(y+1)*G+x+1;
-    T[k++]=a;T[k++]=b;T[k++]=c;T[k++]=b;T[k++]=d;T[k++]=c;
+  // 北ファン (外向き法線: pole, next, cur)
+  for(let x=0;x<sLon;x++){
+    T[k++]=0;T[k++]=1+(x+1)%sLon;T[k++]=1+x;
   }
-  return weldVerts(V,U,T,vc,tc);
+  // ボディ (wrap-around)
+  for(let r=0;r<nR-1;r++){
+    const rA=1+r*sLon,rB=1+(r+1)*sLon;
+    for(let x=0;x<sLon;x++){
+      const a=rA+x,b=rA+(x+1)%sLon,c=rB+x,d=rB+(x+1)%sLon;
+      T[k++]=a;T[k++]=b;T[k++]=c;
+      T[k++]=b;T[k++]=d;T[k++]=c;
+    }
+  }
+  // 南ファン (外向き法線: cur, next, pole)
+  const lR=1+(nR-1)*sLon;
+  for(let x=0;x<sLon;x++){
+    T[k++]=lR+x;T[k++]=lR+(x+1)%sLon;T[k++]=sI;
+  }
+  return{V,U,T,vc,tc};
 }
 
 // ── VERTEX WELD ──────────────────────────────────────────────
@@ -482,6 +508,20 @@ function subdivide(){
 }
 
 // Flat: bilinear resampling (64→128→256)
+// UV中点のシーム補正（|u1-u0|>0.5 ならシーム跨ぎ）
+function midUV(u0,v0,u1,v1){
+  let mu;
+  if(Math.abs(u1-u0)>0.5){
+    const ua=u0+(u1<u0?0:1), ub=u1+(u1<u0?1:0);
+    mu=(ua+ub)*0.5;
+    if(mu>=1)mu-=1;
+    if(mu<0)mu+=1;
+  }else{
+    mu=(u0+u1)*0.5;
+  }
+  return[mu,(v0+v1)*0.5];
+}
+
 function subdFlat(){
   const oN=flatN,oG=oN+1,oP=verts.slice(0,oG*oG*3);
   flatN*=2;const nN=flatN,nG=nN+1,vc=nG*nG,tc=nN*nN*2;
@@ -523,7 +563,7 @@ function subdTri(){
     if(edgeMap3.has(k))return edgeMap3.get(k);
     const vi=nvc3++;edgeMap3.set(k,vi);
     NV[vi*3]=(NV[a*3]+NV[b*3])*.5;NV[vi*3+1]=(NV[a*3+1]+NV[b*3+1])*.5;NV[vi*3+2]=(NV[a*3+2]+NV[b*3+2])*.5;
-    NU[vi*2]=(NU[a*2]+NU[b*2])*.5;NU[vi*2+1]=(NU[a*2+1]+NU[b*2+1])*.5;
+    [NU[vi*2],NU[vi*2+1]]=midUV(NU[a*2],NU[a*2+1],NU[b*2],NU[b*2+1]);
     // If sphere: project midpoint to the average radius of the two parent vertices.
     // (NOT unit sphere - that would snap sculpted displacements back to radius=1)
     if(curShape==='sphere'){
@@ -698,10 +738,8 @@ function sculptrisSubdivide(hx, hy, hz, BR) {
         (posArr[p*3+1]+posArr[q*3+1])/2,
         (posArr[p*3+2]+posArr[q*3+2])/2
       );
-      uvArr.push(
-        (uvArr[p*2]  +uvArr[q*2]  )/2,
-        (uvArr[p*2+1]+uvArr[q*2+1])/2
-      );
+      const[_mu,_mv]=midUV(uvArr[p*2],uvArr[p*2+1],uvArr[q*2],uvArr[q*2+1]);
+      uvArr.push(_mu,_mv);
     }
 
     // ── Step3: 全三角形を処理（分割エッジを持つ三角形は必ず再分割） ──
@@ -748,6 +786,26 @@ function sculptrisSubdivide(hx, hy, hz, BR) {
 }
 
 // ── DISPATCH ─────────────────────────────────────────────────
+// ── UNDO ─────────────────────────────────────────────────────
+function saveUndo(){
+  // trisはSculptrisProで変わるので頂点+トポロジー両方保存
+  undoStack.push({
+    verts: verts.slice(),
+    tris:  tris  instanceof Uint32Array ? new Uint32Array(tris) : new Uint16Array(tris),
+    uvs:   uvs.slice(),
+    VC, TC, curShape, flatN
+  });
+  if(undoStack.length>UNDO_MAX) undoStack.shift();
+}
+function applyUndo(){
+  if(!undoStack.length) return;
+  const s=undoStack.pop();
+  verts=s.verts; tris=s.tris; uvs=s.uvs;
+  VC=s.VC; TC=s.TC; curShape=s.curShape; flatN=s.flatN;
+  norms=new Float32Array(VC*3);
+  recompNorms(); buildWires(); buildAdj(); initGPU(); dirty=true; updateResLabel();
+}
+
 function applyBrush(hit){
   if(!hit)return;
   const{pt,n}=hit;const[hx,hy,hz]=pt;
@@ -759,7 +817,10 @@ function applyBrush(hit){
     else if(P.brush==='clay')doCly(x,y,z,BR,P.str*.012,dir);
     else if(P.brush==='trim')doTrm(x,y,z,nn,BR);
   }
-  if(sculptrisPro && !P.shift) sculptrisSubdivide(hx,hy,hz,BR);
+  if(sculptrisPro && !P.shift){
+    sculptrisSubdivide(hx,hy,hz,BR);
+    if(P.sym) sculptrisSubdivide(-hx,hy,hz,BR); // シンメトリ側も分割
+  }
   run(hx,hy,hz,n);
   if(P.sym)run(-hx,hy,hz,[-n[0],n[1],n[2]]);
   if(P.brush==='move')P.prevHit=pt;
@@ -782,8 +843,6 @@ function drawCursor(){
 }
 
 // ── MODE ─────────────────────────────────────────────────────
-const mie=document.getElementById('mi');
-function updMode(){if(P.ctrl){mie.textContent='INVERT';mie.className='inv';}else if(P.shift){mie.textContent='SMOOTH';mie.className='smo';}else{mie.textContent=P.brush.toUpperCase();mie.className='';}}
 
 // ── RESIZE ───────────────────────────────────────────────────
 function resize(){const c=document.getElementById('cc'),w=c.clientWidth,h=c.clientHeight,dpr=window.devicePixelRatio||1;gc.width=w*dpr;gc.height=h*dpr;cv.width=w;cv.height=h;gl.viewport(0,0,gc.width,gc.height);}
@@ -792,6 +851,13 @@ window.addEventListener('resize',resize);
 // ── RENDER ───────────────────────────────────────────────────
 function hx2rgb(h){return[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255];}
 function render(){
+  // canvasの表示サイズと一致しているか毎フレーム確認（サイドバーアニメ対応）
+  const _cc=document.getElementById('cc'),_dpr=window.devicePixelRatio||1;
+  if(gc.width!==Math.round(_cc.clientWidth*_dpr)||gc.height!==Math.round(_cc.clientHeight*_dpr)){
+    gc.width=Math.round(_cc.clientWidth*_dpr);gc.height=Math.round(_cc.clientHeight*_dpr);
+    cv.width=_cc.clientWidth;cv.height=_cc.clientHeight;
+    gl.viewport(0,0,gc.width,gc.height);
+  }
   if(dirty){uploadPN();dirty=false;}
   updCam();
   gl.viewport(0,0,gc.width,gc.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -800,8 +866,15 @@ function render(){
   gl.useProgram(prog);
   gl.uniformMatrix4fv(lMVP,false,mvp);gl.uniformMatrix4fv(lMV,false,mv);
   const[cr,cg,cb]=hx2rgb(matHex);gl.uniform3f(lC,cr,cg,cb);
-  const slot0tex=pbrTex[0]||(useTex?texGL:null);
-  const pbrSlots=[[0,lTBase,lHasBase,slot0tex,fbTexW],[1,lTMR,lHasMR,pbrTex[1],fbTexMR],[2,lTNrm,lHasNrm,pbrTex[2],fbTexNrm],[3,lTOcc,lHasOcc,pbrTex[3],fbTexW],[4,lTEmi,lHasEmi,pbrTex[4],fbTexBlk]];
+  // useTex=falseのとき全テクスチャ無効
+  const _baseTex=useTex?(pbrTex[0]||texGL):null;
+  const pbrSlots=[
+    [0,lTBase,lHasBase,_baseTex,fbTexW],
+    [1,lTMR,  lHasMR,  useTex?pbrTex[1]:null,fbTexMR],
+    [2,lTNrm, lHasNrm, useTex?pbrTex[2]:null,fbTexNrm],
+    [3,lTOcc, lHasOcc, useTex?pbrTex[3]:null,fbTexW],
+    [4,lTEmi, lHasEmi, useTex?pbrTex[4]:null,fbTexBlk]
+  ];
   for(const[unit,sampL,hasL,tex,fb] of pbrSlots){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex||fb);gl.uniform1i(sampL,unit);gl.uniform1f(hasL,tex?1:0);}
   gl.uniform1f(lMetal,pbrMetal);gl.uniform1f(lRough,pbrRough);gl.uniform1f(lDblSide,pbrDoubleSided?1:0);
   gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);gl.vertexAttribPointer(lP,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lP);
@@ -824,7 +897,11 @@ gc.addEventListener('contextmenu',e=>e.preventDefault());
 gc.addEventListener('wheel',e=>{e.preventDefault();cam.r=Math.max(.3,Math.min(15,cam.r+e.deltaY*.005));},{passive:false});
 gc.addEventListener('mousedown',e=>{
   e.preventDefault();P.lmx=e.clientX;P.lmy=e.clientY;
-  if(e.button===0){P.sculpting=true;P.ctrl=e.ctrlKey;P.shift=e.shiftKey;P.prevHit=null;updMode();const h=raycast(e.clientX,e.clientY);P.hoverHit=h;applyBrush(h);}
+  if(e.button===0){
+    P.sculpting=true;P.ctrl=e.altKey;P.shift=e.shiftKey;P.prevHit=null;
+    saveUndo(); // ストローク開始前に保存
+    const h=raycast(e.clientX,e.clientY);P.hoverHit=h;applyBrush(h);
+  }
   else if(e.button===1){P.panning=true;}
   else if(e.button===2)P.orbiting=true;
 });
@@ -841,10 +918,10 @@ window.addEventListener('mousemove',e=>{
     dirty=true;
   }
   const h=raycast(e.clientX,e.clientY);P.hoverHit=h;
-  if(P.sculpting){P.ctrl=e.ctrlKey;P.shift=e.shiftKey;updMode();applyBrush(h);}
+  if(P.sculpting){P.ctrl=e.altKey;P.shift=e.shiftKey;applyBrush(h);}
 });
 window.addEventListener('mouseup',e=>{
-  if(e.button===0){P.sculpting=false;P.prevHit=null;updMode();}
+  if(e.button===0){P.sculpting=false;P.prevHit=null;}
   if(e.button===1)P.panning=false;
   if(e.button===2)P.orbiting=false;
 });
@@ -853,20 +930,46 @@ gc.addEventListener('mousedown',e=>{if(e.button===1)e.preventDefault();});
 gc.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault();});
 
 // ── KEYBOARD ────────────────────────────────────────────────
-function adjP(p,d){const lim={size:[.04,.85],str:[.01,1],focal:[-1,1]};const[mn,mx]=lim[p];P[p]=Math.max(mn,Math.min(mx,+(P[p]+d).toFixed(4)));const se=p==='size'?'slS':p==='str'?'slT':'slF';const ve=p==='size'?'vS':p==='str'?'vT':'vF';document.getElementById(se).value=P[p];document.getElementById(ve).textContent=P[p].toFixed(2);}
+function adjP(p,d){const lim={size:[.01,.5],str:[.01,1],focal:[-1,1]};const[mn,mx]=lim[p];P[p]=Math.max(mn,Math.min(mx,+(P[p]+d).toFixed(4)));const se=p==='size'?'slS':p==='str'?'slT':'slF';const ve=p==='size'?'vS':p==='str'?'vT':'vF';document.getElementById(se).value=P[p];document.getElementById(ve).textContent=P[p].toFixed(2);}
 window.addEventListener('keydown',e=>{
-  if(e.key==='Control'){P.ctrl=true;updMode();return;}if(e.key==='Shift'){P.shift=true;updMode();return;}if(e.key==='Alt'||e.key==='Meta')return;
+  if(e.key==='Alt'){P.ctrl=true;e.preventDefault();return;}if(e.key==='Shift'){P.shift=true;return;}if(e.key==='Meta')return;
   if(capTgt!==null){e.preventDefault();e.stopPropagation();if(e.key==='Escape')cancelCap();else if(e.key.length>0&&e.key!=='Control'&&e.key!=='Shift')doneCap(e.key);return;}
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();applyUndo();return;}
   if(!P.sculpting&&!stgOpen){const k=e.key;let hit=false;
     if(k===sc.sU){adjP('size',+.05);hit=true;}if(k===sc.sD){adjP('size',-.05);hit=true;}
     if(k===sc.tU){adjP('str',+.05);hit=true;}if(k===sc.tD){adjP('str',-.05);hit=true;}
     if(k===sc.fU){adjP('focal',+.10);hit=true;}if(k===sc.fD){adjP('focal',-.10);hit=true;}
     if(hit)e.preventDefault();}
 });
-window.addEventListener('keyup',e=>{if(e.key==='Control'){P.ctrl=false;updMode();}if(e.key==='Shift'){P.shift=false;updMode();}});
+window.addEventListener('keyup',e=>{if(e.key==='Alt'){P.ctrl=false;}if(e.key==='Shift'){P.shift=false;}});
 
 // ── UI BINDINGS ──────────────────────────────────────────────
-document.querySelectorAll('.bb').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.bb').forEach(x=>x.classList.remove('active'));b.classList.add('active');P.brush=b.dataset.brush;updMode();}));
+document.querySelectorAll('.bb').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.bb').forEach(x=>x.classList.remove('active'));b.classList.add('active');P.brush=b.dataset.brush;}));
+// 数値ダブルクリックでinline直接入力 (上限なし)
+function editVal(key,slId,vId){
+  const span=document.getElementById(vId);
+  const cur=P[key];
+  const inp=document.createElement('input');
+  inp.type='number';inp.step='0.01';inp.value=cur.toFixed(2);
+  inp.style.cssText='width:48px;background:var(--sf2);border:1px solid var(--ac);color:var(--ac);font-family:var(--mo);font-size:10px;padding:1px 3px;border-radius:2px;text-align:right;';
+  span.replaceWith(inp);inp.focus();inp.select();
+  function commit(){
+    const nv=parseFloat(inp.value);
+    const mn=key==='size'?.01:key==='str'?.01:-1;
+    if(!isNaN(nv)){
+      P[key]=Math.max(mn,nv);
+      const sl=document.getElementById(slId);
+      sl.value=Math.min(parseFloat(sl.max),P[key]);
+    }
+    const sp=document.createElement('span');
+    sp.className='vl';sp.id=vId;sp.title='ダブルクリックで入力';sp.style.cursor='text';
+    sp.ondblclick=()=>editVal(key,slId,vId);
+    sp.textContent=P[key].toFixed(2);
+    inp.replaceWith(sp);
+  }
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=cur;inp.blur();}});
+}
 function bSlider(id,vid,key){const e=document.getElementById(id),v=document.getElementById(vid);e.addEventListener('input',()=>{P[key]=parseFloat(e.value);v.textContent=parseFloat(e.value).toFixed(2);});}
 bSlider('slS','vS','size');bSlider('slT','vT','str');bSlider('slF','vF','focal');
 document.querySelectorAll('.sb').forEach(b=>b.addEventListener('click',()=>{
@@ -906,7 +1009,20 @@ function nearestMirror(i){const tx=-verts[i*3],ty=verts[i*3+1],tz=verts[i*3+2];l
 document.getElementById('rstBtn').addEventListener('click',()=>{
   const activeShape=document.querySelector('.sb.active');applyShape(activeShape?activeShape.dataset.shape:curShape);
 });
-function toggleUI(){const sb=document.getElementById('sb'),btn=document.getElementById('uiBtn');if(sb.classList.toggle('hidden')){btn.textContent='☰ SHOW';}else{btn.textContent='◀ HIDE';}resize();}
+function toggleUI(){
+  const sb=document.getElementById('sb'),btn=document.getElementById('uiBtn');
+  const hidden=sb.classList.toggle('hidden');
+  const info=document.getElementById('info');
+  if(hidden){
+    btn.textContent='☰ SHOW';
+    btn.style.cssText='position:fixed;top:8px;right:8px;z-index:400;background:rgba(10,10,12,.9);border:1px solid var(--bd);color:var(--ac);font-family:var(--mo);font-size:9px;padding:3px 7px;border-radius:3px;cursor:pointer;letter-spacing:1px;';
+    info.style.display='none';
+  } else {
+    btn.textContent='◀ HIDE';
+    btn.style.cssText='';
+    info.style.display='';
+  }
+}
 
 // ── FILE I/O ─────────────────────────────────────────────────
 function dlText(t,n,m){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:m||'text/plain'}));a.download=n;a.click();}
