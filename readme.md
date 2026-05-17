@@ -107,7 +107,7 @@
 <b>mahjong</b>
 </a>
 <br>
-麻雀ゲーム
+麻雀
 </td>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/7narabe.html">
@@ -123,7 +123,7 @@
 <b>poker</b>
 </a>
 <br>
-ポーカーゲーム
+ポーカー
 </td>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/texas.html">
@@ -131,7 +131,7 @@
 <b>texas</b>
 </a>
 <br>
-テキサスポーカーゲーム
+テキサスポーカー
 </td>
 </tr>
 </table>
