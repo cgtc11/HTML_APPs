@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><title>WebSculpt</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap');
+:root{--bg:#0a0a0c;--sf:#111117;--sf2:#1a1a22;--bd:#2a2a38;--ac:#c8692a;--ad:#6a3510;--tx:#c8c8d8;--td:#6a6a7a;--av:#e8792a;--gn:#2ec857;--bl:#50d8e8;--rd:#e85050;--yw:#f0c830;--mo:'Share Tech Mono',monospace;--sa:'Rajdhani',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--sa);display:flex;height:100vh;overflow:hidden;user-select:none;}
+#sb{width:196px;min-width:196px;background:var(--sf);border-left:1px solid var(--bd);display:flex;flex-direction:column;padding:10px 8px;gap:3px;overflow-y:auto;transition:width .2s,min-width .2s,padding .2s;order:1;}
+#sb.hidden{width:0;min-width:0;padding:0;overflow:hidden;}
+.logo{font-family:var(--mo);font-size:13px;color:var(--ac);padding:4px 6px 10px;border-bottom:1px solid var(--bd);margin-bottom:4px;letter-spacing:3px;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.logo-dot{width:8px;height:8px;background:var(--ac);border-radius:1px;flex-shrink:0;}
+.slbl{font-size:9px;letter-spacing:2.5px;color:var(--td);padding:8px 6px 4px;text-transform:uppercase;font-family:var(--mo);white-space:nowrap;}
+.ssub{font-size:8px;letter-spacing:1.5px;color:var(--td);padding:4px 6px 2px;text-transform:uppercase;font-family:var(--mo);opacity:.7;white-space:nowrap;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:0 2px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding:0 2px;}
+.bb,.sb,.fb,.fhb{padding:7px 4px;background:var(--sf2);border:1px solid var(--bd);color:var(--td);cursor:pointer;border-radius:3px;font-size:9px;font-family:var(--mo);text-align:center;transition:all .12s;line-height:1.4;white-space:nowrap;}
+.bb:hover,.sb:hover,.fb:hover{border-color:var(--ad);color:var(--tx);}
+.bb.active,.sb.active{background:var(--ad);border-color:var(--ac);color:var(--av);}
+.fhb{background:rgba(200,105,42,.08);border-color:var(--ad);color:var(--ac);}
+.fhb:hover{background:rgba(200,105,42,.18);border-color:var(--ac);color:var(--av);}
+.mr{display:flex;align-items:center;justify-content:space-between;padding:3px 6px;gap:6px;}
+.ml{font-size:9px;font-family:var(--mo);color:var(--td);letter-spacing:1px;flex:1;white-space:nowrap;}
+input[type=color]{-webkit-appearance:none;appearance:none;width:40px;height:22px;border:1px solid var(--bd);border-radius:3px;background:none;cursor:pointer;padding:1px;}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0;}input[type=color]::-webkit-color-swatch{border:none;border-radius:2px;}
+.sg{padding:0 4px;display:flex;flex-direction:column;gap:4px;}
+.sr{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-family:var(--mo);color:var(--td);white-space:nowrap;}
+.sr .vl{color:var(--ac);min-width:36px;text-align:right;}.sr .sk{color:var(--td);font-size:8px;opacity:.7;margin-left:3px;}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:2px;background:var(--sf2);border-radius:1px;outline:none;cursor:pointer;border:1px solid var(--bd);}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:2px;background:var(--ac);cursor:pointer;border:1px solid var(--av);}
+.dv{border:none;border-top:1px solid var(--bd);margin:5px 3px;}
+.tb,.ab{width:calc(100% - 8px);margin:1px 4px;padding:7px 8px;background:var(--sf2);border:1px solid var(--bd);color:var(--td);cursor:pointer;border-radius:3px;font-size:9.5px;font-family:var(--mo);text-align:left;transition:all .12s;letter-spacing:.5px;white-space:nowrap;}
+.tb:hover,.ab:hover{border-color:var(--ad);color:var(--tx);}
+.tb.active{background:rgba(46,200,87,.12);border-color:var(--gn);color:var(--gn);}
+.ab{background:rgba(200,105,42,.08);border-color:var(--ad);color:var(--ac);}
+.ab:hover{background:rgba(200,105,42,.18);border-color:var(--ac);color:var(--av);}
+.rl{font-size:8px;font-family:var(--mo);color:var(--td);text-align:center;padding:2px 0;letter-spacing:1px;}
+#cc{flex:1;position:relative;overflow:hidden;background:#060608;}
+#gc,#cv{position:absolute;top:0;left:0;width:100%;height:100%;}
+#cv{pointer-events:none;}
+#uiBtn{position:fixed;top:8px;right:8px;z-index:400;background:rgba(10,10,12,.9);border:1px solid var(--bd);color:var(--ac);font-family:var(--mo);font-size:10px;padding:5px 10px;border-radius:3px;cursor:pointer;letter-spacing:1px;transition:all .15s;}
+#uiBtn:hover{border-color:var(--ac);color:var(--av);}
+#mi{position:absolute;top:10px;left:10px;background:rgba(10,10,12,.85);border:1px solid var(--bd);padding:5px 12px;border-radius:3px;font-size:10px;font-family:var(--mo);color:var(--ac);letter-spacing:2px;pointer-events:none;transition:color .15s,border-color .15s;}
+#mi.inv{color:var(--rd);border-color:var(--rd);}#mi.smo{color:var(--bl);border-color:var(--bl);}
+#info{position:absolute;bottom:10px;right:10px;background:rgba(10,10,12,.8);border:1px solid var(--bd);padding:8px 12px;border-radius:3px;font-size:9.5px;font-family:var(--mo);color:var(--td);line-height:2;pointer-events:none;}
+#info .k{color:var(--ac);}#info .ks{color:var(--yw);}
+#so{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:500;}
+#so.open{display:flex;}
+#sp{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:22px 24px 18px;min-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+.stit{font-family:var(--mo);font-size:11px;letter-spacing:3px;color:var(--ac);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;}
+.sdot{width:6px;height:6px;background:var(--ac);border-radius:1px;}
+.ssub2{font-family:var(--mo);font-size:8px;color:var(--td);letter-spacing:2px;margin:14px 0 10px;text-transform:uppercase;}
+.srow{display:grid;grid-template-columns:90px 1fr 1fr;gap:8px;align-items:center;margin-bottom:7px;}
+.slb{font-family:var(--mo);font-size:9px;color:var(--td);letter-spacing:1px;}
+.shd{font-family:var(--mo);font-size:8px;color:var(--td);opacity:.6;text-align:center;}
+.kc{background:var(--sf2);border:1px solid var(--bd);color:var(--yw);font-family:var(--mo);font-size:12px;padding:5px 8px;border-radius:3px;cursor:pointer;text-align:center;transition:all .12s;min-height:28px;display:flex;align-items:center;justify-content:center;}
+.kc:hover{border-color:var(--ad);color:var(--av);}
+.kc.cap{border-color:var(--av);color:var(--av);background:rgba(232,121,42,.12);animation:blink .55s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.sf{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--bd);}
+.sbt{flex:1;padding:8px;font-family:var(--mo);font-size:9.5px;letter-spacing:1.5px;cursor:pointer;border-radius:3px;transition:all .12s;}
+.srs{background:var(--sf2);border:1px solid var(--bd);color:var(--td);}
+.srs:hover{border-color:var(--ad);color:var(--tx);}
+.scl{background:rgba(200,105,42,.12);border:1px solid var(--ad);color:var(--ac);}
+.scl:hover{background:rgba(200,105,42,.25);border-color:var(--ac);color:var(--av);}
+.shit{font-family:var(--mo);font-size:8px;color:var(--td);margin-top:8px;opacity:.6;text-align:center;}
+</style>
+</head>
+<body>
+<button id="uiBtn" onclick="toggleUI()">◀ HIDE</button>
+<div id="sb">
+  <div class="logo"><div class="logo-dot"></div>WEBSCULPT</div>
+  <div class="slbl">FILE</div>
+  <div class="ssub">INTERNAL</div>
+  <div class="g2"><button id="saveBtn" class="fhb">💾 SAVE</button><button id="loadBtn" class="fhb">📂 LOAD</button></div>
+  <div class="ssub">IMPORT</div>
+  <button id="impBtn" class="fhb">↑ IMPORT MESH</button>
+  <div class="ssub">EXPORT</div>
+  <div class="g3"><button class="fb" id="eOBJ">OBJ</button><button class="fb" id="eGLTF">GLTF</button><button class="fb" id="eFBX">FBX</button></div>
+  <input type="file" id="ldIn" accept=".json" style="display:none">
+  <input type="file" id="imIn" accept=".obj,.gltf,.glb" style="display:none">
+  <div class="dv"></div>
+  <div class="slbl">BRUSH</div>
+  <div class="g2">
+    <button class="bb active" data-brush="standard">STAND-<br>ARD</button>
+    <button class="bb" data-brush="clay">CLAY<br>BUMP</button>
+    <button class="bb" data-brush="trim">TRIM<br>DYN</button>
+    <button class="bb" data-brush="move">MOVE</button>
+  </div>
+  <div class="slbl">PARAMETERS</div>
+  <div class="sg"><div class="sr"><span>SIZE<span class="sk" id="skS"></span></span><span class="vl" id="vS">0.30</span></div><input type="range" id="slS" min=".04" max=".85" step=".01" value=".30"></div>
+  <div class="sg"><div class="sr"><span>STRENGTH<span class="sk" id="skT"></span></span><span class="vl" id="vT">0.50</span></div><input type="range" id="slT" min=".01" max="1" step=".01" value=".50"></div>
+  <div class="sg"><div class="sr"><span>FOCAL<span class="sk" id="skF"></span></span><span class="vl" id="vF">0.00</span></div><input type="range" id="slF" min="-1" max="1" step=".05" value="0"></div>
+  <div class="dv"></div>
+  <div class="slbl">MESH</div>
+  <div class="g3">
+    <button class="sb" data-shape="flat">FLAT</button>
+    <button class="sb" data-shape="box">BOX</button>
+    <button class="sb active" data-shape="sphere">SPHERE</button>
+  </div>
+  <button id="sdBtn" class="ab" style="margin-top:4px">↑ SUBDIVIDE</button>
+  <div class="rl" id="rl">VERTS: -- | TRIS: --</div>
+  <div class="dv"></div>
+  <div class="slbl">VIEW</div>
+  <button id="spBtn" class="tb">◎ SCULPTRIS PRO: OFF</button>
+  <button id="wireBtn" class="tb active">◉ WIREFRAME: ON</button>
+  <div class="dv"></div>
+  <div class="slbl">OPTIONS</div>
+  <button id="symBtn" class="tb active">◉ SYMMETRY X: ON</button>
+  <div class="dv"></div>
+  <div class="slbl">MATERIAL</div>
+  <div class="mr"><span class="ml">BASE COLOR</span><input type="color" id="mc" value="#dfc9b0"></div>
+  <div class="dv"></div>
+  <div class="slbl">TEXTURE</div>
+  <button id="tlBtn" class="ab">↑ LOAD IMAGE</button>
+  <button id="ttBtn" class="tb" style="display:none">◎ TEXTURE: OFF</button>
+  <input type="file" id="ti" accept="image/*" style="display:none">
+  <div class="dv"></div>
+  <div class="slbl">TOOLS</div>
+  <button id="mirBtn" class="ab">→ 右を左に転写</button>
+  <button id="rstBtn" class="ab" style="margin-top:3px">↺ MESH RESET</button>
+  <button id="stgBtn" class="ab" style="margin-top:3px">⚙ SHORTCUTS</button>
+</div>
+<div id="cc">
+  <canvas id="gc"></canvas>
+  <canvas id="cv"></canvas>
+  <div id="mi">STANDARD</div>
+  <div id="info">
+    <span class="k">LMB</span> 盛り上げ &nbsp;<span class="k">Ctrl+LMB</span> 下げる<br>
+    <span class="k">Shift+LMB</span> スムース<br>
+    <span class="k">RMB drag</span> カメラ回転 &nbsp;<span class="k">MMB drag</span> パン &nbsp;<span class="k">Wheel</span> ズーム<br>
+    <span class="ks" id="infoSk"></span> Size/Str/Focal
+  </div>
+</div>
+<div id="so">
+  <div id="sp">
+    <div class="stit"><div class="sdot"></div>SHORTCUT SETTINGS</div>
+    <div class="srow"><div></div><div class="shd">LARGER ↑</div><div class="shd">SMALLER ↓</div></div>
+    <div class="ssub2">PARAMETERS</div>
+    <div class="srow"><div class="slb">SIZE</div><div class="kc" data-sk="sU" id="kc_sU"></div><div class="kc" data-sk="sD" id="kc_sD"></div></div>
+    <div class="srow"><div class="slb">STRENGTH</div><div class="kc" data-sk="tU" id="kc_tU"></div><div class="kc" data-sk="tD" id="kc_tD"></div></div>
+    <div class="srow"><div class="slb">FOCAL SHIFT</div><div class="kc" data-sk="fU" id="kc_fU"></div><div class="kc" data-sk="fD" id="kc_fD"></div></div>
+    <div class="shit">クリックで変更 / ESC でキャンセル</div>
+    <div class="sf"><button class="sbt srs" id="stgRst">↺ RESET</button><button class="sbt scl" id="stgCl">CLOSE</button></div>
+  </div>
+</div>
+<script>
+'use strict';
+// ── SHORTCUTS ───────────────────────────────────────────────────
+const DSC={sU:'[',sD:']',tU:'@',tD:':',fU:'p',fD:';'};
+let sc=Object.assign({},DSC);
+try{const s=localStorage.getItem('ws_sc');if(s)Object.assign(sc,JSON.parse(s));}catch(e){}
+function saveSC(){try{localStorage.setItem('ws_sc',JSON.stringify(sc));}catch(e){}}
+
+// ── MESH STATE ─────────────────────────────────────────────────
+// verts[i*3+0..2]=xyz  norms[i*3+0..2]=nxyz  uvs[i*2+0..1]=uv
+// tris[t*3+0..2]=triangle vertex indices
+// wires[e*2+0..1]=line vertex indices
+let verts,norms,uvs,tans,tris,wires;
+let VC=0,TC=0,WC=0; // vertex count, triangle count, edge count
+let adj=[];           // adjacency list per vertex
+let flatN=64;         // only used for flat bilinear subdivide
+let curShape='flat';
+
+// ── SCULPT STATE ────────────────────────────────────────────────
+const P={brush:'standard',size:.30,str:.50,focal:.0,sym:true,ctrl:false,shift:false,sculpting:false,orbiting:false,lmx:0,lmy:0,prevHit:null,hoverHit:null};
+const cam={theta:.4,phi:.52,r:3.6,panX:0,panY:0};
+let camPos=[0,0,0];
+let dirty=false,showWire=true,stgOpen=false,sculptrisPro=false;
+let matHex='#dfc9b0',texGL=null,useTex=false;
+
+// ── MATRIX MATH ────────────────────────────────────────────────
+function m4(){return new Float32Array(16);}
+function mp(o,fv,asp,n,f){const t=1/Math.tan(fv/2),nf=1/(n-f);o[0]=t/asp;o[1]=0;o[2]=0;o[3]=0;o[4]=0;o[5]=t;o[6]=0;o[7]=0;o[8]=0;o[9]=0;o[10]=(f+n)*nf;o[11]=-1;o[12]=0;o[13]=0;o[14]=2*f*n*nf;o[15]=0;return o;}
+function mla(o,e,c,u){let z0=e[0]-c[0],z1=e[1]-c[1],z2=e[2]-c[2],zl=Math.sqrt(z0*z0+z1*z1+z2*z2)||1;z0/=zl;z1/=zl;z2/=zl;let x0=u[1]*z2-u[2]*z1,x1=u[2]*z0-u[0]*z2,x2=u[0]*z1-u[1]*z0,xl=Math.sqrt(x0*x0+x1*x1+x2*x2);if(!xl){x0=0;x1=0;x2=0;}else{x0/=xl;x1/=xl;x2/=xl;}let y0=z1*x2-z2*x1,y1=z2*x0-z0*x2,y2=z0*x1-z1*x0;o[0]=x0;o[1]=y0;o[2]=z0;o[3]=0;o[4]=x1;o[5]=y1;o[6]=z1;o[7]=0;o[8]=x2;o[9]=y2;o[10]=z2;o[11]=0;o[12]=-(x0*e[0]+x1*e[1]+x2*e[2]);o[13]=-(y0*e[0]+y1*e[1]+y2*e[2]);o[14]=-(z0*e[0]+z1*e[1]+z2*e[2]);o[15]=1;return o;}
+function mmul(o,a,b){let a0=a[0],a1=a[1],a2=a[2],a3=a[3],a4=a[4],a5=a[5],a6=a[6],a7=a[7],a8=a[8],a9=a[9],a10=a[10],a11=a[11],a12=a[12],a13=a[13],a14=a[14],a15=a[15],b0,b1,b2,b3;b0=b[0];b1=b[1];b2=b[2];b3=b[3];o[0]=b0*a0+b1*a4+b2*a8+b3*a12;o[1]=b0*a1+b1*a5+b2*a9+b3*a13;o[2]=b0*a2+b1*a6+b2*a10+b3*a14;o[3]=b0*a3+b1*a7+b2*a11+b3*a15;b0=b[4];b1=b[5];b2=b[6];b3=b[7];o[4]=b0*a0+b1*a4+b2*a8+b3*a12;o[5]=b0*a1+b1*a5+b2*a9+b3*a13;o[6]=b0*a2+b1*a6+b2*a10+b3*a14;o[7]=b0*a3+b1*a7+b2*a11+b3*a15;b0=b[8];b1=b[9];b2=b[10];b3=b[11];o[8]=b0*a0+b1*a4+b2*a8+b3*a12;o[9]=b0*a1+b1*a5+b2*a9+b3*a13;o[10]=b0*a2+b1*a6+b2*a10+b3*a14;o[11]=b0*a3+b1*a7+b2*a11+b3*a15;b0=b[12];b1=b[13];b2=b[14];b3=b[15];o[12]=b0*a0+b1*a4+b2*a8+b3*a12;o[13]=b0*a1+b1*a5+b2*a9+b3*a13;o[14]=b0*a2+b1*a6+b2*a10+b3*a14;o[15]=b0*a3+b1*a7+b2*a11+b3*a15;return o;}
+function minv(o,m){let a00=m[0],a01=m[1],a02=m[2],a03=m[3],a10=m[4],a11=m[5],a12=m[6],a13=m[7],a20=m[8],a21=m[9],a22=m[10],a23=m[11],a30=m[12],a31=m[13],a32=m[14],a33=m[15];let b00=a00*a11-a01*a10,b01=a00*a12-a02*a10,b02=a00*a13-a03*a10,b03=a01*a12-a02*a11,b04=a01*a13-a03*a11,b05=a02*a13-a03*a12,b06=a20*a31-a21*a30,b07=a20*a32-a22*a30,b08=a20*a33-a23*a30,b09=a21*a32-a22*a31,b10=a21*a33-a23*a31,b11=a22*a33-a23*a32;let det=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;if(!det)return null;det=1/det;o[0]=(a11*b11-a12*b10+a13*b09)*det;o[1]=(a02*b10-a01*b11-a03*b09)*det;o[2]=(a31*b05-a32*b04+a33*b03)*det;o[3]=(a22*b04-a21*b05-a23*b03)*det;o[4]=(a12*b08-a10*b11-a13*b07)*det;o[5]=(a00*b11-a02*b08+a03*b07)*det;o[6]=(a32*b02-a30*b05-a33*b01)*det;o[7]=(a20*b05-a22*b02+a23*b01)*det;o[8]=(a10*b10-a11*b08+a13*b06)*det;o[9]=(a01*b08-a00*b10-a03*b06)*det;o[10]=(a30*b04-a31*b02+a33*b00)*det;o[11]=(a21*b02-a20*b04-a23*b00)*det;o[12]=(a11*b07-a10*b09-a12*b06)*det;o[13]=(a00*b09-a01*b07+a02*b06)*det;o[14]=(a31*b01-a30*b03-a32*b00)*det;o[15]=(a20*b03-a21*b01+a22*b00)*det;return o;}
+function mv4(m,v){return[m[0]*v[0]+m[4]*v[1]+m[8]*v[2]+m[12]*v[3],m[1]*v[0]+m[5]*v[1]+m[9]*v[2]+m[13]*v[3],m[2]*v[0]+m[6]*v[1]+m[10]*v[2]+m[14]*v[3],m[3]*v[0]+m[7]*v[1]+m[11]*v[2]+m[15]*v[3]];}
+
+// ── WEBGL ──────────────────────────────────────────────────────
+const gc=document.getElementById('gc');
+const cv=document.getElementById('cv');
+const c2=cv.getContext('2d');
+const gl=gc.getContext('webgl')||gc.getContext('experimental-webgl');
+if(!gl)alert('WebGL非対応');
+const extU32=gl.getExtension('OES_element_index_uint');
+
+// ── PBR SHADERS ───────────────────────────────────────────────
+const VS=`attribute vec3 aP;attribute vec3 aN;attribute vec2 aU;attribute vec4 aTan;uniform mat4 uMVP;uniform mat4 uMV;varying vec3 vN,vV,vTan,vBit;varying float vH;varying vec2 vU;void main(){vec4 p=uMV*vec4(aP,1.);vV=p.xyz;mat3 nm=mat3(uMV[0].xyz,uMV[1].xyz,uMV[2].xyz);vN=nm*aN;vec3 t=nm*aTan.xyz;vTan=t;vBit=cross(vN,t)*aTan.w;vH=length(aP);vU=aU;gl_Position=uMVP*vec4(aP,1.);}`;
+// Physically-based rendering: metallic-roughness model
+// Lights: 3 directional + ambient IBL approximation
+const FS=`precision highp float;
+varying vec3 vN,vV,vTan,vBit;varying float vH;varying vec2 vU;
+uniform vec3  uBaseColor;
+uniform sampler2D uTBase;
+uniform sampler2D uTMR;
+uniform sampler2D uTNrm;
+uniform sampler2D uTOcc;
+uniform sampler2D uTEmi;
+uniform float uHasBase,uHasMR,uHasNrm,uHasOcc,uHasEmi;
+uniform float uMetallic,uRoughness;
+uniform float uDoubleSided;
+
+const float PI=3.14159265;
+
+float D_GGX(float NdH,float a){float a2=a*a;float d=NdH*NdH*(a2-1.)+1.;return a2/(PI*d*d);}
+float G_Schlick(float NdV,float NdL,float k){float g1=NdV/(NdV*(1.-k)+k);float g2=NdL/(NdL*(1.-k)+k);return g1*g2;}
+vec3 F_Schlick(float cosT,vec3 F0){return F0+(1.-F0)*pow(clamp(1.-cosT,0.,1.),5.);}
+
+vec3 pbrLight(vec3 N,vec3 V,vec3 L,vec3 Lc,vec3 albedo,float metallic,float roughness){
+  float a=roughness*roughness;
+  vec3 H=normalize(V+L);
+  float NdL=max(dot(N,L),0.);
+  float NdV=max(dot(N,V),0.001);
+  float NdH=max(dot(N,H),0.);
+  float VdH=max(dot(V,H),0.);
+  vec3 F0=mix(vec3(.04),albedo,metallic);
+  vec3 F=F_Schlick(VdH,F0);
+  float k=(roughness+1.)*(roughness+1.)/8.;
+  float D=D_GGX(NdH,a);
+  float G=G_Schlick(NdV,NdL,k);
+  vec3 spec=D*G*F/(4.*NdV*NdL+.001);
+  vec3 kD=(1.-F)*(1.-metallic);
+  return (kD*albedo/PI+spec)*Lc*NdL;
+}
+
+void main(){
+  vec3 N=normalize(vN);
+  if(uHasNrm>0.5){
+    vec3 tn=texture2D(uTNrm,vU).xyz*2.0-1.0;
+    vec3 T=normalize(vTan);vec3 B=normalize(vBit);
+    N=normalize(T*tn.x+B*tn.y+N*tn.z);
+  }
+  vec3 V=normalize(-vV);
+
+  vec3 albedo=uBaseColor;
+  if(uHasBase>0.5){albedo*=texture2D(uTBase,vU).rgb;}
+  else{albedo=mix(albedo*.5,albedo,clamp(vH*.6,0.,1.));}
+  albedo=pow(albedo,vec3(2.2));
+
+  float metallic=uMetallic,roughness=uRoughness;
+  if(uHasMR>0.5){vec4 mr=texture2D(uTMR,vU);metallic*=mr.b;roughness*=mr.g;}
+  roughness=clamp(roughness,.04,1.);metallic=clamp(metallic,0.,1.);
+
+  vec3 col=vec3(0.);
+  col+=pbrLight(N,V,normalize(vec3(1.3,2.2,.9)),vec3(1.0,.95,.88),albedo,metallic,roughness);
+  col+=pbrLight(N,V,normalize(vec3(-.9,.6,-.7)),vec3(.28,.30,.35),albedo,metallic,roughness);
+  col+=pbrLight(N,V,normalize(vec3(.2,-.8,.3)),vec3(.12,.12,.14),albedo,metallic,roughness);
+
+  float ao=1.;if(uHasOcc>0.5)ao=texture2D(uTOcc,vU).r;
+  vec3 F0=mix(vec3(.04),albedo,metallic);
+  vec3 kS=F_Schlick(max(dot(N,V),0.),F0);
+  vec3 kD=(1.-kS)*(1.-metallic);
+  vec3 ambDiff=albedo*vec3(.18,.20,.24)*ao;
+  float envLod=roughness*.7;
+  vec3 ambSpec=mix(vec3(.9,.92,.98),vec3(.4,.45,.55),envLod)*kS*(1.-roughness*.5)*ao;
+  col+=kD*ambDiff+ambSpec*.25;
+
+  if(uHasEmi>0.5){col+=pow(texture2D(uTEmi,vU).rgb,vec3(2.2))*2.;}
+
+  col=col/(col+vec3(1.));
+  col=pow(col,vec3(1./2.2));
+  gl_FragColor=vec4(col,1.);
+}`;
+// Wire shader
+const WVS=`attribute vec3 aP;uniform mat4 uMVP;void main(){gl_Position=uMVP*vec4(aP,1.);}`;
+const WFS=`precision mediump float;uniform vec3 uWC;void main(){gl_FragColor=vec4(uWC,1.);}`;
+function mkSh(t,s){const h=gl.createShader(t);gl.shaderSource(h,s);gl.compileShader(h);if(!gl.getShaderParameter(h,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(h));return h;}
+function mkProg(vs,fs){const p=gl.createProgram();gl.attachShader(p,mkSh(gl.VERTEX_SHADER,vs));gl.attachShader(p,mkSh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);return p;}
+const prog=mkProg(VS,FS),wprog=mkProg(WVS,WFS);
+const lP=gl.getAttribLocation(prog,'aP'),lN=gl.getAttribLocation(prog,'aN'),lU=gl.getAttribLocation(prog,'aU'),lTan=gl.getAttribLocation(prog,'aTan');
+const lMVP=gl.getUniformLocation(prog,'uMVP'),lMV=gl.getUniformLocation(prog,'uMV');
+const lC=gl.getUniformLocation(prog,'uBaseColor');
+const lTBase=gl.getUniformLocation(prog,'uTBase'),lHasBase=gl.getUniformLocation(prog,'uHasBase');
+const lTMR=gl.getUniformLocation(prog,'uTMR'),lHasMR=gl.getUniformLocation(prog,'uHasMR');
+const lTNrm=gl.getUniformLocation(prog,'uTNrm'),lHasNrm=gl.getUniformLocation(prog,'uHasNrm');
+const lTOcc=gl.getUniformLocation(prog,'uTOcc'),lHasOcc=gl.getUniformLocation(prog,'uHasOcc');
+const lTEmi=gl.getUniformLocation(prog,'uTEmi'),lHasEmi=gl.getUniformLocation(prog,'uHasEmi');
+const lMetal=gl.getUniformLocation(prog,'uMetallic'),lRough=gl.getUniformLocation(prog,'uRoughness');
+const lDblSide=gl.getUniformLocation(prog,'uDoubleSided');
+const wlP=gl.getAttribLocation(wprog,'aP'),wlMVP=gl.getUniformLocation(wprog,'uMVP'),wlWC=gl.getUniformLocation(wprog,'uWC');
+// PBR texture slots: 0=base,1=MR,2=normal,3=occ,4=emissive
+// pbrTex[slot] = WebGLTexture | null
+let pbrTex=[null,null,null,null,null];
+let pbrMetal=0.0,pbrRough=0.5,pbrDoubleSided=false;
+// GPU buffers
+let posBuf,normBuf,uvBuf,tanBuf,triBuf,wirBuf;
+let triIdxType=gl.UNSIGNED_SHORT,wirIdxType=gl.UNSIGNED_SHORT;
+function initGPU(){
+  if(posBuf){[posBuf,normBuf,uvBuf,tanBuf,triBuf,wirBuf].forEach(b=>{if(b)gl.deleteBuffer(b);});}
+  posBuf=gl.createBuffer();normBuf=gl.createBuffer();uvBuf=gl.createBuffer();tanBuf=gl.createBuffer();triBuf=gl.createBuffer();wirBuf=gl.createBuffer();
+  triIdxType=(tris instanceof Uint32Array&&extU32)?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT;
+  wirIdxType=(wires instanceof Uint32Array&&extU32)?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT;
+  gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);gl.bufferData(gl.ARRAY_BUFFER,verts,gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,normBuf);gl.bufferData(gl.ARRAY_BUFFER,norms,gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,uvBuf);gl.bufferData(gl.ARRAY_BUFFER,uvs,gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,tanBuf);gl.bufferData(gl.ARRAY_BUFFER,tans,gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,triBuf);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,tris,gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,wirBuf);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,wires,gl.STATIC_DRAW);
+}
+function uploadPN(){
+  gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);gl.bufferSubData(gl.ARRAY_BUFFER,0,verts);
+  gl.bindBuffer(gl.ARRAY_BUFFER,normBuf);gl.bufferSubData(gl.ARRAY_BUFFER,0,norms);
+}
+// Fallback 1x1 textures
+function mk1px(r,g,b,a){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([r,g,b,a]));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.bindTexture(gl.TEXTURE_2D,null);return t;}
+const fbTexW=mk1px(255,255,255,255);
+const fbTexMR=mk1px(0,128,0,255);
+const fbTexNrm=mk1px(128,128,255,255);
+const fbTexBlk=mk1px(0,0,0,255);
+gl.getExtension('OES_standard_derivatives');
+gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.clearColor(.06,.06,.07,1);
+
+// ── MESH BUILDERS ──────────────────────────────────────────────
+// All builders return {V,N,U,T,W,vc,tc,wc}
+// V=Float32Array positions, N=normals, U=uvs, T=triangle indices, W=wire indices
+
+// FLAT: proper flat plane, NxN quads
+function mkFlat(N){
+  const G=N+1,vc=G*G,tc=N*N*2;
+  const V=new Float32Array(vc*3),U=new Float32Array(vc*2);
+  for(let y=0;y<=N;y++)for(let x=0;x<=N;x++){const i=y*G+x;V[i*3]=(x/N)*2-1;V[i*3+1]=0;V[i*3+2]=(y/N)*2-1;U[i*2]=x/N;U[i*2+1]=y/N;}
+  const Tarr=vc>65535&&extU32?new Uint32Array(tc*3):new Uint16Array(tc*3);let k=0;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){const a=y*G+x,b=y*G+x+1,c=(y+1)*G+x,d=(y+1)*G+x+1;Tarr[k++]=a;Tarr[k++]=c;Tarr[k++]=b;Tarr[k++]=b;Tarr[k++]=c;Tarr[k++]=d;}
+  return {V,U,T:Tarr,vc,tc};
+}
+
+// BOX: 6 faces, each M×M quads, outward normals, NO shared verts between faces
+// Verified winding for each face (see analysis).
+function mkBox(M){
+  const G=M+1,fvc=G*G,vc=6*fvc,tc=6*M*M*2;
+  const V=new Float32Array(vc*3),U=new Float32Array(vc*2);
+  const T=new Uint32Array(tc*3);
+  // [ox,oy,oz, ux,uy,uz, vx,vy,vz, reversed]
+  // reversed=true means use (a,c,b)+(b,c,d) winding for outward normal
+  const faces=[
+    [-0.5, 0.5,-0.5, 1,0,0, 0,0,1, 1], // top    +Y  REVERSED
+    [-0.5,-0.5,-0.5, 1,0,0, 0,0,1, 0], // bottom -Y  STANDARD
+    [-0.5, 0.5, 0.5, 1,0,0, 0,-1,0,1], // front  +Z  REVERSED
+    [ 0.5, 0.5,-0.5,-1,0,0, 0,-1,0,1], // back   -Z  REVERSED
+    [ 0.5, 0.5,-0.5, 0,0,1, 0,-1,0,0], // right  +X  STANDARD
+    [-0.5, 0.5, 0.5, 0,0,-1,0,-1,0,0], // left   -X  STANDARD
+  ];
+  let vi=0,ti=0;
+  for(const [ox,oy,oz,ux,uy,uz,vx,vy,vz,rev] of faces){
+    const vb=vi;
+    for(let y=0;y<=M;y++)for(let x=0;x<=M;x++){
+      const u=x/M,v=y/M;
+      V[vi*3]=ox+u*ux+v*vx;V[vi*3+1]=oy+u*uy+v*vy;V[vi*3+2]=oz+u*uz+v*vz;
+      U[vi*2]=u;U[vi*2+1]=v;vi++;
+    }
+    for(let y=0;y<M;y++)for(let x=0;x<M;x++){
+      const a=vb+y*G+x,b=vb+y*G+x+1,c=vb+(y+1)*G+x,d=vb+(y+1)*G+x+1;
+      if(rev){T[ti++]=a;T[ti++]=c;T[ti++]=b;T[ti++]=b;T[ti++]=c;T[ti++]=d;}
+      else   {T[ti++]=a;T[ti++]=b;T[ti++]=c;T[ti++]=b;T[ti++]=d;T[ti++]=c;}
+    }
+  }
+  return weldVerts(V,U,T,vc,tc);
+}
+
+// SPHERE: UV sphere, (segsLon+1)×(segsLat+1) verts
+// Standard winding gives outward normals (verified mathematically)
+function mkSphere(segs){
+  const sLon=segs,sLat=segs,G=sLon+1,vc=G*(sLat+1),tc=sLon*sLat*2;
+  const V=new Float32Array(vc*3),U=new Float32Array(vc*2);
+  const T=new Uint32Array(tc*3);
+  for(let y=0;y<=sLat;y++){
+    const th=y/sLat*Math.PI,sT=Math.sin(th),cT=Math.cos(th);
+    for(let x=0;x<=sLon;x++){
+      const ph=x/sLon*Math.PI*2,i=y*G+x;
+      V[i*3]=sT*Math.cos(ph);V[i*3+1]=cT;V[i*3+2]=sT*Math.sin(ph);
+      U[i*2]=x/sLon;U[i*2+1]=y/sLat;
+    }
+  }
+  let k=0;
+  for(let y=0;y<sLat;y++)for(let x=0;x<sLon;x++){
+    const a=y*G+x,b=y*G+x+1,c=(y+1)*G+x,d=(y+1)*G+x+1;
+    T[k++]=a;T[k++]=b;T[k++]=c;T[k++]=b;T[k++]=d;T[k++]=c;
+  }
+  return weldVerts(V,U,T,vc,tc);
+}
+
+// ── VERTEX WELD ──────────────────────────────────────────────
+// 同じ位置の頂点を1つに統合し、縫い目・極点の分離を解消する
+// 縮退三角形(2頂点が同じ)も除去する
+function weldVerts(pos,uv,tri,oldVC,oldTC){
+  const r=1e5;
+  const keyOf=i=>Math.round(pos[i*3]*r)+'_'+Math.round(pos[i*3+1]*r)+'_'+Math.round(pos[i*3+2]*r);
+  const seen=new Map();const nP=[],nU=[];let nVC=0;
+  const remap=new Int32Array(oldVC);
+  for(let i=0;i<oldVC;i++){
+    const k=keyOf(i);
+    if(seen.has(k)){remap[i]=seen.get(k);}
+    else{seen.set(k,nVC);remap[i]=nVC;nP.push(pos[i*3],pos[i*3+1],pos[i*3+2]);nU.push(uv[i*2],uv[i*2+1]);nVC++;}
+  }
+  const NV=new Float32Array(nP),NU=new Float32Array(nU);
+  const IA=nVC>65535&&extU32?Uint32Array:Uint16Array;
+  const tmp=new IA(oldTC*3);
+  for(let i=0;i<oldTC*3;i++)tmp[i]=remap[tri[i]];
+  let ntc=0;const NT=new IA(oldTC*3);
+  for(let t=0;t<oldTC;t++){
+    const a=tmp[t*3],b=tmp[t*3+1],c=tmp[t*3+2];
+    if(a!==b&&b!==c&&a!==c){NT[ntc*3]=a;NT[ntc*3+1]=b;NT[ntc*3+2]=c;ntc++;}
+  }
+  return{V:NV,U:NU,T:NT.slice(0,ntc*3),vc:nVC,tc:ntc};
+}
+
+// ── WIREFRAME LINES ────────────────────────────────────────────
+function buildWires(){
+  const MV=VC+1;
+  const em=new Map();
+  for(let t=0;t<TC;t++){
+    const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];
+    const ae=(mn,mx)=>{const k=Math.min(mn,mx)*MV+Math.max(mn,mx);if(!em.has(k))em.set(k,[Math.min(mn,mx),Math.max(mn,mx)]);};
+    ae(a,b);ae(b,c);ae(a,c);
+  }
+  WC=em.size;
+  const WArr=VC>65535&&extU32?new Uint32Array(WC*2):new Uint16Array(WC*2);
+  let k=0;for(const [mn,mx] of em.values()){WArr[k++]=mn;WArr[k++]=mx;}
+  wires=WArr;
+}
+
+// ── ADJACENCY FOR SMOOTH BRUSH ─────────────────────────────────
+function buildAdj(){
+  adj=Array.from({length:VC},()=>[]);
+  for(let t=0;t<TC;t++){
+    const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];
+    adj[a].push(b,c);adj[b].push(a,c);adj[c].push(a,b);
+  }
+  adj=adj.map(a=>[...new Set(a)]);
+}
+
+// ── NORMALS ───────────────────────────────────────────────────
+function recompNorms(){
+  norms.fill(0);
+  for(let t=0;t<TC;t++){
+    const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];
+    const ax=verts[a*3],ay=verts[a*3+1],az=verts[a*3+2];
+    const e1x=verts[b*3]-ax,e1y=verts[b*3+1]-ay,e1z=verts[b*3+2]-az;
+    const e2x=verts[c*3]-ax,e2y=verts[c*3+1]-ay,e2z=verts[c*3+2]-az;
+    const nx=e1y*e2z-e1z*e2y,ny=e1z*e2x-e1x*e2z,nz=e1x*e2y-e1y*e2x;
+    norms[a*3]+=nx;norms[a*3+1]+=ny;norms[a*3+2]+=nz;
+    norms[b*3]+=nx;norms[b*3+1]+=ny;norms[b*3+2]+=nz;
+    norms[c*3]+=nx;norms[c*3+1]+=ny;norms[c*3+2]+=nz;
+  }
+  for(let i=0;i<VC;i++){
+    const x=norms[i*3],y=norms[i*3+1],z=norms[i*3+2],l=Math.sqrt(x*x+y*y+z*z)||1;
+    norms[i*3]=x/l;norms[i*3+1]=y/l;norms[i*3+2]=z/l;
+  }
+}
+
+// ── MESH APPLICATION ──────────────────────────────────────────
+function applyMesh(built){
+  verts=built.V;norms=new Float32Array(built.vc*3);uvs=built.U;tris=built.T;
+  VC=built.vc;TC=built.tc;
+  // スカルプトメッシュはTANGENTなし: デフォルト(1,0,0,1)で埋める
+  tans=new Float32Array(VC*4);
+  for(let i=0;i<VC;i++){tans[i*4]=1;tans[i*4+1]=0;tans[i*4+2]=0;tans[i*4+3]=1;}
+  recompNorms();buildWires();buildAdj();
+  initGPU();dirty=true;updateResLabel();
+}
+function applyShape(name){
+  curShape=name;flatN=64;
+  if(name==='flat')applyMesh(mkFlat(64));
+  else if(name==='box')applyMesh(mkBox(12));
+  else applyMesh(mkSphere(32));
+}
+function updateResLabel(){document.getElementById('rl').textContent='VERTS: '+VC+' | TRIS: '+TC;}
+
+// ── SUBDIVIDE ─────────────────────────────────────────────────
+function subdivide(){
+  if(curShape==='flat'){
+    if(flatN>=256){alert('最大解像度です (256)');return;}
+    subdFlat();
+  } else {
+    if(VC>80000){alert('最大頂点数です');return;}
+    subdTri();
+  }
+  recompNorms();buildWires();buildAdj();
+  initGPU();dirty=true;updateResLabel();
+}
+
+// Flat: bilinear resampling (64→128→256)
+function subdFlat(){
+  const oN=flatN,oG=oN+1,oP=verts.slice(0,oG*oG*3);
+  flatN*=2;const nN=flatN,nG=nN+1,vc=nG*nG,tc=nN*nN*2;
+  const NV=new Float32Array(vc*3),NU=new Float32Array(vc*2);
+  for(let y=0;y<=nN;y++)for(let x=0;x<=nN;x++){
+    const vi=y*nG+x,fx=x/nN*oN,fy=y/nN*oN;
+    const mi=oG-1;
+    const bx=Math.max(0,Math.min(mi-.001,fx)),by=Math.max(0,Math.min(mi-.001,fy));
+    const ix=Math.floor(bx),iy=Math.floor(by),tx=bx-ix,ty=by-iy,ix1=Math.min(mi,ix+1),iy1=Math.min(mi,iy+1);
+    for(let c=0;c<3;c++)NV[vi*3+c]=oP[(iy*oG+ix)*3+c]*(1-tx)*(1-ty)+oP[(iy*oG+ix1)*3+c]*tx*(1-ty)+oP[(iy1*oG+ix)*3+c]*(1-tx)*ty+oP[(iy1*oG+ix1)*3+c]*tx*ty;
+    NU[vi*2]=x/nN;NU[vi*2+1]=y/nN;
+  }
+  const IA=vc>65535&&extU32?Uint32Array:Uint16Array;const T=new IA(tc*3);let k=0;
+  for(let y=0;y<nN;y++)for(let x=0;x<nN;x++){const a=y*nG+x,b=y*nG+x+1,c=(y+1)*nG+x,d=(y+1)*nG+x+1;T[k++]=a;T[k++]=c;T[k++]=b;T[k++]=b;T[k++]=c;T[k++]=d;}
+  verts=NV;norms=new Float32Array(vc*3);uvs=NU;tris=T;VC=vc;TC=tc;
+}
+
+// Box/Sphere: triangle midpoint subdivision
+function subdTri(){
+  const oVC=VC,MV=oVC+1;
+  const em=new Map();let nvc=oVC;
+  const getMid=(a,b)=>{const k=Math.min(a,b)*MV+Math.max(a,b);if(em.has(k))return em.get(k);const vi=nvc++;em.set(k,vi);return vi;};
+  const nTC=TC*4;
+  const NT=new Uint32Array(nTC*3);let ti=0;
+  const maxV=oVC+em.size+TC*3+10;// estimate
+  // First pass: determine new vertex count
+  const edgeMap2=new Map();let nvc2=oVC;
+  for(let t=0;t<TC;t++){
+    const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];
+    const gm=(x,y)=>{const k=Math.min(x,y)*MV+Math.max(x,y);if(!edgeMap2.has(k))edgeMap2.set(k,nvc2++);return edgeMap2.get(k);};
+    gm(a,b);gm(b,c);gm(a,c);
+  }
+  // Allocate new arrays
+  const NV=new Float32Array(nvc2*3),NU=new Float32Array(nvc2*2);
+  NV.set(verts.subarray(0,oVC*3));NU.set(uvs.subarray(0,oVC*2));
+  const edgeMap3=new Map();let nvc3=oVC;
+  const gm2=(a,b)=>{
+    const k=Math.min(a,b)*MV+Math.max(a,b);
+    if(edgeMap3.has(k))return edgeMap3.get(k);
+    const vi=nvc3++;edgeMap3.set(k,vi);
+    NV[vi*3]=(NV[a*3]+NV[b*3])*.5;NV[vi*3+1]=(NV[a*3+1]+NV[b*3+1])*.5;NV[vi*3+2]=(NV[a*3+2]+NV[b*3+2])*.5;
+    NU[vi*2]=(NU[a*2]+NU[b*2])*.5;NU[vi*2+1]=(NU[a*2+1]+NU[b*2+1])*.5;
+    // If sphere: project midpoint to the average radius of the two parent vertices.
+    // (NOT unit sphere - that would snap sculpted displacements back to radius=1)
+    if(curShape==='sphere'){
+      const ra=Math.sqrt(NV[a*3]**2+NV[a*3+1]**2+NV[a*3+2]**2)||1;
+      const rb=Math.sqrt(NV[b*3]**2+NV[b*3+1]**2+NV[b*3+2]**2)||1;
+      const tgt=(ra+rb)*.5;
+      const l=Math.sqrt(NV[vi*3]**2+NV[vi*3+1]**2+NV[vi*3+2]**2)||1;
+      NV[vi*3]*=tgt/l;NV[vi*3+1]*=tgt/l;NV[vi*3+2]*=tgt/l;
+    }
+    return vi;
+  };
+  const nT=new Uint32Array(TC*4*3);let nti=0;
+  for(let t=0;t<TC;t++){
+    const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];
+    const ab=gm2(a,b),bc=gm2(b,c),ca=gm2(c,a);
+    nT[nti++]=a; nT[nti++]=ab;nT[nti++]=ca;
+    nT[nti++]=ab;nT[nti++]=b; nT[nti++]=bc;
+    nT[nti++]=ca;nT[nti++]=bc;nT[nti++]=c;
+    nT[nti++]=ab;nT[nti++]=bc;nT[nti++]=ca;
+  }
+  verts=NV;norms=new Float32Array(nvc3*3);uvs=NU;tris=nT.subarray(0,nti);
+  VC=nvc3;TC=TC*4;
+}
+
+// ── CAMERA ────────────────────────────────────────────────────
+const mvp=m4(),mv=m4(),proj=m4(),mvpI=m4();
+function updCam(){
+  const cp=Math.cos(cam.phi),sp=Math.sin(cam.phi);
+  const ct=Math.cos(cam.theta),st=Math.sin(cam.theta);
+  camPos=[cam.r*cp*st, cam.r*sp, cam.r*cp*ct];
+  // カメラright/upベクトルでpanオフセットをターゲット座標に適用
+  const right=[-ct, 0, st]; // world right (Y軸と前方向のクロス)
+  const fwd=[cp*st, sp, cp*ct]; // カメラ→原点方向
+  const up=[
+    -(sp*st)*1, sp===0?0:Math.cos(Math.atan2(sp,cp)), -(sp*ct)
+  ];
+  // upはworld_up - fwd*(world_up・fwd) で正確に求める
+  const wuy=1; // world up = (0,1,0)
+  const fwdDotUp=fwd[1]*wuy;
+  const upX=-fwd[0]*fwdDotUp, upY=wuy-fwd[1]*fwdDotUp, upZ=-fwd[2]*fwdDotUp;
+  const ulen=Math.sqrt(upX*upX+upY*upY+upZ*upZ)||1;
+  const target=[
+    cam.panX*right[0] + cam.panY*(upX/ulen),
+    cam.panX*right[1] + cam.panY*(upY/ulen),
+    cam.panX*right[2] + cam.panY*(upZ/ulen)
+  ];
+  camPos=[camPos[0]+target[0], camPos[1]+target[1], camPos[2]+target[2]];
+  mp(proj,Math.PI/4,gc.width/gc.height,.05,200);
+  mla(mv,camPos,target,[0,1,0]);mmul(mvp,proj,mv);
+}
+
+// ── RAY-TRIANGLE INTERSECTION (Möller-Trumbore) ──────────────
+function rayTri(rox,roy,roz,rdx,rdy,rdz,a,b,c){
+  const ax=verts[a*3],ay=verts[a*3+1],az=verts[a*3+2];
+  const e1x=verts[b*3]-ax,e1y=verts[b*3+1]-ay,e1z=verts[b*3+2]-az;
+  const e2x=verts[c*3]-ax,e2y=verts[c*3+1]-ay,e2z=verts[c*3+2]-az;
+  const hx=rdy*e2z-rdz*e2y,hy=rdz*e2x-rdx*e2z,hz=rdx*e2y-rdy*e2x;
+  const det=e1x*hx+e1y*hy+e1z*hz;if(Math.abs(det)<1e-10)return-1;
+  const f=1/det,sx=rox-ax,sy=roy-ay,sz=roz-az;
+  const u=f*(sx*hx+sy*hy+sz*hz);if(u<0||u>1)return-1;
+  const qx=sy*e1z-sz*e1y,qy=sz*e1x-sx*e1z,qz=sx*e1y-sy*e1x;
+  const v=f*(rdx*qx+rdy*qy+rdz*qz);if(v<0||u+v>1)return-1;
+  const t=f*(e2x*qx+e2y*qy+e2z*qz);return t>1e-4?t:-1;
+}
+function raycast(sx,sy){
+  const r=gc.getBoundingClientRect();
+  const nx=((sx-r.left)/r.width)*2-1,ny=1-((sy-r.top)/r.height)*2;
+  if(!minv(mvpI,mvp))return null;
+  const fc=mv4(mvpI,[nx,ny,1,1]);const fw=fc[3];if(Math.abs(fw)<1e-8)return null;
+  const fpx=fc[0]/fw,fpy=fc[1]/fw,fpz=fc[2]/fw;
+  let rdx=fpx-camPos[0],rdy=fpy-camPos[1],rdz=fpz-camPos[2];
+  const rl=Math.sqrt(rdx*rdx+rdy*rdy+rdz*rdz);rdx/=rl;rdy/=rl;rdz/=rl;
+  let minT=Infinity,ha=-1,hb=-1,hc=-1;
+  for(let t=0;t<TC;t++){
+    const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];
+    const tr=rayTri(camPos[0],camPos[1],camPos[2],rdx,rdy,rdz,a,b,c);
+    if(tr>0&&tr<minT){minT=tr;ha=a;hb=b;hc=c;}
+  }
+  if(ha<0)return null;
+  const pt=[camPos[0]+rdx*minT,camPos[1]+rdy*minT,camPos[2]+rdz*minT];
+  const nx2=(norms[ha*3]+norms[hb*3]+norms[hc*3])/3;
+  const ny2=(norms[ha*3+1]+norms[hb*3+1]+norms[hc*3+1])/3;
+  const nz2=(norms[ha*3+2]+norms[hb*3+2]+norms[hc*3+2])/3;
+  const nl=Math.sqrt(nx2*nx2+ny2*ny2+nz2*nz2)||1;
+  return{pt,n:[nx2/nl,ny2/nl,nz2/nl]};
+}
+
+// ── WORLD→CANVAS ─────────────────────────────────────────────
+function w2c(wx,wy,wz){const c=mv4(mvp,[wx,wy,wz,1]);if(c[3]<=0)return null;return[(c[0]/c[3]+1)*.5*cv.width,(1-c[1]/c[3])*.5*cv.height];}
+function bsr(pt,BR){
+  const c=w2c(pt[0],pt[1],pt[2]);if(!c)return 20;
+  const rx=mv[0],ry=mv[4],rz=mv[8];
+  const e=w2c(pt[0]+rx*BR,pt[1]+ry*BR,pt[2]+rz*BR);if(!e)return 20;
+  return Math.sqrt((e[0]-c[0])**2+(e[1]-c[1])**2);
+}
+
+// ── BRUSH UTILS ───────────────────────────────────────────────
+function fall(r,focal){
+  if(r>=1)return 0;
+  if(focal>0){const i=focal*.9;if(r<i)return 1;r=(r-i)/(1-i+1e-6);}
+  else if(focal<0)r=Math.pow(r,1/(1+Math.abs(focal)*3));
+  const c=Math.cos(r*Math.PI*.5);return c*c;
+}
+
+// ── BRUSHES ─────────────────────────────────────────────────
+// All move vertices in 3D along their own normals (Standard/Clay)
+// or via plane projection (Trim) or free translation (Move/Smooth)
+function doStd(hx,hy,hz,BR,sc,dir){
+  for(let i=0;i<VC;i++){const dx=verts[i*3]-hx,dy=verts[i*3+1]-hy,dz=verts[i*3+2]-hz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=BR)continue;const w=fall(d/BR,P.focal)*sc*dir;verts[i*3]+=norms[i*3]*w;verts[i*3+1]+=norms[i*3+1]*w;verts[i*3+2]+=norms[i*3+2]*w;}
+}
+function doCly(hx,hy,hz,BR,sc,dir){const hf=Math.max(P.focal,.25);
+  for(let i=0;i<VC;i++){const dx=verts[i*3]-hx,dy=verts[i*3+1]-hy,dz=verts[i*3+2]-hz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=BR)continue;const w=fall(d/BR,hf)*sc*dir;verts[i*3]+=norms[i*3]*w;verts[i*3+1]+=norms[i*3+1]*w;verts[i*3+2]+=norms[i*3+2]*w;}
+}
+function doTrm(hx,hy,hz,hn,BR){
+  const pull=P.str*.4;
+  for(let i=0;i<VC;i++){const dx=verts[i*3]-hx,dy=verts[i*3+1]-hy,dz=verts[i*3+2]-hz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=BR)continue;const w=fall(d/BR,P.focal)*pull;const sd=dx*hn[0]+dy*hn[1]+dz*hn[2];verts[i*3]-=hn[0]*sd*w;verts[i*3+1]-=hn[1]*sd*w;verts[i*3+2]-=hn[2]*sd*w;}
+}
+function doMov(hx,hy,hz,BR,ddx,ddy,ddz){
+  const sc=P.str*1.5;
+  for(let i=0;i<VC;i++){const dx=verts[i*3]-hx,dy=verts[i*3+1]-hy,dz=verts[i*3+2]-hz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=BR)continue;const w=fall(d/BR,P.focal)*sc;verts[i*3]+=ddx*w;verts[i*3+1]+=ddy*w;verts[i*3+2]+=ddz*w;}
+}
+function doSmo(hx,hy,hz,BR){
+  const sw=P.str*.5,tmp=verts.slice(0,VC*3);
+  for(let i=0;i<VC;i++){const dx=tmp[i*3]-hx,dy=tmp[i*3+1]-hy,dz=tmp[i*3+2]-hz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=BR)continue;const w=fall(d/BR,P.focal)*sw;const nb=adj[i];if(!nb.length)continue;let ax=0,ay=0,az=0;for(const j of nb){ax+=tmp[j*3];ay+=tmp[j*3+1];az+=tmp[j*3+2];}const n=nb.length;verts[i*3]+=(ax/n-tmp[i*3])*w;verts[i*3+1]+=(ay/n-tmp[i*3+1])*w;verts[i*3+2]+=(az/n-tmp[i*3+2])*w;}
+}
+
+// ── SCULPTRIS PRO ────────────────────────────────────────────
+// T字ジャンクション対策: 分割エッジを共有する全三角形を同時に処理する
+const SP_MAX_VERTS = 200000;
+function sculptrisSubdivide(hx, hy, hz, BR) {
+  if (VC >= SP_MAX_VERTS) return false;
+  const targetLen2 = (BR * 0.6) ** 2;
+  const checkR2    = (BR * 1.4) ** 2;
+
+  let posArr = Array.from(verts.subarray(0, VC * 3));
+  let uvArr  = Array.from(uvs.subarray(0, VC * 2));
+  let triArr = Array.from(tris.subarray(0, TC * 3));
+  let changed = false;
+
+  for (let pass = 0; pass < 3; pass++) {
+    if (posArr.length / 3 >= SP_MAX_VERTS) break;
+
+    // ── Step1: ブラシ範囲内の三角形で長すぎるエッジを収集 ──
+    const edgesToSplit = new Set();
+    const eKey = (p, q) => Math.min(p,q) + '_' + Math.max(p,q);
+    const TC_cur = triArr.length / 3;
+
+    for (let t = 0; t < TC_cur; t++) {
+      const ai=triArr[t*3], bi=triArr[t*3+1], ci=triArr[t*3+2];
+      const ax=posArr[ai*3], ay=posArr[ai*3+1], az=posArr[ai*3+2];
+      const bx=posArr[bi*3], by=posArr[bi*3+1], bz=posArr[bi*3+2];
+      const cx=posArr[ci*3], cy=posArr[ci*3+1], cz=posArr[ci*3+2];
+      const gx=(ax+bx+cx)/3-hx, gy=(ay+by+cy)/3-hy, gz=(az+bz+cz)/3-hz;
+      if (gx*gx+gy*gy+gz*gz > checkR2) continue;
+      const pairs = [[ai,bi,ax,ay,az,bx,by,bz],[bi,ci,bx,by,bz,cx,cy,cz],[ci,ai,cx,cy,cz,ax,ay,az]];
+      for (const [p,q,x0,y0,z0,x1,y1,z1] of pairs) {
+        if ((x1-x0)**2+(y1-y0)**2+(z1-z0)**2 > targetLen2)
+          edgesToSplit.add(eKey(p,q));
+      }
+    }
+    if (edgesToSplit.size === 0) break;
+    changed = true;
+
+    // ── Step2: 分割エッジの中点頂点を追加 ──
+    const midMap = new Map();
+    for (const k of edgesToSplit) {
+      const [p, q] = k.split('_').map(Number);
+      const mi = posArr.length / 3;
+      midMap.set(k, mi);
+      posArr.push(
+        (posArr[p*3]  +posArr[q*3]  )/2,
+        (posArr[p*3+1]+posArr[q*3+1])/2,
+        (posArr[p*3+2]+posArr[q*3+2])/2
+      );
+      uvArr.push(
+        (uvArr[p*2]  +uvArr[q*2]  )/2,
+        (uvArr[p*2+1]+uvArr[q*2+1])/2
+      );
+    }
+
+    // ── Step3: 全三角形を処理（分割エッジを持つ三角形は必ず再分割） ──
+    // → これでT字ジャンクションが発生しない
+    const newTri = [];
+    for (let t = 0; t < TC_cur; t++) {
+      const a=triArr[t*3], b=triArr[t*3+1], c=triArr[t*3+2];
+      const mAB = midMap.get(eKey(a,b));
+      const mBC = midMap.get(eKey(b,c));
+      const mCA = midMap.get(eKey(c,a));
+      const n = (mAB!==undefined?1:0)+(mBC!==undefined?1:0)+(mCA!==undefined?1:0);
+
+      if (n === 0) {
+        newTri.push(a,b,c);
+      } else if (n === 3) {
+        // 3辺分割 → 4三角形
+        newTri.push(a,mAB,mCA, mAB,b,mBC, mCA,mBC,c, mAB,mBC,mCA);
+      } else if (n === 1) {
+        // 1辺分割 → 2三角形
+        if      (mAB!==undefined) { newTri.push(a,mAB,c, mAB,b,c); }
+        else if (mBC!==undefined) { newTri.push(b,mBC,a, mBC,c,a); }
+        else                      { newTri.push(c,mCA,b, mCA,a,b); }
+      } else {
+        // 2辺分割 → 3三角形（非分割エッジの対頂点を頂上に）
+        if      (mAB===undefined) { newTri.push(a,b,mBC, a,mBC,mCA, mCA,mBC,c); }
+        else if (mBC===undefined) { newTri.push(b,c,mCA, b,mCA,mAB, mAB,mCA,a); }
+        else                      { newTri.push(c,a,mAB, c,mAB,mBC, mBC,mAB,b); }
+      }
+    }
+    triArr = newTri;
+  }
+
+  if (!changed) return false;
+  const newVC = posArr.length / 3;
+  const IA = newVC > 65535 && extU32 ? Uint32Array : Uint16Array;
+  verts = new Float32Array(posArr);
+  uvs   = new Float32Array(uvArr);
+  tris  = new IA(triArr.length);
+  for (let i = 0; i < triArr.length; i++) tris[i] = triArr[i];
+  norms = new Float32Array(newVC * 3);
+  VC = newVC; TC = triArr.length / 3;
+  recompNorms(); buildWires(); buildAdj(); initGPU();
+  return true;
+}
+
+// ── DISPATCH ─────────────────────────────────────────────────
+function applyBrush(hit){
+  if(!hit)return;
+  const{pt,n}=hit;const[hx,hy,hz]=pt;
+  const BR=P.size*1.8,dir=P.ctrl?-1:1;
+  function run(x,y,z,nn){
+    if(P.shift)doSmo(x,y,z,BR);
+    else if(P.brush==='move'){if(P.prevHit){const d=[pt[0]-P.prevHit[0],pt[1]-P.prevHit[1],pt[2]-P.prevHit[2]];if(Math.abs(d[0])+Math.abs(d[1])+Math.abs(d[2])>1e-6)doMov(x,y,z,BR,d[0]*( x===hx?1:-1),d[1],d[2]);}}
+    else if(P.brush==='standard')doStd(x,y,z,BR,P.str*.015,dir);
+    else if(P.brush==='clay')doCly(x,y,z,BR,P.str*.012,dir);
+    else if(P.brush==='trim')doTrm(x,y,z,nn,BR);
+  }
+  if(sculptrisPro && !P.shift) sculptrisSubdivide(hx,hy,hz,BR);
+  run(hx,hy,hz,n);
+  if(P.sym)run(-hx,hy,hz,[-n[0],n[1],n[2]]);
+  if(P.brush==='move')P.prevHit=pt;
+  recompNorms();dirty=true;
+}
+
+// ── CURSOR ───────────────────────────────────────────────────
+function drawCursor(){
+  c2.clearRect(0,0,cv.width,cv.height);
+  const h=P.hoverHit;if(!h)return;
+  const cc=w2c(h.pt[0],h.pt[1],h.pt[2]);if(!cc)return;
+  const BR=P.size*1.8,r=Math.max(4,bsr(h.pt,BR));
+  const col=P.ctrl?'#e85050':P.shift?'#50d8e8':'rgba(255,255,255,.85)';
+  c2.beginPath();c2.arc(cc[0],cc[1],r,0,Math.PI*2);c2.strokeStyle=col;c2.lineWidth=1.5;c2.setLineDash([]);c2.stroke();
+  const fc=P.focal;
+  if(fc>.04){const ir=fc*.9*r;if(ir>2.5){c2.beginPath();c2.arc(cc[0],cc[1],ir,0,Math.PI*2);c2.strokeStyle='rgba(255,255,255,.5)';c2.lineWidth=1;c2.setLineDash([4,3]);c2.stroke();c2.setLineDash([]);}}
+  else if(fc<-.04){const hr=Math.pow(.5,1+Math.abs(fc)*3)*r;if(hr>1.5){c2.beginPath();c2.arc(cc[0],cc[1],hr,0,Math.PI*2);c2.strokeStyle='rgba(255,255,255,.4)';c2.lineWidth=1;c2.setLineDash([2,3]);c2.stroke();c2.setLineDash([]);}}
+  c2.beginPath();c2.moveTo(cc[0]-4,cc[1]);c2.lineTo(cc[0]+4,cc[1]);c2.moveTo(cc[0],cc[1]-4);c2.lineTo(cc[0],cc[1]+4);c2.strokeStyle='rgba(255,255,255,.5)';c2.lineWidth=1;c2.stroke();
+  if(P.sym&&P.brush!=='move'){const mc=w2c(-h.pt[0],h.pt[1],h.pt[2]);if(mc){c2.beginPath();c2.arc(mc[0],mc[1],r,0,Math.PI*2);c2.strokeStyle='rgba(46,200,87,.6)';c2.lineWidth=1.2;c2.setLineDash([4,3]);c2.stroke();c2.setLineDash([]);}}
+}
+
+// ── MODE ─────────────────────────────────────────────────────
+const mie=document.getElementById('mi');
+function updMode(){if(P.ctrl){mie.textContent='INVERT';mie.className='inv';}else if(P.shift){mie.textContent='SMOOTH';mie.className='smo';}else{mie.textContent=P.brush.toUpperCase();mie.className='';}}
+
+// ── RESIZE ───────────────────────────────────────────────────
+function resize(){const c=document.getElementById('cc'),w=c.clientWidth,h=c.clientHeight,dpr=window.devicePixelRatio||1;gc.width=w*dpr;gc.height=h*dpr;cv.width=w;cv.height=h;gl.viewport(0,0,gc.width,gc.height);}
+window.addEventListener('resize',resize);
+
+// ── RENDER ───────────────────────────────────────────────────
+function hx2rgb(h){return[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255];}
+function render(){
+  if(dirty){uploadPN();dirty=false;}
+  updCam();
+  gl.viewport(0,0,gc.width,gc.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  // Solid pass (with polygon offset when wireframe on)
+  if(showWire){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(2,2);}
+  gl.useProgram(prog);
+  gl.uniformMatrix4fv(lMVP,false,mvp);gl.uniformMatrix4fv(lMV,false,mv);
+  const[cr,cg,cb]=hx2rgb(matHex);gl.uniform3f(lC,cr,cg,cb);
+  const slot0tex=pbrTex[0]||(useTex?texGL:null);
+  const pbrSlots=[[0,lTBase,lHasBase,slot0tex,fbTexW],[1,lTMR,lHasMR,pbrTex[1],fbTexMR],[2,lTNrm,lHasNrm,pbrTex[2],fbTexNrm],[3,lTOcc,lHasOcc,pbrTex[3],fbTexW],[4,lTEmi,lHasEmi,pbrTex[4],fbTexBlk]];
+  for(const[unit,sampL,hasL,tex,fb] of pbrSlots){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex||fb);gl.uniform1i(sampL,unit);gl.uniform1f(hasL,tex?1:0);}
+  gl.uniform1f(lMetal,pbrMetal);gl.uniform1f(lRough,pbrRough);gl.uniform1f(lDblSide,pbrDoubleSided?1:0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);gl.vertexAttribPointer(lP,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lP);
+  gl.bindBuffer(gl.ARRAY_BUFFER,normBuf);gl.vertexAttribPointer(lN,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lN);
+  gl.bindBuffer(gl.ARRAY_BUFFER,uvBuf);gl.vertexAttribPointer(lU,2,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lU);
+  if(lTan>=0){gl.bindBuffer(gl.ARRAY_BUFFER,tanBuf);gl.vertexAttribPointer(lTan,4,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lTan);}else{gl.disableVertexAttribArray(lTan<0?0:lTan);}
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,triBuf);gl.drawElements(gl.TRIANGLES,TC*3,triIdxType,0);
+  if(showWire){
+    gl.disable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(0,0);
+    gl.useProgram(wprog);gl.uniformMatrix4fv(wlMVP,false,mvp);
+    gl.uniform3f(wlWC,.7,.7,.7);
+    gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);gl.vertexAttribPointer(wlP,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(wlP);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,wirBuf);gl.drawElements(gl.LINES,WC*2,wirIdxType,0);
+  }
+  drawCursor();requestAnimationFrame(render);
+}
+
+// ── MOUSE ────────────────────────────────────────────────────
+gc.addEventListener('contextmenu',e=>e.preventDefault());
+gc.addEventListener('wheel',e=>{e.preventDefault();cam.r=Math.max(.3,Math.min(15,cam.r+e.deltaY*.005));},{passive:false});
+gc.addEventListener('mousedown',e=>{
+  e.preventDefault();P.lmx=e.clientX;P.lmy=e.clientY;
+  if(e.button===0){P.sculpting=true;P.ctrl=e.ctrlKey;P.shift=e.shiftKey;P.prevHit=null;updMode();const h=raycast(e.clientX,e.clientY);P.hoverHit=h;applyBrush(h);}
+  else if(e.button===1){P.panning=true;}
+  else if(e.button===2)P.orbiting=true;
+});
+window.addEventListener('mousemove',e=>{
+  const dx=e.clientX-P.lmx,dy=e.clientY-P.lmy;P.lmx=e.clientX;P.lmy=e.clientY;
+  if(P.orbiting){cam.theta-=dx*.006;cam.phi=Math.max(-Math.PI/2+.02,Math.min(Math.PI/2-.02,cam.phi+dy*.006));dirty=true;}
+  if(P.panning){
+    const sc=cam.r*0.0013;
+    const ct=Math.cos(cam.theta),st=Math.sin(cam.theta);
+    const cp=Math.cos(cam.phi),sp=Math.sin(cam.phi);
+    // right = (-cosθ, 0, sinθ), up = (-sinθ·sinφ, cosφ, -cosθ·sinφ)
+    cam.panX+=((-ct)*(-dx) + (-st*sp)*(dy))*sc;
+    cam.panY+=(cp*(dy))*sc;
+    dirty=true;
+  }
+  const h=raycast(e.clientX,e.clientY);P.hoverHit=h;
+  if(P.sculpting){P.ctrl=e.ctrlKey;P.shift=e.shiftKey;updMode();applyBrush(h);}
+});
+window.addEventListener('mouseup',e=>{
+  if(e.button===0){P.sculpting=false;P.prevHit=null;updMode();}
+  if(e.button===1)P.panning=false;
+  if(e.button===2)P.orbiting=false;
+});
+document.getElementById('cc').addEventListener('contextmenu',e=>e.preventDefault());
+gc.addEventListener('mousedown',e=>{if(e.button===1)e.preventDefault();});
+gc.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault();});
+
+// ── KEYBOARD ────────────────────────────────────────────────
+function adjP(p,d){const lim={size:[.04,.85],str:[.01,1],focal:[-1,1]};const[mn,mx]=lim[p];P[p]=Math.max(mn,Math.min(mx,+(P[p]+d).toFixed(4)));const se=p==='size'?'slS':p==='str'?'slT':'slF';const ve=p==='size'?'vS':p==='str'?'vT':'vF';document.getElementById(se).value=P[p];document.getElementById(ve).textContent=P[p].toFixed(2);}
+window.addEventListener('keydown',e=>{
+  if(e.key==='Control'){P.ctrl=true;updMode();return;}if(e.key==='Shift'){P.shift=true;updMode();return;}if(e.key==='Alt'||e.key==='Meta')return;
+  if(capTgt!==null){e.preventDefault();e.stopPropagation();if(e.key==='Escape')cancelCap();else if(e.key.length>0&&e.key!=='Control'&&e.key!=='Shift')doneCap(e.key);return;}
+  if(!P.sculpting&&!stgOpen){const k=e.key;let hit=false;
+    if(k===sc.sU){adjP('size',+.05);hit=true;}if(k===sc.sD){adjP('size',-.05);hit=true;}
+    if(k===sc.tU){adjP('str',+.05);hit=true;}if(k===sc.tD){adjP('str',-.05);hit=true;}
+    if(k===sc.fU){adjP('focal',+.10);hit=true;}if(k===sc.fD){adjP('focal',-.10);hit=true;}
+    if(hit)e.preventDefault();}
+});
+window.addEventListener('keyup',e=>{if(e.key==='Control'){P.ctrl=false;updMode();}if(e.key==='Shift'){P.shift=false;updMode();}});
+
+// ── UI BINDINGS ──────────────────────────────────────────────
+document.querySelectorAll('.bb').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.bb').forEach(x=>x.classList.remove('active'));b.classList.add('active');P.brush=b.dataset.brush;updMode();}));
+function bSlider(id,vid,key){const e=document.getElementById(id),v=document.getElementById(vid);e.addEventListener('input',()=>{P[key]=parseFloat(e.value);v.textContent=parseFloat(e.value).toFixed(2);});}
+bSlider('slS','vS','size');bSlider('slT','vT','str');bSlider('slF','vF','focal');
+document.querySelectorAll('.sb').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.sb').forEach(x=>x.classList.remove('active'));b.classList.add('active');applyShape(b.dataset.shape);
+}));
+document.getElementById('sdBtn').addEventListener('click',subdivide);
+document.getElementById('wireBtn').addEventListener('click',function(){showWire=!showWire;this.textContent=showWire?'◉ WIREFRAME: ON':'◎ WIREFRAME: OFF';this.classList.toggle('active',showWire);});
+document.getElementById('symBtn').addEventListener('click',function(){P.sym=!P.sym;this.textContent=P.sym?'◉ SYMMETRY X: ON':'◎ SYMMETRY X: OFF';this.classList.toggle('active',P.sym);});
+document.getElementById('mc').addEventListener('input',function(){matHex=this.value;});
+document.getElementById('tlBtn').addEventListener('click',()=>document.getElementById('ti').click());
+document.getElementById('ti').addEventListener('change',function(){
+  const f=this.files[0];if(!f)return;
+  blobToGLTex(f,t=>{
+    if(pbrTex[0])gl.deleteTexture(pbrTex[0]);
+    pbrTex[0]=t;texGL=null;useTex=true;
+    const tb=document.getElementById('ttBtn');tb.style.display='';tb.textContent='◉ TEXTURE: ON';tb.classList.add('active');
+  });
+  this.value='';
+});
+document.getElementById('ttBtn').addEventListener('click',function(){useTex=!useTex;this.textContent=useTex?'◉ TEXTURE: ON':'◎ TEXTURE: OFF';this.classList.toggle('active',useTex);});
+document.getElementById('mirBtn').addEventListener('click',()=>{
+  // Mirror +X to -X: for each vertex with x>0, find its mirror
+  // For flat mesh: grid correspondence. For box/sphere: closest vertex search
+  if(curShape==='flat'){
+    const G=flatN+1;
+    for(let y=0;y<=flatN;y++)for(let x=Math.ceil(flatN/2);x<=flatN;x++){
+      const iR=y*G+x,iL=y*G+(flatN-x);
+      verts[iL*3]=-verts[iR*3];verts[iL*3+1]=verts[iR*3+1];verts[iL*3+2]=verts[iR*3+2];
+    }
+  } else {
+    // Simple X-flip: reflect all vertices across YZ plane
+    for(let i=0;i<VC;i++){if(verts[i*3]>0){const iM=nearestMirror(i);if(iM>=0){verts[iM*3]=-verts[i*3];verts[iM*3+1]=verts[i*3+1];verts[iM*3+2]=verts[i*3+2];}}}
+  }
+  recompNorms();dirty=true;
+});
+function nearestMirror(i){const tx=-verts[i*3],ty=verts[i*3+1],tz=verts[i*3+2];let best=-1,bestD=Infinity;for(let j=0;j<VC;j++){if(j===i||verts[j*3]>0)continue;const d=(verts[j*3]-tx)**2+(verts[j*3+1]-ty)**2+(verts[j*3+2]-tz)**2;if(d<bestD){bestD=d;best=j;}}return best;}
+document.getElementById('rstBtn').addEventListener('click',()=>{
+  const activeShape=document.querySelector('.sb.active');applyShape(activeShape?activeShape.dataset.shape:curShape);
+});
+function toggleUI(){const sb=document.getElementById('sb'),btn=document.getElementById('uiBtn');if(sb.classList.toggle('hidden')){btn.textContent='☰ SHOW';}else{btn.textContent='◀ HIDE';}resize();}
+
+// ── FILE I/O ─────────────────────────────────────────────────
+function dlText(t,n,m){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:m||'text/plain'}));a.download=n;a.click();}
+function a2b64(b){let s='';const c=8192;for(let i=0;i<b.length;i+=c)s+=String.fromCharCode(...b.subarray(i,Math.min(i+c,b.length)));return btoa(s);}
+document.getElementById('saveBtn').addEventListener('click',()=>{
+  dlText(JSON.stringify({v:3,VC,TC,shape:curShape,flatN,verts:Array.from(verts),matColor:matHex}),'sculpt.json','application/json');
+});
+document.getElementById('loadBtn').addEventListener('click',()=>document.getElementById('ldIn').click());
+document.getElementById('ldIn').addEventListener('change',function(){
+  const f=this.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{
+    const d=JSON.parse(e.target.result);if(d.v!==3||!d.verts){alert('非対応ファイル形式');return;}
+    VC=d.VC;TC=d.TC;curShape=d.shape||'flat';flatN=d.flatN||64;
+    verts=new Float32Array(d.verts);norms=new Float32Array(VC*3);
+    // Rebuild tris from shape
+    let built;if(curShape==='flat')built=mkFlat(flatN);else if(curShape==='box'){const M=Math.round(Math.sqrt(VC/6)-1)||12;built=mkBox(M);}else{const S=Math.round(Math.sqrt(VC)-1)||32;built=mkSphere(S);}
+    tris=built.T;uvs=built.U;TC=built.tc;VC=built.vc;
+    // Overwrite positions with saved
+    if(d.verts.length>=VC*3)verts=new Float32Array(d.verts.slice(0,VC*3));
+    if(d.matColor){matHex=d.matColor;document.getElementById('mc').value=matHex;}
+    recompNorms();buildWires();buildAdj();initGPU();dirty=true;updateResLabel();
+  }catch(err){alert('読み込みエラー: '+err.message);}};r.readAsText(f);this.value='';
+});
+// OBJ export
+document.getElementById('eOBJ').addEventListener('click',()=>{
+  const ls=['# WebSculpt OBJ','g sculpt'];
+  for(let i=0;i<VC;i++)ls.push('v '+verts[i*3].toFixed(6)+' '+verts[i*3+1].toFixed(6)+' '+verts[i*3+2].toFixed(6));
+  for(let i=0;i<VC;i++)ls.push('vn '+norms[i*3].toFixed(6)+' '+norms[i*3+1].toFixed(6)+' '+norms[i*3+2].toFixed(6));
+  for(let i=0;i<VC;i++)ls.push('vt '+uvs[i*2].toFixed(6)+' '+uvs[i*2+1].toFixed(6));
+  for(let t=0;t<TC;t++){const a=tris[t*3]+1,b=tris[t*3+1]+1,c=tris[t*3+2]+1;ls.push('f '+a+'/'+a+'/'+a+' '+b+'/'+b+'/'+b+' '+c+'/'+c+'/'+c);}
+  dlText(ls.join('\n'),'sculpt.obj');
+});
+// GLTF export
+document.getElementById('eGLTF').addEventListener('click',()=>{
+  const n32=VC>65535;const pB=new Float32Array(VC*3),nB=new Float32Array(VC*3),uB=new Float32Array(VC*2);const iB=n32?new Uint32Array(TC*3):new Uint16Array(TC*3);
+  pB.set(verts.subarray(0,VC*3));nB.set(norms.subarray(0,VC*3));uB.set(uvs.subarray(0,VC*2));
+  for(let t=0;t<TC*3;t++)iB[t]=tris[t];
+  let xn=Infinity,yn=Infinity,zn=Infinity,xx=-Infinity,yx=-Infinity,zx=-Infinity;
+  for(let i=0;i<VC;i++){xn=Math.min(xn,pB[i*3]);xx=Math.max(xx,pB[i*3]);yn=Math.min(yn,pB[i*3+1]);yx=Math.max(yx,pB[i*3+1]);zn=Math.min(zn,pB[i*3+2]);zx=Math.max(zx,pB[i*3+2]);}
+  const p0=pB.byteLength,p1=nB.byteLength,p2=uB.byteLength,p3=iB.byteLength,tot=p0+p1+p2+p3;
+  const cb2=new Uint8Array(tot);cb2.set(new Uint8Array(pB.buffer));cb2.set(new Uint8Array(nB.buffer),p0);cb2.set(new Uint8Array(uB.buffer),p0+p1);cb2.set(new Uint8Array(iB.buffer),p0+p1+p2);
+  dlText(JSON.stringify({asset:{generator:'WebSculpt',version:'2.0'},scene:0,scenes:[{nodes:[0]}],nodes:[{mesh:0}],meshes:[{primitives:[{attributes:{POSITION:0,NORMAL:1,TEXCOORD_0:2},indices:3,mode:4}]}],accessors:[{bufferView:0,componentType:5126,count:VC,type:'VEC3',min:[xn,yn,zn],max:[xx,yx,zx]},{bufferView:1,componentType:5126,count:VC,type:'VEC3'},{bufferView:2,componentType:5126,count:VC,type:'VEC2'},{bufferView:3,componentType:n32?5125:5123,count:TC*3,type:'SCALAR'}],bufferViews:[{buffer:0,byteOffset:0,byteLength:p0,target:34962},{buffer:0,byteOffset:p0,byteLength:p1,target:34962},{buffer:0,byteOffset:p0+p1,byteLength:p2,target:34962},{buffer:0,byteOffset:p0+p1+p2,byteLength:p3,target:34963}],buffers:[{uri:'data:application/octet-stream;base64,'+a2b64(cb2),byteLength:tot}]},null,2),'sculpt.gltf','model/gltf+json');
+});
+// FBX export
+document.getElementById('eFBX').addEventListener('click',()=>{
+  const vA=[],nA=[],uA=[],iA=[];
+  for(let i=0;i<VC;i++){vA.push(verts[i*3].toFixed(5)+','+verts[i*3+1].toFixed(5)+','+verts[i*3+2].toFixed(5));nA.push(norms[i*3].toFixed(5)+','+norms[i*3+1].toFixed(5)+','+norms[i*3+2].toFixed(5));uA.push(uvs[i*2].toFixed(5)+','+uvs[i*2+1].toFixed(5));}
+  for(let t=0;t<TC;t++){const a=tris[t*3],b=tris[t*3+1],c=tris[t*3+2];iA.push(a+','+b+','+(~c));}
+  const fbx='; FBX 7.4.0\n; WebSculpt\nFBXHeaderExtension:  {\n\tFBXHeaderVersion: 1003\n\tFBXVersion: 7400\n}\nObjects:  {\n\tGeometry: 1000001, "Geometry::sculpt", "Mesh"  {\n\t\tVertices: *'+VC*3+' {\n\t\t\ta: '+vA.join(',')+' }\n\t\tPolygonVertexIndex: *'+TC*3+' {\n\t\t\ta: '+iA.join(',')+' }\n\t\tGeometryVersion: 124\n\t\tLayerElementNormal: 0  { Version: 102 Name: "" MappingInformationType: "ByVertice" ReferenceInformationType: "Direct"\n\t\t\tNormals: *'+VC*3+' { a: '+nA.join(',')+' }\n\t\t}\n\t}\n}\nConnections: {}\n';
+  dlText(fbx,'sculpt.fbx');
+});
+// Import
+document.getElementById('impBtn').addEventListener('click',()=>document.getElementById('imIn').click());
+document.getElementById('imIn').addEventListener('change',function(){
+  const f=this.files[0];if(!f)return;const nm=f.name.toLowerCase();
+  if(nm.endsWith('.obj')){const r=new FileReader();r.onload=e=>impOBJ(e.target.result);r.readAsText(f);}
+  else if(nm.endsWith('.gltf')){const r=new FileReader();r.onload=e=>{try{impGLTF(JSON.parse(e.target.result),null);}catch(er){alert('GLTFエラー: '+er.message);}};r.readAsText(f);}
+  else if(nm.endsWith('.glb')){const r=new FileReader();r.onload=e=>impGLB(e.target.result);r.readAsArrayBuffer(f);}
+  else alert('.obj .gltf .glb のみ対応');this.value='';
+});
+// ── 3D MESH IMPORT ────────────────────────────────────────────
+// OBJ: 頂点(v)とフェース(f)を正しく読み込み、メッシュを完全に置き換える
+function impOBJ(txt){
+  const rawV=[],rawF=[];
+  for(const l of txt.split('\n')){
+    const p=l.trim().split(/\s+/);
+    if(p[0]==='v'){rawV.push(+p[1],+p[2],+p[3]);}
+    else if(p[0]==='f'){
+      // "f 1/1/1 2/2/2 3/3/3" など多形式対応
+      const ids=p.slice(1).map(s=>parseInt(s.split('/')[0])-1);
+      for(let i=1;i<ids.length-1;i++)rawF.push(ids[0],ids[i],ids[i+1]);
+    }
+  }
+  if(!rawV.length)return void alert('OBJ: 頂点(v)が見つかりません');
+  if(!rawF.length)return void alert('OBJ: フェース(f)が見つかりません');
+  loadMesh3D(new Float32Array(rawV),new Uint32Array(rawF));
+}
+
+// GLTF accessor読み込み (packed/interleaved両対応)
+function gltfReadBin(json,bufIdx,extBin){
+  if(extBin&&bufIdx===0){
+    if(extBin instanceof ArrayBuffer)return extBin;
+    return extBin.buffer?extBin.buffer:extBin;
+  }
+  const uri=json.buffers[bufIdx].uri||'';
+  const b64=uri.split(',')[1];const str=atob(b64);
+  const ab=new ArrayBuffer(str.length);const u8=new Uint8Array(ab);
+  for(let i=0;i<str.length;i++)u8[i]=str.charCodeAt(i);return ab;
+}
+function gltfAcc(json,ai,extBin){
+  const acc=json.accessors[ai];
+  const bv=json.bufferViews[acc.bufferView];
+  const ab=gltfReadBin(json,bv.buffer,extBin);
+  const nc={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[acc.type]||1;
+  const ct=acc.componentType;
+  const bpe=ct===5126?4:ct===5125?4:ct===5123?2:1;
+  const stride=bv.byteStride||nc*bpe;
+  const bvOff=bv.byteOffset||0,accOff=acc.byteOffset||0,cnt=acc.count;
+  // 非インターリーブ(packed)の場合はバイト直接コピー
+  if(stride===nc*bpe){
+    const start=bvOff+accOff,len=cnt*nc*bpe;
+    const src=new Uint8Array(ab,start,len);
+    const copy=new ArrayBuffer(len);new Uint8Array(copy).set(src);
+    if(ct===5126)return new Float32Array(copy);
+    if(ct===5125)return new Uint32Array(copy);
+    if(ct===5123)return new Uint16Array(copy);
+    return new Uint8Array(copy);
+  }
+  // インターリーブ(stride付き) - float前提で読む
+  const out=new Float32Array(cnt*nc);
+  const dv=new DataView(ab);
+  for(let i=0;i<cnt;i++)for(let c=0;c<nc;c++)
+    out[i*nc+c]=ct===5126?dv.getFloat32(bvOff+accOff+i*stride+c*4,true):dv.getUint16(bvOff+accOff+i*stride+c*2,true);
+  return out;
+}
+function gltfImgBlob(json,extBin,texIdx){
+  if(texIdx===undefined||texIdx===null||!json.textures)return null;
+  const tex=json.textures[texIdx];
+  // texにsourceがない場合はextensionsのwebp等を見る
+  const imgIdx=tex?.source??tex?.extensions?.MSFT_texture_dds?.source??tex?.extensions?.EXT_texture_webp?.source;
+  if(imgIdx===undefined||imgIdx===null||!json.images)return null;
+  const imgDef=json.images[imgIdx];
+  try{
+    if(imgDef.bufferView!==undefined){
+      const bv=json.bufferViews[imgDef.bufferView];
+      // extBinはArrayBufferまたはArrayBuffer-like
+      let ab=extBin;
+      if(ab instanceof ArrayBuffer){
+        // ok
+      } else if(ab&&ab.buffer instanceof ArrayBuffer){
+        // TypedArrayが渡された場合
+        ab=ab.buffer;
+      }
+      if(!ab){console.warn('gltfImgBlob: BINチャンクなし slot=',texIdx);return null;}
+      const byteOffset=bv.byteOffset||0;
+      const byteLength=bv.byteLength;
+      // スライスしてコピー（元bufferのoffsetに注意）
+      const srcU8=new Uint8Array(ab,byteOffset,byteLength);
+      const copy=new Uint8Array(byteLength);copy.set(srcU8);
+      const mime=imgDef.mimeType||(copy[0]===0xFF&&copy[1]===0xD8?'image/jpeg':'image/png');
+      console.log('gltfImgBlob: slot',texIdx,'mime',mime,'bytes',byteLength,'first4',copy[0],copy[1],copy[2],copy[3]);
+      return new Blob([copy],{type:mime});
+    } else if(imgDef.uri){
+      if(imgDef.uri.startsWith('data:')){
+        const[hd,b64]=imgDef.uri.split(',');const mime=hd.match(/:(.*?);/)[1];
+        const bin=atob(b64);const ba=new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++)ba[i]=bin.charCodeAt(i);
+        console.log('gltfImgBlob: slot',texIdx,'dataURI mime',mime,'bytes',ba.length);
+        return new Blob([ba],{type:mime});
+      }
+    }
+  }catch(e){console.error('gltfImgBlob error slot='+texIdx,e);}
+  return null;
+}
+function impGLTF(json,extBin,imageBuffers){
+  const prim=json.meshes?.[0]?.primitives?.[0];
+  if(!prim)return void alert('GLTF: メッシュなし');
+  if(prim.attributes?.POSITION===undefined)return void alert('GLTF: POSITION属性なし');
+  try{
+    const pos=gltfAcc(json,prim.attributes.POSITION,extBin);
+    if(prim.indices===undefined)return void alert('GLTF: インデックスなし(三角形メッシュのみ対応)');
+    const idxRaw=gltfAcc(json,prim.indices,extBin);
+    const idx=new Uint32Array(idxRaw.length);for(let i=0;i<idxRaw.length;i++)idx[i]=idxRaw[i];
+    let uvArr=null;
+    if(prim.attributes?.TEXCOORD_0!==undefined)uvArr=gltfAcc(json,prim.attributes.TEXCOORD_0,extBin);
+    let tanArr=null;
+    if(prim.attributes?.TANGENT!==undefined)tanArr=gltfAcc(json,prim.attributes.TANGENT,extBin);
+    // PBR material解析
+    const blobs=[null,null,null,null,null]; // [base,MR,normal,occ,emissive]
+    let metal=0.0,rough=0.5,dblSide=false;
+    try{
+      const matIdx=prim.material;
+      if(matIdx!==undefined&&json.materials){
+        const mat=json.materials[matIdx];
+        dblSide=!!mat.doubleSided;
+        const pbr=mat.pbrMetallicRoughness||{};
+        metal=pbr.metallicFactor??0;rough=pbr.roughnessFactor??0.5;
+        // baseColor
+        const bcIdx=pbr.baseColorTexture?.index
+          ??mat?.extensions?.KHR_materials_pbrSpecularGlossiness?.diffuseTexture?.index;
+        blobs[0]=gltfImgBlob(json,extBin,bcIdx);
+        // metallic-roughness
+        blobs[1]=gltfImgBlob(json,extBin,pbr.metallicRoughnessTexture?.index);
+        // normal map
+        blobs[2]=gltfImgBlob(json,extBin,mat.normalTexture?.index);
+        // occlusion
+        blobs[3]=gltfImgBlob(json,extBin,mat.occlusionTexture?.index);
+        // emissive
+        blobs[4]=gltfImgBlob(json,extBin,mat.emissiveTexture?.index);
+      }
+    }catch(te){console.warn('PBRマテリアル解析エラー(無視):',te);}
+    loadMesh3D(pos,idx,uvArr,tanArr,blobs,metal,rough,dblSide);
+  }catch(e){alert('GLTFエラー: '+e.message);}
+}
+function impGLB(buf){
+  const dv=new DataView(buf);
+  if(dv.getUint32(0,true)!==0x46546C67)return void alert('不正なGLBファイル');
+  // GLBは複数チャンクを持つ: JSON(0x4E4F534A), BIN(0x004E4942), 画像など
+  const totalLen=dv.getUint32(8,true);
+  let offset=12;
+  let jsonBuf=null,binBuf=null;
+  while(offset+8<=totalLen&&offset+8<=buf.byteLength){
+    const chunkLen=dv.getUint32(offset,true);
+    const chunkType=dv.getUint32(offset+4,true);
+    const chunkData=buf.slice(offset+8,offset+8+chunkLen);
+    if(chunkType===0x4E4F534A)jsonBuf=chunkData;       // JSON
+    else if(chunkType===0x004E4942)binBuf=chunkData;   // BIN
+    offset+=8+chunkLen;
+  }
+  if(!jsonBuf)return void alert('GLBパースエラー: JSONチャンクなし');
+  let json;try{json=JSON.parse(new TextDecoder().decode(jsonBuf));}catch(e){return void alert('GLBパースエラー: '+e.message);}
+  console.log('GLB JSON buffers:',json.buffers,'images:',json.images,'bufferViews(img関連):',(json.bufferViews||[]).slice(0,5));
+  console.log('BINチャンク byteLength:',binBuf?binBuf.byteLength:'null','typeof:',typeof binBuf,binBuf?binBuf.constructor.name:'');
+  impGLTF(json,binBuf,null);
+}
+
+// Blobから WebGLTexture を非同期生成するヘルパー
+// createObjectURLがblob-request://になる環境ではFileReader経由でdata URIに変換
+function blobToGLTex(blob,cb){
+  function loadFromDataURL(dataURL){
+    const img=new Image();
+    img.onload=()=>{
+      const t=gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D,t);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+      gl.bindTexture(gl.TEXTURE_2D,null);
+      cb(t);dirty=true;
+    };
+    img.onerror=(e)=>{console.error('テクスチャ読み込み失敗(dataURL)',e);};
+    img.src=dataURL;
+  }
+  // まずImageBitmapを試みる（createObjectURL不要）
+  if(typeof createImageBitmap==='function'){
+    createImageBitmap(blob).then(bmp=>{
+      const t=gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D,t);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,bmp);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+      gl.bindTexture(gl.TEXTURE_2D,null);
+      cb(t);dirty=true;
+    }).catch(()=>{
+      // ImageBitmapが失敗したらFileReader経由
+      const fr=new FileReader();
+      fr.onload=()=>loadFromDataURL(fr.result);
+      fr.onerror=()=>console.error('FileReader失敗');
+      fr.readAsDataURL(blob);
+    });
+  } else {
+    const fr=new FileReader();
+    fr.onload=()=>loadFromDataURL(fr.result);
+    fr.onerror=()=>console.error('FileReader失敗');
+    fr.readAsDataURL(blob);
+  }
+}
+// 3Dメッシュを完全に置き換える (頂点+インデックス+UV+PBRテクスチャ)
+function loadMesh3D(posArr,idxArr,uvArr,tanArr,texBlobs,metal,rough,dblSide){
+  const cnt=posArr.length/3;
+  if(cnt<3||idxArr.length<3)return void alert('メッシュが小さすぎます');
+  let xn=Infinity,xm=-Infinity,yn=Infinity,ym=-Infinity,zn=Infinity,zm=-Infinity;
+  for(let i=0;i<cnt;i++){
+    if(posArr[i*3+0]<xn)xn=posArr[i*3+0];if(posArr[i*3+0]>xm)xm=posArr[i*3+0];
+    if(posArr[i*3+1]<yn)yn=posArr[i*3+1];if(posArr[i*3+1]>ym)ym=posArr[i*3+1];
+    if(posArr[i*3+2]<zn)zn=posArr[i*3+2];if(posArr[i*3+2]>zm)zm=posArr[i*3+2];
+  }
+  const cx=(xn+xm)/2,cy=(yn+ym)/2,cz=(zn+zm)/2;
+  const sc=2/Math.max(xm-xn,ym-yn,zm-zn,1e-6);
+  verts=new Float32Array(cnt*3);
+  for(let i=0;i<cnt;i++){verts[i*3+0]=(posArr[i*3+0]-cx)*sc;verts[i*3+1]=(posArr[i*3+1]-cy)*sc;verts[i*3+2]=(posArr[i*3+2]-cz)*sc;}
+  tris=idxArr;VC=cnt;TC=idxArr.length/3;
+  norms=new Float32Array(VC*3);
+  if(uvArr&&uvArr.length>=VC*2){
+    uvs=new Float32Array(VC*2);for(let i=0;i<VC*2;i++)uvs[i]=uvArr[i];
+  }else{
+    uvs=new Float32Array(VC*2);
+    for(let i=0;i<VC;i++){
+      const x=verts[i*3],y=verts[i*3+1],z=verts[i*3+2],l=Math.sqrt(x*x+y*y+z*z)||1;
+      uvs[i*2]=0.5+Math.atan2(x/l,z/l)/(2*Math.PI);
+      uvs[i*2+1]=0.5-Math.asin(Math.max(-1,Math.min(1,y/l)))/Math.PI;
+    }
+  }
+  // Tangent: GLTFから取得できればそのまま使う (vec4: xyz=tangent, w=handedness)
+  if(tanArr&&tanArr.length>=VC*4){
+    tans=new Float32Array(VC*4);
+    for(let i=0;i<VC*4;i++)tans[i]=tanArr[i];
+  }else{
+    // TANGENTなし: ゼロ埋め（ノーマルマップは効かないがクラッシュしない）
+    tans=new Float32Array(VC*4);
+    for(let i=0;i<VC;i++){tans[i*4]=1;tans[i*4+1]=0;tans[i*4+2]=0;tans[i*4+3]=1;}
+  }
+  curShape='imported';flatN=0;
+  // PBRパラメータ設定
+  pbrMetal=metal??0;pbrRough=rough??0.5;pbrDoubleSided=!!dblSide;
+  // 既存PBRテクスチャ解放
+  pbrTex.forEach((t,i)=>{if(t){gl.deleteTexture(t);}pbrTex[i]=null;});
+  texGL=null;useTex=false;
+  recompNorms();buildWires();buildAdj();initGPU();dirty=true;updateResLabel();
+  // PBRテクスチャ非同期ロード [base,MR,normal,occ,emissive]
+  const blobs=Array.isArray(texBlobs)?texBlobs:[texBlobs,null,null,null,null];
+  let anyTex=false;
+  blobs.forEach((blob,slot)=>{
+    if(!blob)return;
+    anyTex=true;
+    blobToGLTex(blob,t=>{pbrTex[slot]=t;});
+  });
+  if(anyTex){
+    // UIテクスチャボタン更新
+    const btn=document.getElementById('ttBtn');
+    btn.style.display='';btn.classList.add('active');btn.textContent='◉ TEXTURE: ON';
+    useTex=true;
+  }
+}
+
+// ── SETTINGS MODAL ───────────────────────────────────────────
+let capTgt=null,capEl=null;
+function dspK(k){const m={' ':'SPC',Tab:'TAB',Enter:'RET',Backspace:'⌫',Delete:'DEL',ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→'};return m[k]||k||'?';}
+function refCaps(){Object.keys(sc).forEach(k=>{const e=document.getElementById('kc_'+k);if(e)e.textContent=dspK(sc[k]);});updSKHints();}
+function updSKHints(){document.getElementById('skS').textContent=' '+dspK(sc.sU)+'/'+dspK(sc.sD);document.getElementById('skT').textContent=' '+dspK(sc.tU)+'/'+dspK(sc.tD);document.getElementById('skF').textContent=' '+dspK(sc.fU)+'/'+dspK(sc.fD);document.getElementById('infoSk').textContent=dspK(sc.sU)+dspK(sc.sD)+'/'+dspK(sc.tU)+dspK(sc.tD)+'/'+dspK(sc.fU)+dspK(sc.fD);}
+function startCap(k,e){if(capEl){capEl.classList.remove('cap');capEl.textContent=dspK(sc[capTgt]);}capTgt=k;capEl=e;e.textContent='…';e.classList.add('cap');}
+function cancelCap(){if(capEl){capEl.textContent=dspK(sc[capTgt]);capEl.classList.remove('cap');}capTgt=null;capEl=null;}
+function doneCap(k){sc[capTgt]=k;capEl.textContent=dspK(k);capEl.classList.remove('cap');capTgt=null;capEl=null;saveSC();updSKHints();}
+function openStg(){stgOpen=true;refCaps();document.getElementById('so').classList.add('open');}
+function closeStg(){cancelCap();stgOpen=false;document.getElementById('so').classList.remove('open');}
+document.querySelectorAll('.kc').forEach(e=>e.addEventListener('click',()=>startCap(e.dataset.sk,e)));
+document.getElementById('stgCl').addEventListener('click',closeStg);
+document.getElementById('stgRst').addEventListener('click',()=>{cancelCap();Object.assign(sc,DSC);saveSC();refCaps();});
+document.getElementById('so').addEventListener('click',e=>{if(e.target===document.getElementById('so'))closeStg();});
+document.getElementById('spBtn').addEventListener('click',function(){
+  sculptrisPro=!sculptrisPro;
+  this.textContent=sculptrisPro?'◉ SCULPTRIS PRO: ON':'◎ SCULPTRIS PRO: OFF';
+  this.classList.toggle('active',sculptrisPro);
+});
+document.getElementById('stgBtn').addEventListener('click',openStg);
+
+// ── BOOT ─────────────────────────────────────────────────────
+resize();
+applyShape('sphere');
+refCaps();
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
