@@ -112,6 +112,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;heigh
   <div class="slbl">TEXTURE</div>
   <button id="tlBtn" class="ab">↑ LOAD IMAGE</button>
   <button id="ttBtn" class="tb" style="display:none">◎ TEXTURE: OFF</button>
+  <button id="flipNBtn" class="tb">◎ NORMAL MAP: OpenGL</button>
   <input type="file" id="ti" accept="image/*" style="display:none">
   <div class="dv"></div>
   <div class="slbl">TOOLS</div>
@@ -200,6 +201,7 @@ uniform sampler2D uTEmi;
 uniform float uHasBase,uHasMR,uHasNrm,uHasOcc,uHasEmi;
 uniform float uMetallic,uRoughness;
 uniform float uDoubleSided;
+uniform float uFlipNrmY;
 
 const float PI=3.14159265;
 
@@ -229,6 +231,7 @@ void main(){
   if(!gl_FrontFacing) N=-N; // 裏面三角形の法線を反転
   if(uHasNrm>0.5){
     vec3 tn=texture2D(uTNrm,vU).xyz*2.0-1.0;
+    tn.y*=uFlipNrmY>0.5?-1.0:1.0;
     vec3 T=normalize(vTan);vec3 B=normalize(vBit);
     N=normalize(T*tn.x+B*tn.y+N*tn.z);
   }
@@ -279,11 +282,12 @@ const lTOcc=gl.getUniformLocation(prog,'uTOcc'),lHasOcc=gl.getUniformLocation(pr
 const lTEmi=gl.getUniformLocation(prog,'uTEmi'),lHasEmi=gl.getUniformLocation(prog,'uHasEmi');
 const lMetal=gl.getUniformLocation(prog,'uMetallic'),lRough=gl.getUniformLocation(prog,'uRoughness');
 const lDblSide=gl.getUniformLocation(prog,'uDoubleSided');
+const lFlipNrmY=gl.getUniformLocation(prog,'uFlipNrmY');
 const wlP=gl.getAttribLocation(wprog,'aP'),wlMVP=gl.getUniformLocation(wprog,'uMVP'),wlWC=gl.getUniformLocation(wprog,'uWC');
 // PBR texture slots: 0=base,1=MR,2=normal,3=occ,4=emissive
 // pbrTex[slot] = WebGLTexture | null
 let pbrTex=[null,null,null,null,null];
-let pbrMetal=0.0,pbrRough=0.5,pbrDoubleSided=false;
+let pbrMetal=0.0,pbrRough=0.5,pbrDoubleSided=false,flipNrmY=false;
 // GPU buffers
 let posBuf,normBuf,uvBuf,tanBuf,triBuf,wirBuf;
 let triIdxType=gl.UNSIGNED_SHORT,wirIdxType=gl.UNSIGNED_SHORT;
@@ -362,48 +366,44 @@ function mkBox(M){
 // SPHERE: UV sphere, (segsLon+1)×(segsLat+1) verts
 // Standard winding gives outward normals (verified mathematically)
 function mkSphere(segs){
-  // 重複頂点ゼロの球体:
-  //   - 北極/南極は頂点1個 (ファン三角形)
-  //   - リングはsLon個 (シーム重複なし、wrap-around接続)
-  //   - weldVerts不使用
+  // シーム重複頂点あり: リングをsLon+1頂点で構成
+  //   x=0(u=0) と x=sLon(u=1) が同じ3D座標だが別頂点
+  //   → シーム三角形がu=0.969→u=1.0 で正しく補間される
+  //   → weldVerts 不使用
   const sLon=segs,sLat=segs,nR=sLat-1;
-  const vc=2+nR*sLon;
+  const G=sLon+1;           // リングあたりの頂点数
+  const vc=2+nR*G;          // 北極 + リング群 + 南極
   const tc=sLon+(nR-1)*sLon*2+sLon;
   const V=new Float32Array(vc*3),U=new Float32Array(vc*2);
   const T=new Uint32Array(tc*3);
-  // 北極 index=0
+  // 北極 (index 0)
   V[0]=0;V[1]=1;V[2]=0;U[0]=.5;U[1]=0;
-  // 中間リング (wrap-around: x=0..sLon-1、最後はx=0に戻る)
+  // 中間リング (x=0..sLon、x=0とx=sLonは同じ3D座標でu=0/u=1)
   for(let r=0;r<nR;r++){
     const phi=(r+1)/sLat*Math.PI,sP=Math.sin(phi),cP=Math.cos(phi);
-    for(let x=0;x<sLon;x++){
-      const th=x/sLon*Math.PI*2,vi=1+r*sLon+x;
+    for(let x=0;x<=sLon;x++){
+      const th=x/sLon*Math.PI*2,vi=1+r*G+x;
       V[vi*3]=sP*Math.cos(th);V[vi*3+1]=cP;V[vi*3+2]=sP*Math.sin(th);
       U[vi*2]=x/sLon;U[vi*2+1]=(r+1)/sLat;
     }
   }
-  // 南極 index=1+nR*sLon
-  const sI=1+nR*sLon;
+  // 南極 (last index)
+  const sI=1+nR*G;
   V[sI*3]=0;V[sI*3+1]=-1;V[sI*3+2]=0;U[sI*2]=.5;U[sI*2+1]=1;
   let k=0;
-  // 北ファン (外向き法線: pole, next, cur)
-  for(let x=0;x<sLon;x++){
-    T[k++]=0;T[k++]=1+(x+1)%sLon;T[k++]=1+x;
-  }
-  // ボディ (wrap-around)
+  // 北ファン (外向き: pole, next, cur)
+  for(let x=0;x<sLon;x++){T[k++]=0;T[k++]=1+x+1;T[k++]=1+x;}
+  // ボディ
   for(let r=0;r<nR-1;r++){
-    const rA=1+r*sLon,rB=1+(r+1)*sLon;
+    const rA=1+r*G,rB=1+(r+1)*G;
     for(let x=0;x<sLon;x++){
-      const a=rA+x,b=rA+(x+1)%sLon,c=rB+x,d=rB+(x+1)%sLon;
-      T[k++]=a;T[k++]=b;T[k++]=c;
-      T[k++]=b;T[k++]=d;T[k++]=c;
+      const a=rA+x,b=rA+x+1,c=rB+x,d=rB+x+1;
+      T[k++]=a;T[k++]=b;T[k++]=c;T[k++]=b;T[k++]=d;T[k++]=c;
     }
   }
-  // 南ファン (外向き法線: cur, next, pole)
-  const lR=1+(nR-1)*sLon;
-  for(let x=0;x<sLon;x++){
-    T[k++]=lR+x;T[k++]=lR+(x+1)%sLon;T[k++]=sI;
-  }
+  // 南ファン (外向き: cur, next, pole)
+  const lR=1+(nR-1)*G;
+  for(let x=0;x<sLon;x++){T[k++]=lR+x;T[k++]=lR+x+1;T[k++]=sI;}
   return{V,U,T,vc,tc};
 }
 
@@ -495,7 +495,7 @@ function applyShape(name){
 function updateResLabel(){document.getElementById('rl').textContent='VERTS: '+VC+' | TRIS: '+TC;}
 
 // ── SUBDIVIDE ─────────────────────────────────────────────────
-function subdivide(){
+function subdivide(){saveUndo();
   if(curShape==='flat'){
     if(flatN>=256){alert('最大解像度です (256)');return;}
     subdFlat();
@@ -536,6 +536,7 @@ function subdFlat(){
   }
   const IA=vc>65535&&extU32?Uint32Array:Uint16Array;const T=new IA(tc*3);let k=0;
   for(let y=0;y<nN;y++)for(let x=0;x<nN;x++){const a=y*nG+x,b=y*nG+x+1,c=(y+1)*nG+x,d=(y+1)*nG+x+1;T[k++]=a;T[k++]=c;T[k++]=b;T[k++]=b;T[k++]=c;T[k++]=d;}
+  tans=new Float32Array(vc*4);for(let i=0;i<vc;i++){tans[i*4]=1;tans[i*4+3]=1;}
   verts=NV;norms=new Float32Array(vc*3);uvs=NU;tris=T;VC=vc;TC=tc;
 }
 
@@ -584,6 +585,7 @@ function subdTri(){
     nT[nti++]=ca;nT[nti++]=bc;nT[nti++]=c;
     nT[nti++]=ab;nT[nti++]=bc;nT[nti++]=ca;
   }
+  tans=new Float32Array(nvc3*4);for(let i=0;i<nvc3;i++){tans[i*4]=1;tans[i*4+3]=1;}
   verts=NV;norms=new Float32Array(nvc3*3);uvs=NU;tris=nT.subarray(0,nti);
   VC=nvc3;TC=TC*4;
 }
@@ -877,6 +879,7 @@ function render(){
   ];
   for(const[unit,sampL,hasL,tex,fb] of pbrSlots){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex||fb);gl.uniform1i(sampL,unit);gl.uniform1f(hasL,tex?1:0);}
   gl.uniform1f(lMetal,pbrMetal);gl.uniform1f(lRough,pbrRough);gl.uniform1f(lDblSide,pbrDoubleSided?1:0);
+  gl.uniform1f(lFlipNrmY,flipNrmY?1:0);
   gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);gl.vertexAttribPointer(lP,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lP);
   gl.bindBuffer(gl.ARRAY_BUFFER,normBuf);gl.vertexAttribPointer(lN,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lN);
   gl.bindBuffer(gl.ARRAY_BUFFER,uvBuf);gl.vertexAttribPointer(lU,2,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(lU);
@@ -1359,6 +1362,11 @@ document.querySelectorAll('.kc').forEach(e=>e.addEventListener('click',()=>start
 document.getElementById('stgCl').addEventListener('click',closeStg);
 document.getElementById('stgRst').addEventListener('click',()=>{cancelCap();Object.assign(sc,DSC);saveSC();refCaps();});
 document.getElementById('so').addEventListener('click',e=>{if(e.target===document.getElementById('so'))closeStg();});
+document.getElementById('flipNBtn').addEventListener('click',function(){
+  flipNrmY=!flipNrmY;
+  this.textContent=flipNrmY?'◉ NORMAL MAP: DirectX':'◎ NORMAL MAP: OpenGL';
+  this.classList.toggle('active',flipNrmY);
+});
 document.getElementById('spBtn').addEventListener('click',function(){
   sculptrisPro=!sculptrisPro;
   this.textContent=sculptrisPro?'◉ SCULPTRIS PRO: ON':'◎ SCULPTRIS PRO: OFF';
