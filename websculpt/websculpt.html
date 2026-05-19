@@ -167,6 +167,7 @@ let camPos=[0,0,0];
 let dirty=false,showWire=true,stgOpen=false,sculptrisPro=false;
 const UNDO_MAX=20;
 const undoStack=[];
+let origVerts=null; // ミラー用: applyShape時の元座標
 let undoSaved=false; // 1ストローク1回だけ保存
 let matHex='#dfc9b0',texGL=null,useTex=false;
 
@@ -479,6 +480,7 @@ function recompNorms(){
 // ── MESH APPLICATION ──────────────────────────────────────────
 function applyMesh(built){
   verts=built.V;norms=new Float32Array(built.vc*3);uvs=built.U;tris=built.T;
+  origVerts=built.V.slice(); // ミラー対応用に元座標を保持
   VC=built.vc;TC=built.tc;
   // スカルプトメッシュはTANGENTなし: デフォルト(1,0,0,1)で埋める
   tans=new Float32Array(VC*4);
@@ -994,17 +996,36 @@ document.getElementById('ti').addEventListener('change',function(){
 });
 document.getElementById('ttBtn').addEventListener('click',function(){useTex=!useTex;this.textContent=useTex?'◉ TEXTURE: ON':'◎ TEXTURE: OFF';this.classList.toggle('active',useTex);});
 document.getElementById('mirBtn').addEventListener('click',()=>{
-  // Mirror +X to -X: for each vertex with x>0, find its mirror
-  // For flat mesh: grid correspondence. For box/sphere: closest vertex search
+  saveUndo();
   if(curShape==='flat'){
+    // flat: グリッドインデックスで直接対応
     const G=flatN+1;
     for(let y=0;y<=flatN;y++)for(let x=Math.ceil(flatN/2);x<=flatN;x++){
       const iR=y*G+x,iL=y*G+(flatN-x);
       verts[iL*3]=-verts[iR*3];verts[iL*3+1]=verts[iR*3+1];verts[iL*3+2]=verts[iR*3+2];
     }
   } else {
-    // Simple X-flip: reflect all vertices across YZ plane
-    for(let i=0;i<VC;i++){if(verts[i*3]>0){const iM=nearestMirror(i);if(iM>=0){verts[iM*3]=-verts[i*3];verts[iM*3+1]=verts[i*3+1];verts[iM*3+2]=verts[i*3+2];}}}
+    // -X側の各頂点が「元の対称位置(origVerts)」で+X側の対応頂点を探す
+    // → 変形後でも正しくペアが見つかる
+    const EPS=1e-4;
+    const ref=origVerts||verts; // origVertsがなければ現在座標で代用
+    for(let j=0;j<VC;j++){
+      if(ref[j*3]>=-EPS) continue; // 元々-X側だった頂点のみ
+      const tx=-ref[j*3],ty=ref[j*3+1],tz=ref[j*3+2];
+      let best=-1,bestD=Infinity;
+      for(let i=0;i<VC;i++){
+        if(ref[i*3]<EPS) continue; // 元々+X側
+        const d=(ref[i*3]-tx)**2+(ref[i*3+1]-ty)**2+(ref[i*3+2]-tz)**2;
+        if(d<bestD){bestD=d;best=i;}
+      }
+      if(best>=0){
+        verts[j*3]  =-verts[best*3];
+        verts[j*3+1]= verts[best*3+1];
+        verts[j*3+2]= verts[best*3+2];
+      }
+    }
+    // x≈0のシーム頂点をx=0に固定
+    for(let j=0;j<VC;j++) if(Math.abs(verts[j*3])<EPS) verts[j*3]=0;
   }
   recompNorms();dirty=true;
 });
