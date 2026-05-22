@@ -22,6 +22,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
 .lb{font-size:9.5px;color:#4a4a5f;min-width:80px;flex-shrink:0;white-space:nowrap}
 .r input[type=range]{flex:1;min-width:0;cursor:pointer;height:3px;accent-color:#4466ee}
 .vl{font-size:9.5px;color:#778;min-width:30px;text-align:right;flex-shrink:0;cursor:text}
+.vl:hover{color:#aab;text-decoration:underline dotted #446;}
 .vl:hover{color:#aab}
 .vl-editing{background:#0e0e1a;border:1px solid #4466ee;border-radius:2px;color:#ccd;outline:none;width:52px;font-size:9.5px;padding:0 3px;text-align:right;flex-shrink:0}
 .r select{flex:1;min-width:0;background:#161622;color:#aab;border:1px solid #252535;border-radius:2px;font-size:9.5px;padding:1px 3px}
@@ -100,19 +101,19 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="r"><span class="lb">Type</span><select id="emT"><option value="point">Point</option><option value="box">Box</option><option value="sphere">Sphere</option></select></div>
       <div class="dl">Burst / Cycle</div>
       <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="30" value="0" step="0.1"><span class="vl" id="burstIntV">0</span></div>
-      <div class="r"><span class="lb">Duration (s)</span><input type="range" id="burstDur" min="0.05" max="10" value="1" step="0.05"><span class="vl" id="burstDurV">1.0</span></div>
+      <div class="r"><span class="lb">Duration (s)</span><input type="range" id="burstDur" min="0.01" max="10" value="1" step="0.01"><span class="vl" id="burstDurV">1.0</span></div>
       <div id="cycleBar" style="display:none;margin:2px 0 4px;height:4px;background:#1a1a28;border-radius:2px;overflow:hidden;position:relative">
         <div id="cycleBarFill" style="position:absolute;left:0;top:0;height:100%;background:#4466ee;transition:width .05s linear;border-radius:2px"></div>
       </div>
       <div class="dl">Emission</div>
-      <div class="r"><span class="lb">Particles / sec</span><input type="range" id="pps" min="1" max="50000" value="30" step="1"><span class="vl" id="ppsV">30</span></div>
+      <div class="r"><span class="lb">Particles / sec</span><input type="range" id="pps" min="1" max="1000" value="30" step="1" data-input-max="50000"><span class="vl" id="ppsV">30</span></div>
       <div class="r"><span class="lb">Velocity</span><input type="range" id="vel" min="0" max="20" value="4" step="0.1"><span class="vl" id="velV">4.0</span></div>
       <div class="r"><span class="lb">Vel Random %</span><input type="range" id="velR" min="0" max="100" value="40"><span class="vl" id="velRV">40</span></div>
       <div class="r"><span class="lb">Direction</span><select id="dir"><option value="uniform">Uniform</option><option value="up">Upward</option><option value="down">Downward</option><option value="outward">Outward</option></select></div>
       <div class="r"><span class="lb">Spread °</span><input type="range" id="sprd" min="0" max="180" value="50"><span class="vl" id="sprdV">50</span></div>
-      <div class="r"><span class="lb">Emitter Size X</span><input type="range" id="eSX" min="0" max="5000" value="0"><span class="vl" id="eSXV">0</span></div>
-      <div class="r"><span class="lb">Emitter Size Y</span><input type="range" id="eSY" min="0" max="5000" value="0"><span class="vl" id="eSYV">0</span></div>
-      <div class="r"><span class="lb">Emitter Size Z</span><input type="range" id="eSZ" min="0" max="5000" value="0"><span class="vl" id="eSZV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size X</span><input type="range" id="eSX" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSXV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size Y</span><input type="range" id="eSY" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSYV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size Z</span><input type="range" id="eSZ" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSZV">0</span></div>
     </div>
 
     <div class="sh" data-s="pt">Particle<span id="pt_a">▾</span></div>
@@ -170,11 +171,11 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
 
     <div class="sh" data-s="air">Physics / Air<span id="air_a">▾</span></div>
     <div class="sb open" id="air">
-      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="aRes" min="0" max="30" value="2" step="0.1"><span class="vl" id="aResV">2.0</span></div>
+      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="aRes" min="0" max="100" value="2" step="0.1" data-input-max="500"><span class="vl" id="aResV">2.0</span></div>
       <div class="r"><span class="lb">Air Res Rotation</span><input type="range" id="aResR" min="0" max="30" value="0" step="0.1"><span class="vl" id="aResRV">0.0</span></div>
-      <div class="r"><span class="lb">Wind X</span><input type="range" id="wX" min="-20" max="20" value="0" step="0.1"><span class="vl" id="wXV">0.0</span></div>
-      <div class="r"><span class="lb">Wind Y</span><input type="range" id="wY" min="-20" max="20" value="0" step="0.1"><span class="vl" id="wYV">0.0</span></div>
-      <div class="r"><span class="lb">Wind Z</span><input type="range" id="wZ" min="-20" max="20" value="0" step="0.1"><span class="vl" id="wZV">0.0</span></div>
+      <div class="r"><span class="lb">Wind X</span><input type="range" id="wX" min="-50" max="50" value="0" step="0.1" data-input-min="-500" data-input-max="500"><span class="vl" id="wXV">0.0</span></div>
+      <div class="r"><span class="lb">Wind Y</span><input type="range" id="wY" min="-50" max="50" value="0" step="0.1" data-input-min="-500" data-input-max="500"><span class="vl" id="wYV">0.0</span></div>
+      <div class="r"><span class="lb">Wind Z</span><input type="range" id="wZ" min="-50" max="50" value="0" step="0.1" data-input-min="-500" data-input-max="500"><span class="vl" id="wZV">0.0</span></div>
       <div class="dl">Turbulence Field</div>
       <div class="r"><span class="lb">Affect Position</span><input type="range" id="tAP" min="0" max="300" value="0"><span class="vl" id="tAPV">0</span></div>
       <div class="r"><span class="lb">Scale</span><input type="range" id="tSc" min="10" max="1000" value="100" step="5"><span class="vl" id="tScV">100</span></div>
@@ -610,8 +611,8 @@ document.querySelectorAll('.sh').forEach(h=>{
 
 // ── Binding helpers ───────────────────────────────────────────────────────────
 function bindR(id,key,dec){
-  const el=document.getElementById(id),vo=document.getElementById(id+'V');
-  function up(){const v=parseFloat(el.value);P[key]=v;if(vo)vo.textContent=v.toFixed(dec??0);}
+  const el=document.getElementById(id);
+  function up(){const v=parseFloat(el.value);P[key]=v;const vo=document.getElementById(id+'V');if(vo)vo.textContent=v.toFixed(dec??0);}
   el.addEventListener('input',up);up();
 }
 function bindS(id,key){
@@ -651,44 +652,72 @@ document.getElementById('flrOn').addEventListener('change',e=>P.flrOn=e.target.v
 bindC('c1','c1');bindC('c2','c2');bindC('c3','c3');
 
 // ── Double-click value labels to type directly ────────────────────────────────
+// ダブルクリックで入力した値がスライダーの新しいMAX/MINになります（双方向対応）
 function initDirectEdit(){
   document.querySelectorAll('.vl').forEach(vl=>{
-    vl.title='ダブルクリックで直接入力';
+    vl.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
     vl.addEventListener('dblclick',()=>{
       const rangeId=vl.id.replace(/V$/,'');
       const range=document.getElementById(rangeId);
       if(!range||range.type!=='range')return;
+
+      const savedText=vl.textContent;
       const input=document.createElement('input');
       input.type='text';
       input.className='vl-editing';
-      input.value=vl.textContent;
+      input.value=savedText;
       vl.replaceWith(input);
-      input.select();
+      input.focus();input.select();
+
+      let committed=false;
       function commit(){
+        if(committed)return;
+        committed=true;
+
+        // ── まず span を DOM に復元（id を戻しておかないと bindR が見つけられない）
+        const span=document.createElement('span');
+        span.id=vl.id;
+        span.className='vl';
+        span.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
+        span.textContent=savedText;
+        input.replaceWith(span);
+
         const raw=parseFloat(input.value);
         if(!isNaN(raw)){
-          const mn=parseFloat(range.min),mx=parseFloat(range.max),st=parseFloat(range.step)||1;
-          const clamped=Math.min(mx,Math.max(mn,raw));
-          // allow values beyond slider max (user typed larger number)
-          const final=isNaN(clamped)?raw:clamped;
-          range.max=Math.max(parseFloat(range.max),final);
-          range.value=final;
+          // data-input-max / data-input-min で絶対上限・下限を定義
+          const hardMax = range.dataset.inputMax!==undefined ? parseFloat(range.dataset.inputMax) : Infinity;
+          const hardMin = range.dataset.inputMin!==undefined ? parseFloat(range.dataset.inputMin) : -Infinity;
+          const clamped = Math.min(hardMax, Math.max(hardMin, raw));
+
+          // 入力値を新しい MAX または MIN にセット（双方向：縮小も拡大も対応）
+          if(clamped >= 0){
+            // 正の値 → MAX を更新（currentMin より必ず大きく保つ）
+            range.max = String(Math.max(clamped, parseFloat(range.min) + 0.001));
+          } else {
+            // 負の値 → MIN を更新（currentMax より必ず小さく保つ）
+            range.min = String(Math.min(clamped, parseFloat(range.max) - 0.001));
+          }
+
+          range.value = clamped;
+          // dispatchEvent でラベル表示が更新される（span が DOM に戻っているので正しく動く）
           range.dispatchEvent(new Event('input'));
         }
-        // restore span
-        const span=document.createElement('span');
-        span.id=vl.id;span.className='vl';
-        span.title='ダブルクリックで直接入力';
-        span.textContent=input.value&&!isNaN(parseFloat(input.value))
-          ?range.value
-          :vl.textContent;
-        input.replaceWith(span);
-        initDirectEdit();// re-bind new span
+
+        // 新しい span に再バインド
+        initDirectEdit();
       }
+
       input.addEventListener('blur',commit);
       input.addEventListener('keydown',e=>{
-        if(e.key==='Enter'){e.preventDefault();input.blur();}
-        if(e.key==='Escape'){input.value=vl.textContent;input.blur();}
+        if(e.key==='Enter'){e.preventDefault();commit();}
+        if(e.key==='Escape'){committed=true;
+          const span=document.createElement('span');
+          span.id=vl.id;span.className='vl';
+          span.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
+          span.textContent=savedText;
+          input.replaceWith(span);
+          initDirectEdit();
+        }
       });
     });
   });
@@ -729,11 +758,12 @@ bbFileEl.addEventListener('change',e=>{
 
 // ── Presets ───────────────────────────────────────────────────────────────────
 const PR={
-  fire:{pps:50,vel:4.8,velR:55,dir:'up',sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
+  fire:{pps:313,vel:4.8,velR:55,dir:'up',sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
     life:1.8,lifeR:42,sz:4,szR:55,szC:'ease',fth:84,opa:0.85,spin:1.5,spinR:80,
     c1:'#ffee80',c2:'#ff3300',c3:'#220000',bld:'lighter',
-    aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:78,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
-    grav:-18,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450},
+    aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:80,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
+    grav:-20,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
   smoke:{pps:18,vel:1.4,velR:55,dir:'up',sprd:22,eSX:24,eSY:0,eSZ:24,emT:'box',
     life:7,lifeR:35,sz:42,szR:45,szC:'bell',fth:95,opa:0.36,spin:0.3,spinR:90,
     c1:'#888888',c2:'#aaaaaa',c3:'#444444',bld:'source-over',
@@ -744,11 +774,12 @@ const PR={
     c1:'#ddcc88',c2:'#bbaa66',c3:'#886644',bld:'source-over',
     aRes:10,aResR:0,wX:1.5,wY:0.3,wZ:0,tAP:160,tSc:240,tEv:0.8,tOc:3,tOM:0.5,tAR:0,
     grav:30,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2000,dof:0,fl:450},
-  sparks:{pps:60,vel:12,velR:55,dir:'uniform',sprd:180,eSX:0,eSY:0,eSZ:0,emT:'point',
-    life:1.5,lifeR:55,sz:5,szR:50,szC:'linear',fth:48,opa:0.95,spin:4,spinR:100,
+  sparks:{pps:313,vel:10,velR:88,dir:'uniform',sprd:28,eSX:0,eSY:0,eSZ:0,emT:'point',
+    life:1.1,lifeR:6,sz:2,szR:52,szC:'ease',fth:30,opa:0.95,spin:0,spinR:0,
     c1:'#ffffff',c2:'#ffaa00',c3:'#ff1100',bld:'lighter',
-    aRes:1.5,aResR:0,wX:0,wY:0,wZ:0,tAP:18,tSc:55,tEv:2.5,tOc:2,tOM:0.5,tAR:0,
-    grav:195,flrOn:'1',flrY:85,bnce:55,frct:25,bnceR:30,maxP:2000,dof:0,fl:450},
+    aRes:22,aResR:0.5,wX:0,wY:0,wZ:0,tAP:244,tSc:55,tEv:2.5,tOc:2,tOM:0.5,tAR:0,
+    grav:195,flrOn:'1',flrY:85,bnce:55,frct:25,bnceR:30,maxP:2000,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'line',lineTaper:'1',bbTint:'0'},
   magic:{pps:70,vel:3.5,velR:70,dir:'uniform',sprd:180,eSX:0,eSY:0,eSZ:0,emT:'point',
     life:3,lifeR:45,sz:10,szR:65,szC:'bell',fth:90,opa:0.82,spin:7,spinR:100,
     c1:'#8899ff',c2:'#ff44ff',c3:'#0011cc',bld:'lighter',
@@ -768,7 +799,12 @@ const CKEYS=['c1','c2','c3'];
 function applyPreset(m){
   const pr=PR[m];if(!pr)return;
   pts.length=0; accum=0;
-  RKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('input'));}});
+  RKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){
+    const v=pr[k];
+    if(v>parseFloat(el.max))el.max=v;
+    if(v<parseFloat(el.min))el.min=v;
+    el.value=v;el.dispatchEvent(new Event('input'));
+  }});
   SKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('change'));}});
   CKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('input'));}});
   s2w(W/2, m==='snow'?H*.05:H*.68);
