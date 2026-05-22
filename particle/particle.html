@@ -82,8 +82,11 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <button class="ab" id="btnSave">💾 Save</button>
       <button class="ab" id="btnLoad">📂 Load</button>
       <button class="ab" id="btnExport">⬇ Export</button>
+      <button class="ab" id="btnImport">⬆ Import</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
     </div>
     <div id="saveNameWrap">
+      <div style="font-size:9px;color:#446;margin-bottom:2px">プリセット: <span id="savePresetTag" style="color:#8899cc"></span></div>
       <input id="saveName" type="text" placeholder="設定名を入力..." maxlength="40" spellcheck="false">
       <div class="save-actions">
         <button class="ab" id="btnSaveOK">保存</button>
@@ -107,16 +110,16 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="r"><span class="lb">Vel Random %</span><input type="range" id="velR" min="0" max="100" value="40"><span class="vl" id="velRV">40</span></div>
       <div class="r"><span class="lb">Direction</span><select id="dir"><option value="uniform">Uniform</option><option value="up">Upward</option><option value="down">Downward</option><option value="outward">Outward</option></select></div>
       <div class="r"><span class="lb">Spread °</span><input type="range" id="sprd" min="0" max="180" value="50"><span class="vl" id="sprdV">50</span></div>
-      <div class="r"><span class="lb">Emitter Size X</span><input type="range" id="eSX" min="0" max="500" value="0"><span class="vl" id="eSXV">0</span></div>
-      <div class="r"><span class="lb">Emitter Size Y</span><input type="range" id="eSY" min="0" max="500" value="0"><span class="vl" id="eSYV">0</span></div>
-      <div class="r"><span class="lb">Emitter Size Z</span><input type="range" id="eSZ" min="0" max="500" value="0"><span class="vl" id="eSZV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size X</span><input type="range" id="eSX" min="0" max="5000" value="0"><span class="vl" id="eSXV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size Y</span><input type="range" id="eSY" min="0" max="5000" value="0"><span class="vl" id="eSYV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size Z</span><input type="range" id="eSZ" min="0" max="5000" value="0"><span class="vl" id="eSZV">0</span></div>
     </div>
 
     <div class="sh" data-s="pt">Particle<span id="pt_a">▾</span></div>
     <div class="sb open" id="pt">
       <div class="r"><span class="lb">Lifespan (s)</span><input type="range" id="life" min="0.2" max="12" value="3" step="0.1"><span class="vl" id="lifeV">3.0</span></div>
       <div class="r"><span class="lb">Life Random %</span><input type="range" id="lifeR" min="0" max="100" value="30"><span class="vl" id="lifeRV">30</span></div>
-      <div class="r"><span class="lb">Size</span><input type="range" id="sz" min="1" max="100" value="14" step="0.5"><span class="vl" id="szV">14.0</span></div>
+      <div class="r"><span class="lb">Size</span><input type="range" id="sz" min="1" max="100" value="4" step="0.5"><span class="vl" id="szV">4.0</span></div>
       <div class="r"><span class="lb">Size Random %</span><input type="range" id="szR" min="0" max="100" value="40"><span class="vl" id="szRV">40</span></div>
       <div class="r"><span class="lb">Size over Life</span><select id="szC">
         <option value="linear">Linear ↓</option>
@@ -227,6 +230,15 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         </select>
       </div>
       <div class="r" id="rndBgColorRow" style="display:none"><span class="lb">Color</span><input type="color" id="rndBgColor" value="#000000" style="width:38px;height:18px;border:1px solid #333;border-radius:2px;cursor:pointer;padding:0;background:none"></div>
+      <div class="dl">Realtime Recording</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:2px 0 4px">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:9.5px;color:#778">
+          <input type="checkbox" id="recCheck" style="accent-color:#cc3333">
+          <span style="color:#cc4444">● REC</span> リアルタイム録画
+        </label>
+        <span id="recCounter" style="font-size:9px;color:#553;margin-left:auto;display:none">0f</span>
+        <button id="btnRecStop" style="display:none;padding:2px 7px;background:#2a0f0f;border:1px solid #5a1818;border-radius:3px;color:#ff8888;font-size:9px;cursor:pointer">■ 保存</button>
+      </div>
       <div class="rnd-prog" id="rndProg" style="display:none"><div class="rnd-prog-fill" id="rndProgFill"></div></div>
       <div class="rnd-label" id="rndProgLabel"></div>
       <button class="rbtn" id="btnRender">▶ Render &amp; Export ZIP</button>
@@ -268,7 +280,7 @@ function fbm(x,y,z,o,gn){
 const P={
   pps:30,vel:4,velR:40,dir:'up',sprd:50,eSX:0,eSY:0,eSZ:0,emT:'point',
   burstInt:0,burstDur:1,
-  life:3,lifeR:30,sz:14,szR:40,szC:'ease',fth:70,opa:0.9,spin:0,spinR:50,
+  life:3,lifeR:30,sz:4,szR:40,szC:'ease',fth:70,opa:0.9,spin:0,spinR:50,
   c1:[255,136,0],c2:[255,34,0],c3:[34,0,0],bld:'lighter',
   ptType:'sphere',lineLen:40,lineTh:2,lineTaper:1,bbTint:0,bbTintAmt:0.5,
   aRes:2,aResR:0,wX:0,wY:0,wZ:0,
@@ -319,16 +331,26 @@ function randDir(){
 function hexRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
 
 // ── Spawn ─────────────────────────────────────────────────────────────────────
+function spawnOffset(){
+  let ox=0,oy=0,oz=0;
+  if(P.emT==='box'){
+    ox=(Math.random()-.5)*P.eSX;
+    oy=(Math.random()-.5)*P.eSY;
+    oz=(Math.random()-.5)*P.eSZ;
+  }else if(P.emT==='sphere'){
+    // uniform fill inside ellipsoid
+    const u=Math.random()*Math.PI*2,v=Math.acos(2*Math.random()-1),r=Math.cbrt(Math.random());
+    ox=r*(P.eSX*.5)*Math.sin(v)*Math.cos(u);
+    oy=r*(P.eSY*.5)*Math.sin(v)*Math.sin(u);
+    oz=r*(P.eSZ*.5)*Math.cos(v);
+  }
+  // Point: no offset, always (0,0,0)
+  return[ox,oy,oz];
+}
 function spawn(){
   const[dx,dy,dz]=randDir();
   const vr=1+(Math.random()-.5)*P.velR*.02,v=P.vel*vr;
-  let ox=0,oy=0,oz=0;
-  if(P.eSX||P.eSY||P.eSZ){
-    if(P.emT==='sphere'){
-      const u=Math.random()*Math.PI*2,vv=Math.acos(2*Math.random()-1),r=Math.cbrt(Math.random());
-      ox=r*P.eSX*.5*Math.sin(vv)*Math.cos(u);oy=r*P.eSY*.5*Math.sin(vv)*Math.sin(u);oz=r*P.eSZ*.5*Math.cos(vv);
-    }else{ox=(Math.random()-.5)*P.eSX;oy=(Math.random()-.5)*P.eSY;oz=(Math.random()-.5)*P.eSZ;}
-  }
+  const[ox,oy,oz]=spawnOffset();
   const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
   const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
@@ -562,6 +584,7 @@ function loop(now){
   const dt=Math.min((now-lastT)/1000,.05);
   lastT=now; time+=dt;
   update(dt); render();
+  tryRecFrame();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -707,7 +730,7 @@ bbFileEl.addEventListener('change',e=>{
 // ── Presets ───────────────────────────────────────────────────────────────────
 const PR={
   fire:{pps:50,vel:4.8,velR:55,dir:'up',sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
-    life:1.8,lifeR:42,sz:18,szR:55,szC:'ease',fth:84,opa:0.85,spin:1.5,spinR:80,
+    life:1.8,lifeR:42,sz:4,szR:55,szC:'ease',fth:84,opa:0.85,spin:1.5,spinR:80,
     c1:'#ffee80',c2:'#ff3300',c3:'#220000',bld:'lighter',
     aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:78,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
     grav:-18,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450},
@@ -792,29 +815,51 @@ function renderSlotList(){
   sl.innerHTML='';
   slots.forEach((s,i)=>{
     const d=document.createElement('div');d.className='slot';
-    const nm=document.createElement('span');nm.className='sn';nm.textContent=s.name;nm.title='クリックで読み込み';
+    const nm=document.createElement('span');nm.className='sn';
+    const badge=s.preset?`<span style="font-size:8px;color:#4455aa;margin-right:3px;background:#0e1030;border-radius:3px;padding:0 3px">${s.preset}</span>`:'';
+    nm.innerHTML=badge+s.name;nm.title='クリックで読み込み';
     nm.addEventListener('click',()=>{applySnap(s.data);document.getElementById('slotList').classList.remove('open');toast(`"${s.name}" を読み込みました`);});
     const dl=document.createElement('span');dl.className='sd';dl.textContent='✕';dl.title='削除';
-    dl.addEventListener('click',()=>{const arr=loadSlots();arr.splice(i,1);saveSlots(arr);renderSlotList();toast('削除しました');});
+    dl.addEventListener('click',e=>{e.stopPropagation();const arr=loadSlots();arr.splice(i,1);saveSlots(arr);renderSlotList();toast('削除しました');});
     d.appendChild(nm);d.appendChild(dl);sl.appendChild(d);
   });
 }
 
-// Reset
+// Reset — full factory defaults (reads HTML default value attributes)
 document.getElementById('btnReset').addEventListener('click',()=>{
-  const activePreset=document.querySelector('.pb.on');
-  if(activePreset)applyPreset(activePreset.dataset.m);
-  else applyPreset('fire');
-  toast('リセットしました');
+  document.querySelectorAll('#pn input[type=range]').forEach(el=>{
+    const def=el.getAttribute('value');
+    if(def!==null){el.value=def;el.dispatchEvent(new Event('input'));}
+  });
+  document.querySelectorAll('#pn select').forEach(el=>{
+    const def=el.querySelector('option');
+    if(def){el.value=def.value;el.dispatchEvent(new Event('change'));}
+  });
+  document.getElementById('c1').value='#ff8800';document.getElementById('c1').dispatchEvent(new Event('input'));
+  document.getElementById('c2').value='#ff2200';document.getElementById('c2').dispatchEvent(new Event('input'));
+  document.getElementById('c3').value='#220000';document.getElementById('c3').dispatchEvent(new Event('input'));
+  document.getElementById('burstInt').value=0;document.getElementById('burstInt').dispatchEvent(new Event('input'));
+  document.getElementById('burstDur').value=1;document.getElementById('burstDur').dispatchEvent(new Event('input'));
+  pts.length=0;accum=0;cycleT=0;
+  s2w(W/2,H*.65);
+  toast('全パラメーターをリセットしました');
 });
 
-// Save
+// Save — show preset tag in dialog
 document.getElementById('btnSave').addEventListener('click',()=>{
   const wr=document.getElementById('saveNameWrap');
   const sl=document.getElementById('slotList');
   sl.classList.remove('open');
+  const opening=!wr.classList.contains('open');
   wr.classList.toggle('open');
-  if(wr.classList.contains('open'))document.getElementById('saveName').focus();
+  if(opening){
+    const activePreset=document.querySelector('.pb.on');
+    const tag=activePreset?activePreset.textContent.trim():'';
+    document.getElementById('savePresetTag').textContent=tag;
+    const nameEl=document.getElementById('saveName');
+    if(!nameEl.value)nameEl.value=tag?tag+' ':'';
+    nameEl.focus();nameEl.select();
+  }
 });
 document.getElementById('btnSaveCancel').addEventListener('click',()=>{
   document.getElementById('saveNameWrap').classList.remove('open');
@@ -822,9 +867,11 @@ document.getElementById('btnSaveCancel').addEventListener('click',()=>{
 document.getElementById('btnSaveOK').addEventListener('click',()=>{
   const nm=document.getElementById('saveName').value.trim();
   if(!nm){toast('名前を入力してください');return;}
+  const activePreset=document.querySelector('.pb.on');
+  const presetKey=activePreset?activePreset.dataset.m:'';
   const slots=loadSlots();
   const idx=slots.findIndex(s=>s.name===nm);
-  const entry={name:nm,data:currentSnap()};
+  const entry={name:nm,preset:presetKey,data:currentSnap()};
   if(idx>=0)slots[idx]=entry;else slots.push(entry);
   saveSlots(slots);
   document.getElementById('saveNameWrap').classList.remove('open');
@@ -842,14 +889,80 @@ document.getElementById('btnLoad').addEventListener('click',()=>{
   if(opening)renderSlotList();
 });
 
-// Export (download JSON)
+// Export ALL slots as single JSON
 document.getElementById('btnExport').addEventListener('click',()=>{
-  const snap=currentSnap();
-  const nm=(document.querySelector('.pb.on')?.dataset.m||'custom')+'_'+Date.now();
-  const blob=new Blob([JSON.stringify({name:nm,data:snap},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nm+'.json';a.click();
-  toast('JSONをエクスポートしました');
+  const slots=loadSlots();
+  if(!slots.length){toast('保存済み設定がありません');return;}
+  const blob=new Blob([JSON.stringify({version:1,slots},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='psim_settings_'+Date.now()+'.json';
+  a.click();
+  toast(`${slots.length}件の設定をエクスポートしました`);
 });
+
+// Import JSON
+document.getElementById('btnImport').addEventListener('click',()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const json=JSON.parse(ev.target.result);
+      // Support both: array of slots (old single-export) and {version,slots}
+      const incoming=Array.isArray(json)?json:(json.slots||[json]);
+      if(!incoming.length){toast('読み込める設定がありません');return;}
+      const existing=loadSlots();
+      let added=0,updated=0;
+      incoming.forEach(s=>{
+        if(!s.name||!s.data)return;
+        const idx=existing.findIndex(x=>x.name===s.name);
+        if(idx>=0){existing[idx]=s;updated++;}else{existing.push(s);added++;}
+      });
+      saveSlots(existing);
+      renderSlotList();
+      toast(`インポート完了 追加:${added} 更新:${updated}`);
+    }catch{toast('JSONの読み込みに失敗しました');}
+  };
+  reader.readAsText(f);
+  e.target.value='';
+});
+
+// ── Realtime REC ─────────────────────────────────────────────────────────────
+let recActive=false,recFrames=[];
+const recCheck=document.getElementById('recCheck');
+const recCounter=document.getElementById('recCounter');
+const btnRecStop=document.getElementById('btnRecStop');
+
+recCheck.addEventListener('change',()=>{
+  recActive=recCheck.checked;
+  recFrames=[];
+  recCounter.style.display=recActive?'inline':'none';
+  btnRecStop.style.display=recActive?'inline-block':'none';
+  if(recActive)toast('録画開始 — ■ 保存 で ZIP ダウンロード');
+});
+
+btnRecStop.addEventListener('click',async()=>{
+  recActive=false;recCheck.checked=false;
+  recCounter.style.display='none';btnRecStop.style.display='none';
+  if(!recFrames.length){toast('フレームがありません');return;}
+  toast('ZIP生成中...');
+  const zip=new JSZip();const folder=zip.folder('frames');
+  recFrames.forEach((blob,i)=>folder.file(`frame_${String(i).padStart(5,'0')}.png`,blob));
+  recFrames=[];
+  const zipBlob=await zip.generateAsync({type:'blob',compression:'STORE'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(zipBlob);a.download='rec_'+Date.now()+'.zip';a.click();
+  toast('録画ZIPをダウンロードしました');
+});
+
+// Called from loop after each render
+function tryRecFrame(){
+  if(!recActive)return;
+  cv.toBlob(blob=>{
+    if(blob){recFrames.push(blob);recCounter.textContent=recFrames.length+'f';}
+  },'image/png');
+}
 
 // ── Export / Render ───────────────────────────────────────────────────────────
 let renderActive=false,renderStop=false;
@@ -917,11 +1030,11 @@ async function startRender(){
     const[dx,dy,dz]=randDir();
     const vr=1+(Math.random()-.5)*P.velR*.02,v=P.vel*vr;
     let ox=0,oy=0,oz=0;
-    if(P.eSX||P.eSY||P.eSZ){
-      if(P.emT==='sphere'){
-        const u=Math.random()*Math.PI*2,vv=Math.acos(2*Math.random()-1),r=Math.cbrt(Math.random());
-        ox=r*P.eSX*.5*Math.sin(vv)*Math.cos(u);oy=r*P.eSY*.5*Math.sin(vv)*Math.sin(u);oz=r*P.eSZ*.5*Math.cos(vv);
-      }else{ox=(Math.random()-.5)*P.eSX;oy=(Math.random()-.5)*P.eSY;oz=(Math.random()-.5)*P.eSZ;}
+    if(P.emT==='box'){
+      ox=(Math.random()-.5)*P.eSX;oy=(Math.random()-.5)*P.eSY;oz=(Math.random()-.5)*P.eSZ;
+    }else if(P.emT==='sphere'){
+      const u=Math.random()*Math.PI*2,vv=Math.acos(2*Math.random()-1),r=Math.cbrt(Math.random());
+      ox=r*(P.eSX*.5)*Math.sin(vv)*Math.cos(u);oy=r*(P.eSY*.5)*Math.sin(vv)*Math.sin(u);oz=r*(P.eSZ*.5)*Math.cos(vv);
     }
     const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
     const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
