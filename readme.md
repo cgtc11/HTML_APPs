@@ -1,4 +1,4 @@
-<p align="center"><img src="https://github.com/cgtc11/image/blob/main/htmlapp.png"></p><br>
+<p align="center"><img src="https://github.com/cgtc11/image/blob/main/htmlapps.png"></p><br>
 アイコンはチャッピー、プログラムは Claude(Ai) を使って作成<br>
 各フォルダ内に操作説明readmeを置いてます<br>
 全てChomeブラウザで動作確認済<br>
