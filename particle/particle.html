@@ -76,6 +76,8 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <button class="pb" data-m="sparks">✨ Sparks</button>
       <button class="pb" data-m="magic">🌀 Magic</button>
       <button class="pb" data-m="snow">❄ Snow</button>
+      <button class="pb" data-m="shockwave">💥 ShockWave</button>
+      <button class="pb" data-m="embers">🌋 Embers</button>
     </div>
 
     <div class="acts">
@@ -84,6 +86,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <button class="ab" id="btnLoad">📂 Load</button>
       <button class="ab" id="btnExport">⬇ Export</button>
       <button class="ab" id="btnImport">⬆ Import</button>
+      <button class="ab" id="btnFullscreen">⛶ Full</button>
       <input type="file" id="importFile" accept=".json" style="display:none">
     </div>
     <div id="saveNameWrap">
@@ -119,8 +122,11 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="r"><span class="lb">Particles / sec</span><input type="range" id="pps" min="1" max="1000" value="30" step="1" data-input-max="50000"><span class="vl" id="ppsV">30</span></div>
       <div class="r"><span class="lb">Velocity</span><input type="range" id="vel" min="0" max="20" value="4" step="0.1"><span class="vl" id="velV">4.0</span></div>
       <div class="r"><span class="lb">Vel Random %</span><input type="range" id="velR" min="0" max="100" value="40"><span class="vl" id="velRV">40</span></div>
-      <div class="r"><span class="lb">Direction</span><select id="dir"><option value="uniform">Uniform</option><option value="up">Upward</option><option value="down">Downward</option><option value="outward">Outward</option></select></div>
+      <div class="r"><span class="lb">Direction</span><select id="dir"><option value="uniform">Uniform</option><option value="up">Upward</option><option value="down">Downward</option><option value="outward">Outward</option><option value="twirl">Twirl</option></select></div>
       <div class="r"><span class="lb">Spread °</span><input type="range" id="sprd" min="0" max="180" value="50"><span class="vl" id="sprdV">50</span></div>
+      <div class="r"><span class="lb">Pitch °</span><input type="range" id="emPitch" min="-90" max="90" value="0" step="1" data-input-min="-180" data-input-max="180"><span class="vl" id="emPitchV">0</span></div>
+      <div class="r"><span class="lb">Yaw °</span><input type="range" id="emYaw" min="-90" max="90" value="0" step="1" data-input-min="-180" data-input-max="180"><span class="vl" id="emYawV">0</span></div>
+      <div class="r"><span class="lb">Twirl Speed</span><input type="range" id="twirlSpd" min="0.1" max="10" value="2" step="0.1"><span class="vl" id="twirlSpdV">2.0</span></div>
       <div class="r"><span class="lb">Emitter Size X</span><input type="range" id="eSX" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSXV">0</span></div>
       <div class="r"><span class="lb">Emitter Size Y</span><input type="range" id="eSY" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSYV">0</span></div>
       <div class="r"><span class="lb">Emitter Size Z</span><input type="range" id="eSZ" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSZV">0</span></div>
@@ -291,7 +297,7 @@ function fbm(x,y,z,o,gn){
 
 // ── Parameters ────────────────────────────────────────────────────────────────
 const P={
-  pps:30,vel:4,velR:40,dir:'up',sprd:50,eSX:0,eSY:0,eSZ:0,emT:'point',
+  pps:30,vel:4,velR:40,dir:'up',emPitch:0,emYaw:0,twirlSpd:2,sprd:50,eSX:0,eSY:0,eSZ:0,emT:'point',
   burstInt:0,burstDur:1,
   life:3,lifeR:30,sz:4,szR:40,szC:'ease',fth:70,opa:0.9,spin:0,spinR:50,
   c1:[255,136,0],c2:[255,34,0],c3:[34,0,0],bld:'lighter',
@@ -358,17 +364,50 @@ function colOL(t){
 }
 function randDir(){
   const sp=P.sprd*Math.PI/180;
+  const pitch=P.emPitch*Math.PI/180;
+  const yaw=P.emYaw*Math.PI/180;
+  // base axis rotated by pitch/yaw: default axis is -Y (upward)
+  const cpitch=Math.cos(pitch),spitch=Math.sin(pitch);
+  const cyaw=Math.cos(yaw),syaw=Math.sin(yaw);
+  // axis direction after pitch(rotate around X) then yaw(rotate around Y)
+  const axX=spitch*syaw, axY=-cpitch, axZ=spitch*cyaw;
+
   if(P.dir==='uniform'||sp>=Math.PI-.001){
     const u=Math.random()*Math.PI*2,v=Math.acos(2*Math.random()-1);
     return[Math.sin(v)*Math.cos(u),Math.sin(v)*Math.sin(u),Math.cos(v)];
   }
+  if(P.dir==='outward'){
+    // Shockwave: radiate uniformly in the plane perpendicular to the emission axis.
+    // Pitch/Yaw tilt the plane. Spread adds a cone angle around that plane.
+    // Perpendicular basis of the axis:
+    const px=-syaw, py=0, pz=cyaw;                                   // right vector
+    const qx=axY*pz-axZ*py, qy=axZ*px-axX*pz, qz=axX*py-axY*px;    // up vector (in-plane)
+    const qLen=Math.sqrt(qx*qx+qy*qy+qz*qz)||1;
+    const qnx=qx/qLen, qny=qy/qLen, qnz=qz/qLen;
+    // Random angle around the circle in that plane
+    const a=Math.random()*Math.PI*2;
+    const baseX=Math.cos(a)*px+Math.sin(a)*qnx;
+    const baseY=Math.cos(a)*py+Math.sin(a)*qny;
+    const baseZ=Math.cos(a)*pz+Math.sin(a)*qnz;
+    // Spread: tilt away from the plane toward the axis by spread/2 at most
+    const halfSp=sp/2;
+    const tilt=(Math.random()-.5)*halfSp;  // signed tilt (-halfSp … +halfSp)
+    const ct=Math.cos(tilt),st=Math.sin(tilt);
+    return[baseX*ct+axX*st, baseY*ct+axY*st, baseZ*ct+axZ*st];
+  }
   const cosMax=Math.cos(sp/2),cosA=cosMax+(1-cosMax)*Math.random();
   const sinA=Math.sqrt(1-cosA*cosA),ang=Math.random()*Math.PI*2;
+  // local frame: perpendicular to axis
+  const px=-syaw, py=0, pz=cyaw;
+  const qx=axY*pz-axZ*py, qy=axZ*px-axX*pz, qz=axX*py-axY*px;
   const lx=sinA*Math.cos(ang),lz=sinA*Math.sin(ang);
-  if(P.dir==='up')return[lx,-cosA,lz];
-  if(P.dir==='down')return[lx,cosA,lz];
-  if(P.dir==='outward'){const a=Math.random()*Math.PI*2;return[Math.cos(a),0,Math.sin(a)];}
-  return[lx,-cosA,lz];
+  if(P.dir==='up')  return[lx*px+lz*qx+cosA*axX, lx*py+lz*qy+cosA*axY, lx*pz+lz*qz+cosA*axZ];
+  if(P.dir==='down') return[lx*px+lz*qx-cosA*axX, lx*py+lz*qy-cosA*axY, lx*pz+lz*qz-cosA*axZ];
+  if(P.dir==='twirl'){
+    // cone around axis, twirl phase stored on particle at spawn via rndV
+    return[lx*px+lz*qx+cosA*axX, lx*py+lz*qy+cosA*axY, lx*pz+lz*qz+cosA*axZ];
+  }
+  return[lx*px+lz*qx+cosA*axX, lx*py+lz*qy+cosA*axY, lx*pz+lz*qz+cosA*axZ];
 }
 function hexRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
 
@@ -491,7 +530,8 @@ function spawn(){
   const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
   const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
-  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random()});
+  const twirlPhase=Math.random()*Math.PI*2;
+  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase});
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -559,6 +599,24 @@ function update(dt){
       p.vy+=fbm(tx+50,ty+50,tz,   oct,tOM)*ap;
       p.vz+=fbm(tx+100,ty+100,tz, oct,tOM)*ap;
       if(tAR>0) p.rot+=fbm(tx+200,ty+200,tz,oct,tOM)*tAR*dt*2.5;
+    }
+    // Twirl rotation around emission axis
+    if(P.dir==='twirl'){
+      const spd=P.twirlSpd;
+      p.twirlPhase=(p.twirlPhase||0)+spd*dt*Math.PI*2;
+      const pitch=P.emPitch*Math.PI/180,yaw=P.emYaw*Math.PI/180;
+      const cpitch=Math.cos(pitch),spitch2=Math.sin(pitch);
+      const cyaw=Math.cos(yaw),syaw=Math.sin(yaw);
+      const axX=spitch2*syaw,axY=-cpitch,axZ=spitch2*cyaw;
+      const axLen=Math.sqrt(axX*axX+axY*axY+axZ*axZ)||1;
+      const ux=axX/axLen,uy=axY/axLen,uz=axZ/axLen;
+      const speed=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.0001;
+      const c=Math.cos(spd*dt*0.15),s2=Math.sin(spd*dt*0.15);
+      const dot=p.vx*ux+p.vy*uy+p.vz*uz;
+      const cx2=p.vx*c+((uy*p.vz-uz*p.vy)*s2)+(ux*dot*(1-c));
+      const cy2=p.vy*c+((uz*p.vx-ux*p.vz)*s2)+(uy*dot*(1-c));
+      const cz2=p.vz*c+((ux*p.vy-uy*p.vx)*s2)+(uz*dot*(1-c));
+      p.vx=cx2;p.vy=cy2;p.vz=cz2;
     }
     // Integrate
     const ps=dt*60;
@@ -736,6 +794,36 @@ function loop(now){
 }
 requestAnimationFrame(loop);
 
+// ── Fullscreen ───────────────────────────────────────────────────────────────────
+function enterFullscreen(){
+  const el=document.documentElement;
+  if(el.requestFullscreen)el.requestFullscreen();
+  else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+}
+function exitFs(){
+  if(document.exitFullscreen)document.exitFullscreen();
+  else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+}
+document.getElementById('btnFullscreen').addEventListener('click',enterFullscreen);
+// 右クリックで終了（コンテキストメニュー抑制）
+document.addEventListener('contextmenu',e=>{
+  if(document.fullscreenElement||document.webkitFullscreenElement){e.preventDefault();exitFs();}
+});
+// ESCはブラウザが自動処理するが fullscreenchange で hint を同期
+document.addEventListener('fullscreenchange',onFsChange);
+document.addEventListener('webkitfullscreenchange',onFsChange);
+function onFsChange(){
+  const inFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  // パネル・UI・テキスト全て非表示
+  document.getElementById('pn').style.display=inFs?'none':'';
+  document.getElementById('hint').style.display=inFs?'none':'';
+  document.getElementById('pi').style.display=inFs?'none':'';
+  document.getElementById('toast').style.display=inFs?'none':'';
+  document.documentElement.style.cursor=inFs?'none':'';
+  document.getElementById('cv').style.cursor=inFs?'none':'crosshair';
+  document.getElementById('cvw').style.cursor=inFs?'none':'crosshair';
+}
+
 // ── Mouse / Touch ─────────────────────────────────────────────────────────────
 let drag=false;
 function gp(e,t){const r=cv.getBoundingClientRect(),s=t||e;return[(s.clientX-r.left)*(W/r.width),(s.clientY-r.top)*(H/r.height)];}
@@ -792,6 +880,7 @@ bindR('burstDur','burstDur',2);
   el.addEventListener('input',up);up();
 })();
 
+bindR('emPitch','emPitch');bindR('emYaw','emYaw');bindR('twirlSpd','twirlSpd',1);
 bindS('emT','emT');bindS('dir','dir');bindS('szC','szC');bindS('bld','bld');
 bindS('lineTaper','lineTaper');
 document.getElementById('flrOn').addEventListener('change',e=>P.flrOn=e.target.value==='1');
@@ -955,45 +1044,57 @@ updateEmTUI();
 
 // ── Presets ───────────────────────────────────────────────────────────────────
 const PR={
-  fire:{pps:313,vel:4.8,velR:55,dir:'up',sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
+  fire:{pps:313,vel:4.8,velR:55,dir:'up',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
     life:1.8,lifeR:42,sz:4,szR:55,szC:'ease',fth:84,opa:0.85,spin:1.5,spinR:80,
     c1:'#ffee80',c2:'#ff3300',c3:'#220000',bld:'lighter',
     aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:80,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
     grav:-20,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:2,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
-  smoke:{pps:126,vel:1.3,velR:64,dir:'outward',sprd:34,eSX:500,eSY:148,eSZ:70,emT:'point',
-    life:1.7,lifeR:66,sz:22.5,szR:45,szC:'hold',fth:36,opa:0.29,spin:0,spinR:36,
-    c1:'#888888',c2:'#aaaaaa',c3:'#444444',bld:'source-over',
+  smoke:{pps:126,vel:1.3,velR:64,dir:'outward',emPitch:0,emYaw:0,twirlSpd:2,sprd:34,eSX:500,eSY:148,eSZ:70,emT:'point',
+    life:1.1,lifeR:66,sz:32,szR:45,szC:'hold',fth:0,opa:0.96,spin:0,spinR:36,
+    c1:'#5c5c5c',c2:'#7d7d7d',c3:'#c9c9c9',bld:'source-over',
     aRes:7,aResR:5,wX:0,wY:-1,wZ:0,tAP:33,tSc:200,tEv:0.6,tOc:4,tOM:0.5,tAR:0.5,
     grav:-100,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:1500,dof:15,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
-  dust:{pps:35,vel:2.5,velR:80,dir:'uniform',sprd:180,eSX:328,eSY:320,eSZ:383,emT:'box',
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
+  dust:{pps:35,vel:2.5,velR:80,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:180,eSX:328,eSY:320,eSZ:383,emT:'box',
     life:5,lifeR:65,sz:1.5,szR:70,szC:'linear',fth:55,opa:0.82,spin:0.5,spinR:100,
     c1:'#ddcc88',c2:'#bbaa66',c3:'#886644',bld:'source-over',
     aRes:21.9,aResR:0,wX:0,wY:0.2,wZ:0,tAP:89,tSc:430,tEv:0.8,tOc:3,tOM:0.5,tAR:0,
     grav:30,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2000,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
-  sparks:{pps:313,vel:10,velR:88,dir:'uniform',sprd:28,eSX:0,eSY:0,eSZ:0,emT:'point',
+  sparks:{pps:313,vel:10,velR:88,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:0,eSY:0,eSZ:0,emT:'point',
     life:1.1,lifeR:6,sz:2,szR:52,szC:'ease',fth:30,opa:0.95,spin:0,spinR:0,
     c1:'#ffffff',c2:'#ffaa00',c3:'#ff1100',bld:'lighter',
     aRes:22,aResR:0.5,wX:0,wY:0,wZ:0,tAP:244,tSc:55,tEv:2.5,tOc:2,tOM:0.5,tAR:0,
     grav:195,flrOn:'1',flrY:85,bnce:55,frct:25,bnceR:30,maxP:2000,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'line',lineTaper:'1',bbTint:'0'},
-  magic:{pps:70,vel:3.5,velR:70,dir:'uniform',sprd:180,eSX:0,eSY:0,eSZ:0,emT:'point',
+  magic:{pps:70,vel:3.5,velR:70,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:180,eSX:0,eSY:0,eSZ:0,emT:'point',
     life:3,lifeR:45,sz:10,szR:65,szC:'bell',fth:90,opa:0.82,spin:0,spinR:0,
     c1:'#8899ff',c2:'#ff44ff',c3:'#0011cc',bld:'lighter',
     aRes:3,aResR:0,wX:0,wY:0,wZ:0,tAP:125,tSc:130,tEv:2.2,tOc:4,tOM:0.55,tAR:7,
     grav:-45,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2500,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'star',lineTaper:'1',bbTint:'0'},
-  snow:{pps:48,vel:0.9,velR:65,dir:'down',sprd:35,eSX:1000,eSY:0,eSZ:422,emT:'box',
+  snow:{pps:48,vel:0.9,velR:65,dir:'down',emPitch:0,emYaw:0,twirlSpd:2,sprd:35,eSX:1000,eSY:0,eSZ:422,emT:'box',
     life:5.9,lifeR:72,sz:2.5,szR:60,szC:'hold',fth:75,opa:0.86,spin:0.4,spinR:80,
     c1:'#eef4ff',c2:'#ddeeff',c3:'#9aabbf',bld:'source-over',
     aRes:62.5,aResR:0,wX:1.8,wY:4.7,wZ:0,tAP:70,tSc:270,tEv:0.4,tOc:3,tOM:0.5,tAR:0,
     grav:60,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:1500,dof:25,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'}
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
+  shockwave:{pps:6000,vel:19.1,velR:20,dir:'outward',emPitch:0,emYaw:0,twirlSpd:2,sprd:0,eSX:0,eSY:0,eSZ:0,emT:'point',
+    life:0.6,lifeR:30,sz:6,szR:40,szC:'ease',fth:80,opa:0.9,spin:0,spinR:0,
+    c1:'#ffffff',c2:'#88aaff',c3:'#001144',bld:'lighter',
+    aRes:40.6,aResR:15.9,wX:0,wY:0,wZ:0,tAP:28,tSc:85,tEv:0.8,tOc:5,tOM:0.65,tAR:0.5,
+    grav:0,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:78200,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:1.7,burstDur:0.08,ptType:'sphere',lineTaper:'1',bbTint:'0'},
+  embers:{pps:180,vel:6,velR:75,dir:'twirl',emPitch:0,emYaw:0,twirlSpd:2.5,sprd:55,eSX:700,eSY:0,eSZ:70,emT:'box',
+    life:2.8,lifeR:55,sz:2,szR:65,szC:'bell',fth:50,opa:0.95,spin:0,spinR:0,
+    c1:'#ffffff',c2:'#ff8800',c3:'#220000',bld:'lighter',
+    aRes:4,aResR:0,wX:0.2,wY:0,wZ:0,tAP:120,tSc:60,tEv:2.5,tOc:3,tOM:0.5,tAR:0,
+    grav:-10,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2000,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'}
 };
 
-const RKEYS=['pps','vel','velR','sprd','eSX','eSY','eSZ','life','lifeR','sz','szR','fth','opa','spin','spinR','aRes','aResR','wX','wY','wZ','tAP','tSc','tEv','tOc','tOM','tAR','grav','flrY','bnce','frct','bnceR','maxP','dof','fl','lineLen','lineTh','bbTintAmt','burstInt','burstDur'];
+const RKEYS=['pps','vel','velR','sprd','emPitch','emYaw','twirlSpd','eSX','eSY','eSZ','life','lifeR','sz','szR','fth','opa','spin','spinR','aRes','aResR','wX','wY','wZ','tAP','tSc','tEv','tOc','tOM','tAR','grav','flrY','bnce','frct','bnceR','maxP','dof','fl','lineLen','lineTh','bbTintAmt','burstInt','burstDur'];
 const SKEYS=['emT','dir','szC','bld','flrOn','ptType','lineTaper','bbTint'];
 const CKEYS=['c1','c2','c3'];
 
@@ -1008,7 +1109,7 @@ function applyPreset(m){
   }});
   SKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('change'));}});
   CKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('input'));}});
-  s2w(W/2, m==='snow'?H*.05:H*.68);
+  s2w(W/2, m==='snow'?H*.05:m==='embers'?H*.88:H*.68);
 }
 
 document.querySelectorAll('.pb').forEach(b=>{
