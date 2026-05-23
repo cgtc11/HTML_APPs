@@ -110,7 +110,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="bbEmitAlpha" min="1" max="254" value="10"><span class="vl" id="bbEmitAlphaV">10</span></div>
       </div>
       <div class="dl">Burst / Cycle</div>
-      <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="30" value="0" step="0.1" data-input-max="600"><span class="vl" id="burstIntV">0</span></div>
+      <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="10" value="0" step="0.1" data-input-max="600"><span class="vl" id="burstIntV">0</span></div>
       <div class="r"><span class="lb">Duration (s)</span><input type="range" id="burstDur" min="0.01" max="10" value="1" step="0.01"><span class="vl" id="burstDurV">1.0</span></div>
       <div id="cycleBar" style="display:none;margin:2px 0 4px;height:4px;background:#1a1a28;border-radius:2px;overflow:hidden;position:relative">
         <div id="cycleBarFill" style="position:absolute;left:0;top:0;height:100%;background:#4466ee;transition:width .05s linear;border-radius:2px"></div>
@@ -960,7 +960,7 @@ const PR={
     c1:'#ffee80',c2:'#ff3300',c3:'#220000',bld:'lighter',
     aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:80,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
     grav:-20,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:2,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
   smoke:{pps:126,vel:1.3,velR:64,dir:'outward',sprd:34,eSX:500,eSY:148,eSZ:70,emT:'point',
     life:1.7,lifeR:66,sz:22.5,szR:45,szC:'hold',fth:36,opa:0.29,spin:0,spinR:36,
     c1:'#888888',c2:'#aaaaaa',c3:'#444444',bld:'source-over',
