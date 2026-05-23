@@ -1,162 +1,121 @@
-# 🔥 Particle Simulator — Particular Style
+# Particle System
 
-ブラウザで動く、After Effects「Particular」風の3Dパーティクルシミュレーターです。  
-インストール不要。HTMLファイルをダブルクリックするだけで動きます。
-
-![Particle Simulator](https://img.shields.io/badge/動作環境-ブラウザ-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+インタラクティブな3Dパーティクルシステム。ブラウザ上で動作するシングルHTMLファイル。
 
 ---
 
-## ✨ 特徴
+## 起動
 
-- **6種類のプリセット** — Fire / Smoke / Dust / Sparks / Magic / Snow
-- **リアルタイム3Dシミュレーション** — 視差・被写界深度・フォーカスレングスに対応
-- **豊富なパラメータ** — エミッター、パーティクル、物理、レンダリングを細かく制御
-- **オフラインレンダリング** — PNG連番をZIPでエクスポート（透過アルファ対応）
-- **リアルタイム録画（REC）** — 再生中の映像をWebMで録画・保存
-- **プリセット保存／読み込み** — 設定をJSONで書き出し・読み込み可能
-- **インストール不要** — 単一HTMLファイル、外部サーバー不要
+`particle.html` をブラウザで開くだけで動作します。インストール不要。
 
 ---
 
-## 🚀 使い方
+## プリセット
 
-### 起動
-
-```
-particle_sim_particular.html をブラウザで開く
-```
-
-Chrome / Edge / Firefox 最新版を推奨。Safari は一部機能が動作しない場合があります。
-
-### 基本操作
-
-| 操作 | 内容 |
+| プリセット | 説明 |
 |---|---|
-| クリック | エミッター位置を移動 |
-| ドラッグ | エミッターを動かしながら放出 |
-| 右パネル各スライダー | パラメータをリアルタイムで調整 |
-| プリセットボタン | シーンをリセットしてプリセットを適用 |
+| 🔥 Fire | 炎。BoxエミッターからUpward方向に発生 |
+| 💨 Smoke | 煙。Outward方向に拡散、Sphere type |
+| 🌫 Dust | 埃。BoxエミッターにDust Blob type |
+| ✨ Sparks | 火花。Line / Streak type |
+| ✨ Magic | 魔法のパーティクル。Star type |
+| ❄ Snow | 雪。BoxエミッターにDust Blob type |
+
+プリセットは上部ドロップダウンから選択。スロットに保存・呼び出し可能。
 
 ---
 
-## 🎛️ パラメータ解説
+## パネル構成
 
 ### Emitter（エミッター）
 
-| パラメータ | 内容 |
+| 項目 | 説明 |
 |---|---|
-| Type | エミッターの形状（Point / Box / Sphere） |
-| Interval (s) | バースト間隔。0 で連続放出 |
-| Duration (s) | 1バーストの放出時間（最小 0.01s） |
-| Particles / sec | 毎秒の放出数 |
-| Velocity | 初速 |
-| Vel Random % | 初速のランダム幅 |
-| Direction | 放出方向（Uniform / Upward / Downward / Outward） |
-| Spread ° | 放出角度の広がり |
-| Emitter Size X/Y/Z | エミッター領域のサイズ |
+| Type | Point / Box / Sphere / **Billboard (PNG)** |
+| Emitter PNG | Billboard選択時に表示。PNGの不透明ピクセルからパーティクル発生 |
+| Alpha Threshold | 発生対象とするピクセルの最小アルファ値（1〜254）|
+| Interval / Duration | バースト発射のサイクル制御 |
+| Particles / sec | 毎秒発生数（初期範囲 1〜1,000、最大 50,000） |
+| Velocity / Vel Random % | 初速と速度ランダム幅 |
+| Direction | Uniform / Upward / Downward / Outward |
+| Spread ° | 発射角度の広がり |
+| Emitter Size X/Y/Z | エミッター形状のスケール（Billboard選択時は X=100, Y=100, Z=0 で初期化） |
 
 ### Particle（パーティクル）
 
-| パラメータ | 内容 |
+| 項目 | 説明 |
 |---|---|
-| Lifespan (s) | 寿命 |
-| Life Random % | 寿命のランダム幅 |
-| Size | 初期サイズ |
-| Size Random % | サイズのランダム幅 |
-| Size over Life | 寿命に沿ったサイズ変化カーブ |
-| Feather % | エッジのぼかし具合 |
+| Lifespan / Life Random % | 寿命と寿命ランダム幅 |
+| Size / Size Random % | サイズと個体差 |
+| Size over Life | Linear / Ease / Hold / Bell / Grow / Late |
+| Feather % | エッジのぼかし量 |
 | Opacity | 不透明度 |
-| Spin Amplitude | スピン速度 |
-| Color over Life | Birth / Mid / End の3点カラー補間 |
-| Blend Mode | 合成モード（Additive / Normal / Screen） |
-| Type | 形状（Sphere / Line・Streak / Billboard PNG） |
+| Spin Amplitude / Spin Random % | 回転速度と個体差 |
+| Color 1 / 2 / 3 | ライフに沿った3色グラデーション |
+| Blend Mode | Source-over / Lighter など |
+| **Type** | **● Sphere / ─ Line / ✦ Star / ☁ Dust Blob / ▣ Billboard** |
+| Streak Length / Thickness / Taper | Line type のオプション |
+| Billboard PNG | Billboard type で使用する画像 |
 
-### Physics / Air（空気・風）
+#### Particle Type 詳細
 
-| パラメータ | 内容 |
+- **Sphere** — 標準の丸いパーティクル。Featherでグロー表現
+- **Line / Streak** — 速度方向に伸びるストリーク。テーパー有無切替可
+- **Star (✦)** — 4本スパイクの星形。パーティクルごとに縦横比・中心サイズをランダム変化
+- **Dust Blob (☁)** — 3つの円が重なるクラスター形状。クラスターの向きがパーティクルごとにランダム変化
+- **Billboard (PNG)** — PNGをそのまま描画。カラーオーバーライフでティント可
+
+### Physics（物理）
+
+| 項目 | 説明 |
 |---|---|
-| Air Resistance | 空気抵抗（速度の減衰） |
-| Wind X / Y / Z | 風の強さ・方向 |
-| Turbulence | fBmノイズによる乱流フィールド |
-
-### Physics / Gravity（重力）
-
-| パラメータ | 内容 |
-|---|---|
-| Gravity | 重力加速度（負値で上昇） |
-
-### Physics / Bounce（バウンス）
-
-| パラメータ | 内容 |
-|---|---|
-| Floor | 床の有効・無効 |
-| Floor Position % | 床のY位置 |
-| Bounciness % | 反発係数 |
-| Friction % | 床との摩擦 |
-
-### Rendering（レンダリング）
-
-| パラメータ | 内容 |
-|---|---|
-| Max Particles | 同時存在できる最大パーティクル数 |
-| Depth of Field | 被写界深度の強さ |
-| Focal Length | 焦点距離（透視投影） |
+| Air Resistance | 空気抵抗（初期 0〜100、最大 500） |
+| Air Res Random % | 空気抵抗の個体差 |
+| Wind X/Y/Z | 風力（初期 ±50、最大 ±500） |
+| Turbulence AP / Scale / Evolution / Octaves | ノイズ乱流の設定 |
+| Gravity | 重力（負=上昇） |
+| Floor / Bounce / Friction / Bounce Random | 床との衝突設定 |
+| Max Particles | 最大同時パーティクル数 |
+| Depth of Field | ボケ効果（奥行きに応じてサイズ・透明度変化） |
+| Focal Length | 遠近感のスケール |
 
 ---
 
-## 📤 Export / Render
+## スライダーの直接入力（ダブルクリック）
 
-### オフラインレンダリング（ZIP出力）
+数値ラベルをダブルクリックするとテキスト入力モードになります。  
+入力した値がそのままスライダーの **新しいMAX（またはMIN）** になります。
 
-1. **Export / Render** セクションを開く
-2. 解像度・FPS・秒数・背景色を設定
-3. **▶ Render & Export ZIP** をクリック
-4. 全フレームをPNGで描画後、ZIPを自動ダウンロード
+- 正の値を入力 → MAX を更新（縮小・拡大どちらも対応）
+- 負の値を入力 → MIN を更新（Wind XYZ など）
+- `Enter` で確定 / `Escape` でキャンセル
 
-> 透過背景（アルファ）を選択すると、After Effects や DaVinci Resolve に直接読み込めます。
+各スライダーのハード上限：
 
-### リアルタイム録画（REC）
-
-1. **Export / Render** セクション内の **● REC リアルタイム録画** をオンにする
-2. シミュレーションが録画開始（フレームカウンターが表示される）
-3. **■ 保存** を押すと WebM 動画をダウンロード
-
----
-
-## 💾 プリセットの保存・読み込み
-
-| ボタン | 内容 |
-|---|---|
-| 💾 Save | 現在の設定に名前を付けてブラウザに保存 |
-| 📂 Load | 保存済みプリセットを一覧表示して適用 |
-| ⬇ Export | 設定をJSONファイルとして書き出し |
-| ⬆ Import | JSONファイルから設定を読み込み |
+| スライダー | 初期範囲 | ハード上限 |
+|---|---|---|
+| Particles / sec | 1〜1,000 | 50,000 |
+| Emitter Size XYZ | 0〜500 | 5,000 |
+| Air Resistance | 0〜100 | 500 |
+| Wind XYZ | ±50 | ±500 |
 
 ---
 
-## 🗂️ ファイル構成
+## プリセットの保存・読み込み
 
-```
-particle_sim_particular.html   # メインファイル（これ1つで完結）
-README.md
-```
-
-外部依存は [JSZip](https://stuk.github.io/jszip/)（CDN読み込み）のみです。
+- **スロット（1〜5）** に名前付きで保存可能
+- 右上メニューから **JSON エクスポート / インポート** に対応
+- JSONファイルは複数スロットをまとめて保存
 
 ---
 
-## 🛠️ 動作環境
+## 録画・エクスポート
 
-| ブラウザ | 対応状況 |
-|---|---|
-| Chrome 100+ | ✅ 推奨 |
-| Edge 100+ | ✅ |
-| Firefox 100+ | ✅ |
-| Safari | ⚠️ REC機能が動作しない場合あり |
+- **REC ボタン** でフレームシーケンス（PNG連番）をZIPとして書き出し
+- フレームレート・解像度・時間を指定可能
 
 ---
 
-## 📄 ライセンス
+## 動作環境
 
-MIT License
+モダンブラウザ（Chrome / Firefox / Safari / Edge）。外部ライブラリ不要。

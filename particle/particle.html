@@ -98,7 +98,17 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
 
     <div class="sh" data-s="em">Emitter<span id="em_a">▾</span></div>
     <div class="sb open" id="em">
-      <div class="r"><span class="lb">Type</span><select id="emT"><option value="point">Point</option><option value="box">Box</option><option value="sphere">Sphere</option></select></div>
+      <div class="r"><span class="lb">Type</span><select id="emT"><option value="point">Point</option><option value="box">Box</option><option value="sphere">Sphere</option><option value="bbEmit">▣ Billboard (PNG)</option></select></div>
+      <div id="bbEmitOpts" style="display:none">
+        <div class="r">
+          <label id="bbEmitLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="PNG/WebP — アルファ非透明ピクセルからパーティクル発生">📁 Emitter PNG を選択...</label>
+          <input type="file" id="bbEmitFile" accept="image/png,image/webp" style="display:none">
+        </div>
+        <div class="r" id="bbEmitThumbRow" style="display:none">
+          <img id="bbEmitThumbImg" style="width:100%;border-radius:2px;image-rendering:pixelated;max-height:80px;object-fit:contain">
+        </div>
+        <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="bbEmitAlpha" min="1" max="254" value="10"><span class="vl" id="bbEmitAlphaV">10</span></div>
+      </div>
       <div class="dl">Burst / Cycle</div>
       <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="30" value="0" step="0.1"><span class="vl" id="burstIntV">0</span></div>
       <div class="r"><span class="lb">Duration (s)</span><input type="range" id="burstDur" min="0.01" max="10" value="1" step="0.01"><span class="vl" id="burstDurV">1.0</span></div>
@@ -149,6 +159,8 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="r"><span class="lb">Type</span><select id="ptType">
         <option value="sphere">● Sphere</option>
         <option value="line">─ Line / Streak</option>
+        <option value="star">✦ Star</option>
+        <option value="dustblob">☁ Dust Blob</option>
         <option value="billboard">▣ Billboard (PNG)</option>
       </select></div>
       <div id="lineOpts" style="display:none">
@@ -293,6 +305,35 @@ const P={
 // Billboard image state
 let bbImg=null;
 
+// ── Billboard Emitter ─────────────────────────────────────────────────────────
+let bbEmitPx=[];  // [{nx,ny}] normalised pixel coords of opaque pixels (−0.5…+0.5)
+let bbEmitAlphaThresh=10;
+
+function sampleBBEmitImage(img, thresh){
+  const oc=document.createElement('canvas');
+  const sz=Math.min(img.naturalWidth,img.naturalHeight,512);
+  oc.width=img.naturalWidth; oc.height=img.naturalHeight;
+  const ox=oc.getContext('2d');
+  ox.drawImage(img,0,0);
+  const d=ox.getImageData(0,0,oc.width,oc.height).data;
+  const px=[];
+  for(let y=0;y<oc.height;y++){
+    for(let x=0;x<oc.width;x++){
+      const a=d[(y*oc.width+x)*4+3];
+      if(a>thresh){
+        px.push({nx:(x/oc.width)-0.5, ny:(y/oc.height)-0.5});
+      }
+    }
+  }
+  // Subsample to max 8000 points for performance
+  if(px.length>8000){
+    const step=Math.ceil(px.length/8000);
+    bbEmitPx=px.filter((_,i)=>i%step===0);
+  }else{
+    bbEmitPx=px;
+  }
+}
+
 const pts=[];
 let time=0,lastT=0,accum=0,cycleT=0;
 
@@ -344,10 +385,105 @@ function spawnOffset(){
     ox=r*(P.eSX*.5)*Math.sin(v)*Math.cos(u);
     oy=r*(P.eSY*.5)*Math.sin(v)*Math.sin(u);
     oz=r*(P.eSZ*.5)*Math.cos(v);
+  }else if(P.emT==='bbEmit'&&bbEmitPx.length>0){
+    const p2=bbEmitPx[Math.floor(Math.random()*bbEmitPx.length)];
+    ox=p2.nx*P.eSX;
+    oy=p2.ny*P.eSY;
+    oz=(Math.random()-.5)*P.eSZ;
   }
   // Point: no offset, always (0,0,0)
   return[ox,oy,oz];
 }
+// ── Star & DustBlob draw helpers ─────────────────────────────────────────────
+function drawStar(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR){
+  // Per-particle variation: rndV 0=compact/round  1=long/spikey
+  const rv=p.rndV;
+  const topL  =renderSz*(1.0+rv*0.45);  // top spike   1.0x … 1.45x
+  const botL  =renderSz*(0.95+rv*0.35); // bottom spike 0.95x … 1.3x
+  const sideL =renderSz*(0.88+rv*0.22); // side spikes  0.88x … 1.1x
+  const coreR =renderSz*Math.max(0.08, 0.22-rv*0.10); // core circle
+  const hw    =renderSz*(0.07+rv*0.02); // half-width of spike base
+
+  cx.save();
+  cx.translate(sx,sy);
+  cx.rotate(p.rot);
+
+  function spike(x0,y0,x1,y1,x2,y2){
+    cx.beginPath();cx.moveTo(x0,y0);cx.lineTo(x1,y1);cx.lineTo(x2,y2);cx.closePath();cx.fill();
+  }
+
+  if(fthR>.1&&renderSz>2){
+    // Outer glow layer
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.18})`;
+    const gf=1.35;
+    spike(0,-topL*gf, hw*gf,-coreR*gf, -hw*gf,-coreR*gf);
+    spike(0, botL*gf, hw*gf, coreR*gf, -hw*gf, coreR*gf);
+    spike( sideL*gf,0,  coreR*gf, hw*gf,  coreR*gf,-hw*gf);
+    spike(-sideL*gf,0, -coreR*gf, hw*gf, -coreR*gf,-hw*gf);
+    cx.beginPath();cx.arc(0,0,coreR*gf,0,Math.PI*2);cx.fill();
+    // Mid layer
+    const mf=1.0;
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.55})`;
+    spike(0,-topL*mf, hw,-coreR, -hw,-coreR);
+    spike(0, botL*mf, hw, coreR, -hw, coreR);
+    spike( sideL,0,  coreR, hw,  coreR,-hw);
+    spike(-sideL,0, -coreR, hw, -coreR,-hw);
+    cx.beginPath();cx.arc(0,0,coreR,0,Math.PI*2);cx.fill();
+    // Core bright layer
+    const cf=1-fthR*0.55;
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+    spike(0,-topL*cf, hw*0.7,-coreR*0.7, -hw*0.7,-coreR*0.7);
+    spike(0, botL*cf, hw*0.7, coreR*0.7, -hw*0.7, coreR*0.7);
+    spike( sideL*cf,0,  coreR*0.7, hw*0.7,  coreR*0.7,-hw*0.7);
+    spike(-sideL*cf,0, -coreR*0.7, hw*0.7, -coreR*0.7,-hw*0.7);
+    cx.beginPath();cx.arc(0,0,coreR*0.55,0,Math.PI*2);cx.fill();
+  }else{
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+    spike(0,-topL, hw,-coreR, -hw,-coreR);
+    spike(0, botL, hw, coreR, -hw, coreR);
+    spike( sideL,0,  coreR, hw,  coreR,-hw);
+    spike(-sideL,0, -coreR, hw, -coreR,-hw);
+    cx.beginPath();cx.arc(0,0,coreR,0,Math.PI*2);cx.fill();
+  }
+  cx.restore();
+}
+
+function drawDustBlob(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR){
+  // 3 overlapping circles, arrangement rotated by rndV
+  const rv=p.rndV;
+  const baseAng=rv*Math.PI*0.7;  // cluster rotation varies per particle
+  const r0=renderSz*0.72;
+  const r1=renderSz*(0.54+rv*0.14);
+  const r2=renderSz*(0.50+(1-rv)*0.14);
+  const sep=renderSz*0.42;
+
+  // blob positions: top-center + two lower offset
+  const blobs=[
+    {ox:0,               oy:-renderSz*0.18, rad:r0},
+    {ox: Math.cos(baseAng+Math.PI*0.75)*sep,  oy: Math.sin(baseAng+Math.PI*0.75)*sep+renderSz*0.18,  rad:r1},
+    {ox: Math.cos(baseAng+Math.PI*1.35)*sep*0.9, oy: Math.sin(baseAng+Math.PI*1.35)*sep*0.9+renderSz*0.18, rad:r2},
+  ];
+
+  cx.save();
+  cx.translate(sx,sy);
+  cx.rotate(p.rot);
+
+  for(const b3 of blobs){
+    if(fthR>.1&&renderSz>2){
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.18})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad,0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.52})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad*(1-fthR*0.5),0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad*(1-fthR*0.85),0,Math.PI*2);cx.fill();
+    }else{
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad,0,Math.PI*2);cx.fill();
+    }
+  }
+  cx.restore();
+}
+
 function spawn(){
   const[dx,dy,dz]=randDir();
   const vr=1+(Math.random()-.5)*P.velR*.02,v=P.vel*vr;
@@ -355,7 +491,7 @@ function spawn(){
   const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
   const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
-  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss});
+  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random()});
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -541,6 +677,16 @@ function render(){
         ctx.beginPath();ctx.moveTo(sx0,sy0);ctx.lineTo(sx,sy);ctx.stroke();
         ctx.restore();
       }
+    }
+
+    // ── Star ──────────────────────────────────────────────────────────────────
+    else if(ptType==='star'){
+      drawStar(ctx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
+    }
+
+    // ── Dust Blob ─────────────────────────────────────────────────────────────
+    else if(ptType==='dustblob'){
+      drawDustBlob(ctx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
     }
 
     // ── Billboard (PNG) ───────────────────────────────────────────────────────
@@ -756,6 +902,51 @@ bbFileEl.addEventListener('change',e=>{
   img.src=url;
 });
 
+// ── Billboard Emitter file picker ─────────────────────────────────────────────
+document.getElementById('bbEmitLabel').addEventListener('click',()=>document.getElementById('bbEmitFile').click());
+document.getElementById('bbEmitFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  const img=new Image();
+  img.onload=()=>{
+    sampleBBEmitImage(img,bbEmitAlphaThresh);
+    document.getElementById('bbEmitLabel').textContent='✓ '+f.name;
+    document.getElementById('bbEmitLabel').style.color='#88ccaa';
+    document.getElementById('bbEmitThumbImg').src=url;
+    document.getElementById('bbEmitThumbRow').style.display='block';
+    toast('Emitter画像: '+bbEmitPx.length+'px サンプル済み');
+  };
+  img.onerror=()=>toast('画像の読み込みに失敗しました');
+  img.src=url;
+});
+// bbEmitAlpha: スライダーでアルファ閾値を直接管理
+{
+  const el=document.getElementById('bbEmitAlpha');
+  const vo=document.getElementById('bbEmitAlphaV');
+  el.addEventListener('input',()=>{
+    bbEmitAlphaThresh=parseFloat(el.value);
+    if(vo)vo.textContent=bbEmitAlphaThresh;
+    const th=document.getElementById('bbEmitThumbImg');
+    if(th.src&&th.complete&&th.naturalWidth){
+      const tmp=new Image();
+      tmp.onload=()=>{sampleBBEmitImage(tmp,bbEmitAlphaThresh);toast('再サンプル: '+bbEmitPx.length+'px');};
+      tmp.src=th.src;
+    }
+  });
+}
+function updateEmTUI(){
+  const isBB=P.emT==='bbEmit';
+  document.getElementById('bbEmitOpts').style.display=isBB?'block':'none';
+  if(isBB){
+    const xEl=document.getElementById('eSX'),yEl=document.getElementById('eSY'),zEl=document.getElementById('eSZ');
+    xEl.value=100; P.eSX=100; document.getElementById('eSXV').textContent='100';
+    yEl.value=100; P.eSY=100; document.getElementById('eSYV').textContent='100';
+    zEl.value=0;   P.eSZ=0;   document.getElementById('eSZV').textContent='0';
+  }
+}
+document.getElementById('emT').addEventListener('change',e=>{P.emT=e.target.value;updateEmTUI();});
+updateEmTUI();
+
 // ── Presets ───────────────────────────────────────────────────────────────────
 const PR={
   fire:{pps:313,vel:4.8,velR:55,dir:'up',sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
@@ -775,7 +966,7 @@ const PR={
     c1:'#ddcc88',c2:'#bbaa66',c3:'#886644',bld:'source-over',
     aRes:21.9,aResR:0,wX:0,wY:0.2,wZ:0,tAP:89,tSc:430,tEv:0.8,tOc:3,tOM:0.5,tAR:0,
     grav:30,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2000,dof:0,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
   sparks:{pps:313,vel:10,velR:88,dir:'uniform',sprd:28,eSX:0,eSY:0,eSZ:0,emT:'point',
     life:1.1,lifeR:6,sz:2,szR:52,szC:'ease',fth:30,opa:0.95,spin:0,spinR:0,
     c1:'#ffffff',c2:'#ffaa00',c3:'#ff1100',bld:'lighter',
@@ -783,16 +974,17 @@ const PR={
     grav:195,flrOn:'1',flrY:85,bnce:55,frct:25,bnceR:30,maxP:2000,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'line',lineTaper:'1',bbTint:'0'},
   magic:{pps:70,vel:3.5,velR:70,dir:'uniform',sprd:180,eSX:0,eSY:0,eSZ:0,emT:'point',
-    life:3,lifeR:45,sz:10,szR:65,szC:'bell',fth:90,opa:0.82,spin:7,spinR:100,
+    life:3,lifeR:45,sz:10,szR:65,szC:'bell',fth:90,opa:0.82,spin:0,spinR:0,
     c1:'#8899ff',c2:'#ff44ff',c3:'#0011cc',bld:'lighter',
     aRes:3,aResR:0,wX:0,wY:0,wZ:0,tAP:125,tSc:130,tEv:2.2,tOc:4,tOM:0.55,tAR:7,
-    grav:-45,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2500,dof:0,fl:450},
+    grav:-45,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2500,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'star',lineTaper:'1',bbTint:'0'},
   snow:{pps:48,vel:0.9,velR:65,dir:'down',sprd:35,eSX:1000,eSY:0,eSZ:422,emT:'box',
     life:5.9,lifeR:72,sz:2.5,szR:60,szC:'hold',fth:75,opa:0.86,spin:0.4,spinR:80,
     c1:'#eef4ff',c2:'#ddeeff',c3:'#9aabbf',bld:'source-over',
     aRes:62.5,aResR:0,wX:1.8,wY:4.7,wZ:0,tAP:70,tSc:270,tEv:0.4,tOc:3,tOM:0.5,tAR:0,
     grav:60,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:1500,dof:25,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'}
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'}
 };
 
 const RKEYS=['pps','vel','velR','sprd','eSX','eSY','eSZ','life','lifeR','sz','szR','fth','opa','spin','spinR','aRes','aResR','wX','wY','wZ','tAP','tSc','tEv','tOc','tOM','tAR','grav','flrY','bnce','frct','bnceR','maxP','dof','fl','lineLen','lineTh','bbTintAmt','burstInt','burstDur'];
@@ -1194,6 +1386,10 @@ async function startRender(){
         oc2.lineWidth=thk;oc2.lineCap='round';
         oc2.beginPath();oc2.moveTo(sx0,sy0);oc2.lineTo(sx,sy);oc2.stroke();
         oc2.restore();
+      }else if(ptType==='star'){
+        drawStar(oc2,p,sx,sy,renderSz,renderA,r,g,b,fthR);
+      }else if(ptType==='dustblob'){
+        drawDustBlob(oc2,p,sx,sy,renderSz,renderA,r,g,b,fthR);
       }else if(ptType==='billboard'&&bbImg){
         oc2.save();oc2.translate(sx,sy);oc2.rotate(p.rot);oc2.globalAlpha=renderA;
         oc2.drawImage(bbImg,-renderSz,-renderSz,renderSz*2,renderSz*2);
