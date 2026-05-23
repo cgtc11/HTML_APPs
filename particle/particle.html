@@ -71,10 +71,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
   <div id="pn">
     <div class="pbs">
       <button class="pb on" data-m="fire">🔥 Fire</button>
-      <button class="pb" data-m="smoke">💨 Smoke</button>
-      <button class="pb" data-m="dust">🌫 Dust</button>
       <button class="pb" data-m="sparks">✨ Sparks</button>
-      <button class="pb" data-m="magic">🌀 Magic</button>
       <button class="pb" data-m="snow">❄ Snow</button>
       <button class="pb" data-m="shockwave">💥 ShockWave</button>
       <button class="pb" data-m="embers">🌋 Embers</button>
@@ -1050,30 +1047,12 @@ const PR={
     aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:80,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
     grav:-20,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:2,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
-  smoke:{pps:126,vel:1.3,velR:64,dir:'outward',emPitch:0,emYaw:0,twirlSpd:2,sprd:34,eSX:500,eSY:148,eSZ:70,emT:'point',
-    life:1.1,lifeR:66,sz:32,szR:45,szC:'hold',fth:0,opa:0.96,spin:0,spinR:36,
-    c1:'#5c5c5c',c2:'#7d7d7d',c3:'#c9c9c9',bld:'source-over',
-    aRes:7,aResR:5,wX:0,wY:-1,wZ:0,tAP:33,tSc:200,tEv:0.6,tOc:4,tOM:0.5,tAR:0.5,
-    grav:-100,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:1500,dof:15,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
-  dust:{pps:35,vel:2.5,velR:80,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:180,eSX:328,eSY:320,eSZ:383,emT:'box',
-    life:5,lifeR:65,sz:1.5,szR:70,szC:'linear',fth:55,opa:0.82,spin:0.5,spinR:100,
-    c1:'#ddcc88',c2:'#bbaa66',c3:'#886644',bld:'source-over',
-    aRes:21.9,aResR:0,wX:0,wY:0.2,wZ:0,tAP:89,tSc:430,tEv:0.8,tOc:3,tOM:0.5,tAR:0,
-    grav:30,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2000,dof:0,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
   sparks:{pps:313,vel:10,velR:88,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:0,eSY:0,eSZ:0,emT:'point',
     life:1.1,lifeR:6,sz:2,szR:52,szC:'ease',fth:30,opa:0.95,spin:0,spinR:0,
     c1:'#ffffff',c2:'#ffaa00',c3:'#ff1100',bld:'lighter',
     aRes:22,aResR:0.5,wX:0,wY:0,wZ:0,tAP:244,tSc:55,tEv:2.5,tOc:2,tOM:0.5,tAR:0,
     grav:195,flrOn:'1',flrY:85,bnce:55,frct:25,bnceR:30,maxP:2000,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'line',lineTaper:'1',bbTint:'0'},
-  magic:{pps:70,vel:3.5,velR:70,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:180,eSX:0,eSY:0,eSZ:0,emT:'point',
-    life:3,lifeR:45,sz:10,szR:65,szC:'bell',fth:90,opa:0.82,spin:0,spinR:0,
-    c1:'#8899ff',c2:'#ff44ff',c3:'#0011cc',bld:'lighter',
-    aRes:3,aResR:0,wX:0,wY:0,wZ:0,tAP:125,tSc:130,tEv:2.2,tOc:4,tOM:0.55,tAR:7,
-    grav:-45,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2500,dof:0,fl:450,
-    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'star',lineTaper:'1',bbTint:'0'},
   snow:{pps:48,vel:0.9,velR:65,dir:'down',emPitch:0,emYaw:0,twirlSpd:2,sprd:35,eSX:1000,eSY:0,eSZ:422,emT:'box',
     life:5.9,lifeR:72,sz:2.5,szR:60,szC:'hold',fth:75,opa:0.86,spin:0.4,spinR:80,
     c1:'#eef4ff',c2:'#ddeeff',c3:'#9aabbf',bld:'source-over',
