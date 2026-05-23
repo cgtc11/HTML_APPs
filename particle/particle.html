@@ -110,7 +110,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="bbEmitAlpha" min="1" max="254" value="10"><span class="vl" id="bbEmitAlphaV">10</span></div>
       </div>
       <div class="dl">Burst / Cycle</div>
-      <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="30" value="0" step="0.1"><span class="vl" id="burstIntV">0</span></div>
+      <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="30" value="0" step="0.1" data-input-max="600"><span class="vl" id="burstIntV">0</span></div>
       <div class="r"><span class="lb">Duration (s)</span><input type="range" id="burstDur" min="0.01" max="10" value="1" step="0.01"><span class="vl" id="burstDurV">1.0</span></div>
       <div id="cycleBar" style="display:none;margin:2px 0 4px;height:4px;background:#1a1a28;border-radius:2px;overflow:hidden;position:relative">
         <div id="cycleBarFill" style="position:absolute;left:0;top:0;height:100%;background:#4466ee;transition:width .05s linear;border-radius:2px"></div>
@@ -787,8 +787,8 @@ bindR('lineLen','lineLen');bindR('lineTh','lineTh',1);bindR('bbTintAmt','bbTintA
 bindR('burstDur','burstDur',2);
 // burstInt needs to reset cycle timer on change
 (()=>{
-  const el=document.getElementById('burstInt'),vo=document.getElementById('burstIntV');
-  function up(){const v=parseFloat(el.value);P.burstInt=v;vo.textContent=v.toFixed(1);cycleT=0;}
+  const el=document.getElementById('burstInt');
+  function up(){const v=parseFloat(el.value);P.burstInt=v;const vo=document.getElementById('burstIntV');if(vo)vo.textContent=v.toFixed(1);cycleT=0;}
   el.addEventListener('input',up);up();
 })();
 
@@ -799,8 +799,11 @@ bindC('c1','c1');bindC('c2','c2');bindC('c3','c3');
 
 // ── Double-click value labels to type directly ────────────────────────────────
 // ダブルクリックで入力した値がスライダーの新しいMAX/MINになります（双方向対応）
+const _deBound = new WeakSet(); // 二重バインド防止
 function initDirectEdit(){
   document.querySelectorAll('.vl').forEach(vl=>{
+    if(_deBound.has(vl)) return; // すでにバインド済みならスキップ
+    _deBound.add(vl);
     vl.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
     vl.addEventListener('dblclick',()=>{
       const rangeId=vl.id.replace(/V$/,'');
@@ -820,43 +823,46 @@ function initDirectEdit(){
         if(committed)return;
         committed=true;
 
-        // ── まず span を DOM に復元（id を戻しておかないと bindR が見つけられない）
+        const raw=parseFloat(input.value);
+
+        // span を DOM に復元
         const span=document.createElement('span');
         span.id=vl.id;
         span.className='vl';
         span.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
         span.textContent=savedText;
         input.replaceWith(span);
+        initDirectEdit(); // 新しい span にバインド（WeakSetで重複なし）
 
-        const raw=parseFloat(input.value);
         if(!isNaN(raw)){
-          // data-input-max / data-input-min で絶対上限・下限を定義
           const hardMax = range.dataset.inputMax!==undefined ? parseFloat(range.dataset.inputMax) : Infinity;
           const hardMin = range.dataset.inputMin!==undefined ? parseFloat(range.dataset.inputMin) : -Infinity;
           const clamped = Math.min(hardMax, Math.max(hardMin, raw));
 
-          // 入力値を新しい MAX または MIN にセット（双方向：縮小も拡大も対応）
           if(clamped >= 0){
-            // 正の値 → MAX を更新（currentMin より必ず大きく保つ）
             range.max = String(Math.max(clamped, parseFloat(range.min) + 0.001));
           } else {
-            // 負の値 → MIN を更新（currentMax より必ず小さく保つ）
             range.min = String(Math.min(clamped, parseFloat(range.max) - 0.001));
           }
-
           range.value = clamped;
-          // dispatchEvent でラベル表示が更新される（span が DOM に戻っているので正しく動く）
-          range.dispatchEvent(new Event('input'));
-        }
 
-        // 新しい span に再バインド
-        initDirectEdit();
+          // bindR 経由でラベル更新 + 念のため直接上書き
+          range.dispatchEvent(new Event('input'));
+          const snapped = parseFloat(range.value);
+          const currentSpan = document.getElementById(vl.id);
+          if(currentSpan && !isNaN(snapped)){
+            const stepStr = range.step || '1';
+            const dec = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+            currentSpan.textContent = snapped.toFixed(dec);
+          }
+        }
       }
 
       input.addEventListener('blur',commit);
       input.addEventListener('keydown',e=>{
         if(e.key==='Enter'){e.preventDefault();commit();}
-        if(e.key==='Escape'){committed=true;
+        if(e.key==='Escape'){
+          committed=true;
           const span=document.createElement('span');
           span.id=vl.id;span.className='vl';
           span.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
