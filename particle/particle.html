@@ -1041,7 +1041,7 @@ updateEmTUI();
 
 // ── Presets ───────────────────────────────────────────────────────────────────
 const PR={
-  fire:{pps:313,vel:4.8,velR:55,dir:'up',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:22,eSY:0,eSZ:22,emT:'box',
+  fire:{pps:313,vel:4.8,velR:55,dir:'up',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:22,eSY:60,eSZ:22,emT:'box',
     life:1.8,lifeR:42,sz:4,szR:55,szC:'ease',fth:84,opa:0.85,spin:1.5,spinR:80,
     c1:'#ffee80',c2:'#ff3300',c3:'#220000',bld:'lighter',
     aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:80,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
@@ -1059,10 +1059,10 @@ const PR={
     aRes:62.5,aResR:0,wX:1.8,wY:4.7,wZ:0,tAP:70,tSc:270,tEv:0.4,tOc:3,tOM:0.5,tAR:0,
     grav:60,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:1500,dof:25,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
-  shockwave:{pps:6000,vel:19.1,velR:20,dir:'outward',emPitch:0,emYaw:0,twirlSpd:2,sprd:0,eSX:0,eSY:0,eSZ:0,emT:'point',
-    life:0.6,lifeR:30,sz:6,szR:40,szC:'ease',fth:80,opa:0.9,spin:0,spinR:0,
+  shockwave:{pps:6000,vel:19.1,velR:20,dir:'outward',emPitch:-34,emYaw:31,twirlSpd:2,sprd:0,eSX:0,eSY:0,eSZ:0,emT:'point',
+    life:1.1,lifeR:30,sz:6,szR:40,szC:'ease',fth:80,opa:0.9,spin:0,spinR:0,
     c1:'#ffffff',c2:'#88aaff',c3:'#001144',bld:'lighter',
-    aRes:40.6,aResR:15.9,wX:0,wY:0,wZ:0,tAP:28,tSc:85,tEv:0.8,tOc:5,tOM:0.65,tAR:0.5,
+    aRes:35.9,aResR:13.6,wX:0,wY:-1.6,wZ:0,tAP:145,tSc:25,tEv:0.8,tOc:5,tOM:0.6,tAR:0.8,
     grav:0,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:78200,dof:0,fl:450,
     lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:1.7,burstDur:0.08,ptType:'sphere',lineTaper:'1',bbTint:'0'},
   embers:{pps:180,vel:6,velR:75,dir:'twirl',emPitch:0,emYaw:0,twirlSpd:2.5,sprd:55,eSX:700,eSY:0,eSZ:70,emT:'box',
@@ -1088,7 +1088,7 @@ function applyPreset(m){
   }});
   SKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('change'));}});
   CKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('input'));}});
-  s2w(W/2, m==='snow'?H*.05:m==='embers'?H*.88:H*.68);
+  s2w(W/2, m==='snow'?H*.05:m==='embers'?H*.88:m==='shockwave'||m==='sparks'?H*.5:H*.78);
 }
 
 document.querySelectorAll('.pb').forEach(b=>{
