@@ -116,7 +116,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <div id="cycleBarFill" style="position:absolute;left:0;top:0;height:100%;background:#4466ee;transition:width .05s linear;border-radius:2px"></div>
       </div>
       <div class="dl">Emission</div>
-      <div class="r"><span class="lb">Particles / sec</span><input type="range" id="pps" min="1" max="1000" value="30" step="1" data-input-max="50000"><span class="vl" id="ppsV">30</span></div>
+      <div class="r"><span class="lb">Particles / sec</span><input type="range" id="pps" min="1" max="1000" value="30" step="1" data-input-max="5000000"><span class="vl" id="ppsV">30</span></div>
       <div class="r"><span class="lb">Velocity</span><input type="range" id="vel" min="0" max="20" value="4" step="0.1"><span class="vl" id="velV">4.0</span></div>
       <div class="r"><span class="lb">Vel Random %</span><input type="range" id="velR" min="0" max="100" value="40"><span class="vl" id="velRV">40</span></div>
       <div class="r"><span class="lb">Direction</span><select id="dir"><option value="uniform">Uniform</option><option value="up">Upward</option><option value="down">Downward</option><option value="outward">Outward</option><option value="twirl">Twirl</option></select></div>
@@ -145,6 +145,8 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       </select></div>
       <div class="r"><span class="lb">Feather %</span><input type="range" id="fth" min="0" max="100" value="70"><span class="vl" id="fthV">70</span></div>
       <div class="r"><span class="lb">Opacity</span><input type="range" id="opa" min="0.05" max="1" value="0.9" step="0.01"><span class="vl" id="opaV">0.90</span></div>
+      <div class="r"><span class="lb">Flicker Speed</span><input type="range" id="flickerSpd" min="0" max="30" value="0" step="0.5"><span class="vl" id="flickerSpdV">0.0</span></div>
+      <div class="r"><span class="lb">Flicker Rand</span><input type="range" id="flickerRand" min="0" max="10" value="5" step="0.1"><span class="vl" id="flickerRandV">5.0</span></div>
       <div class="r"><span class="lb">Spin Amplitude</span><input type="range" id="spin" min="0" max="20" value="0" step="0.1"><span class="vl" id="spinV">0.0</span></div>
       <div class="r"><span class="lb">Spin Random %</span><input type="range" id="spinR" min="0" max="100" value="50"><span class="vl" id="spinRV">50</span></div>
       <div class="dl">Color over Life</div>
@@ -303,7 +305,7 @@ const P={
   aRes:2,aResR:0,wX:0,wY:0,wZ:0,
   tAP:0,tSc:100,tEv:1,tOc:3,tOM:0.5,tAR:0,
   grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
-  maxP:2000,dof:0,fl:450,motionBlur:0
+  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5
 };
 
 // Billboard image state
@@ -529,7 +531,7 @@ function spawn(){
   const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
   const twirlPhase=Math.random()*Math.PI*2;
-  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[]});
+  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[],flickerPhase:Math.random()*Math.PI*2,flickerFreq:0.5+Math.random(),flickTimer:Math.random(),flickVisible:true});
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -624,7 +626,18 @@ function update(dt){
     }else if(p.trail.length){
       p.trail.length=0;
     }
-    // Integrate
+    // ── Flicker timer update ──────────────────────────────────────────────────
+    if(P.flickerSpd>0){
+      p.flickTimer-=dt*P.flickerSpd;
+      if(p.flickTimer<=0){
+        // ランダムな間隔でON/OFFを切り替える
+        p.flickVisible=Math.random()>P.flickerRand*0.07;
+        // 次の切り替えまでのランダム待機時間（パーティクルごとにバラバラ）
+        p.flickTimer=0.05+Math.random()*0.8;
+      }
+    }else{
+      p.flickVisible=true;
+    }
     const ps=dt*60;
     p.x+=p.vx*ps; p.y+=p.vy*ps; p.z+=p.vz*ps;
     p.rot+=p.ss*dt*2;
@@ -745,6 +758,9 @@ function render(){
       renderSz*=blur; renderA/=blur;
     }
     renderA=Math.min(1,renderA);
+
+    // ── Flicker ───────────────────────────────────────────────────────────────
+    if(P.flickerSpd>0 && p.flickVisible===false) continue;
 
     // ── Motion Blur: Catmull-Rom spline trail ─────────────────────────────────
     if(mbOn && p.trail.length>=6){
@@ -901,7 +917,7 @@ bindR('wX','wX',1);bindR('wY','wY',1);bindR('wZ','wZ',1);
 bindR('tAP','tAP');bindR('tSc','tSc');bindR('tEv','tEv',2);bindR('tOc','tOc');bindR('tOM','tOM',2);bindR('tAR','tAR',1);
 bindR('grav','grav');
 bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
-bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');
+bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');
 bindR('lineLen','lineLen');bindR('lineTh','lineTh',1);bindR('bbTintAmt','bbTintAmt',2);
 bindR('burstDur','burstDur',2);
 // burstInt needs to reset cycle timer on change

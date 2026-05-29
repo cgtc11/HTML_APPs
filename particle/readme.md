@@ -1,219 +1,198 @@
-# 🎇 Particle Designer
+# Particle System
 
-リアルタイム3Dパーティクルシミュレーター。ブラウザで動作する単一HTMLファイル。
+ブラウザで動作するリアルタイム3Dパーティクルシミュレーター。  
+エミッターの制御・物理演算・レンダリング設定をGUIで調整し、PNG連番をZIPでエクスポートできます。
 
 ---
 
 ## 起動方法
 
-`particle.html` をブラウザで開くだけで動作します。インストール・サーバー不要。
-
----
-
-## 基本操作
-
-| 操作 | 内容 |
-|---|---|
-| 左クリック / ドラッグ | エミッターを移動 |
-| ⛶ Full ボタン | フルスクリーン表示（パーティクルのみ） |
-| 右クリック / ESC | フルスクリーン終了 |
-| 数値ラベルをダブルクリック | 直接数値入力（拡張範囲まで入力可能） |
+`particle.html` をブラウザで開くだけで動作します。インストール・サーバー不要。  
+推奨ブラウザ：Chrome / Edge（最新版）
 
 ---
 
 ## プリセット
 
-画面上部のボタンで切り替え。
+画面上部のボタンからすぐに呼び出せます。
 
 | ボタン | 内容 |
-|---|---|
+|--------|------|
 | 🔥 Fire | 炎 |
-| ✨ Sparks | 火花 |
+| ✨ Sparks | スパーク |
 | ❄ Snow | 雪 |
-| 💥 ShockWave | 衝撃波（Outward方向のリング状爆発） |
-| 🌋 Embers | 火の粉（Twirl方向でゆらぎながら舞い上がる） |
+| 💥 ShockWave | 衝撃波 |
+| 🌋 Embers | 火の粉 |
 
-### プリセットの保存・読み込み
-
-- **⬇ Export** — 現在のスロット一覧を JSON ファイルとして書き出し
-- **⬆ Import** — JSON ファイルを読み込み、スロットに追加
-- スロットリストのプリセット名をクリックで呼び出し、ダブルクリックで名前変更、× で削除
+プリセットはベースとして使い、各パラメーターを自由に上書きできます。  
+**Save / Load スロット**（スロット名を入力して保存）で独自設定を保持できます。
 
 ---
 
-## パラメーター解説
+## パラメーター一覧
 
-### Emitter（エミッター）
+### EMITTER（エミッター）
 
-#### Burst / Cycle
-| パラメーター | 説明 |
-|---|---|
-| Interval (s) | バースト間隔（秒）。0 で連続発生。ダブルクリックで最大 600 秒まで入力可 |
-| Duration (s) | 1バーストあたりの発生時間 |
-
-#### Emission（放出）
-| パラメーター | 説明 |
-|---|---|
-| Particles / sec | 毎秒の発生数。ダブルクリックで最大 50,000 まで入力可 |
-| Velocity | 発生速度 |
-| Vel Random % | 速度のランダムばらつき |
-| Direction | 発射方向（下記参照） |
-| Spread ° | 発射角度の広がり（0 = 一方向、180 = 全方向） |
-| Pitch ° | 発射方向の前後傾き（−90〜+90、ダブルクリックで±180まで） |
-| Yaw ° | 発射方向の水平回転（−90〜+90、ダブルクリックで±180まで） |
-| Twirl Speed | Twirl方向選択時の螺旋回転速度 |
-| Emitter Size X / Y / Z | エミッターの3次元サイズ（box / sphere タイプ時有効） |
-
-**Direction オプション**
+**Emitter Type**（エミッタータイプ）
 
 | 値 | 説明 |
-|---|---|
-| Uniform | 全方向にランダムで飛び散る |
-| Upward | 上方向（Pitch / Yaw で傾き調整可能） |
-| Downward | 下方向（Pitch / Yaw で傾き調整可能） |
-| Outward | エミッター中心から外側に円状に広がる（Shockwave向き） |
-| Twirl | 螺旋を描きながら進む。Twirl Speed で速度調整 |
+|----|------|
+| Point | 1点から放出 |
+| Box | 直方体の範囲から放出 |
+| Sphere | 球形の範囲から放出 |
+| ▣ Billboard (PNG) | PNG画像をエミッターマスクとして使用 |
 
-> **Shockwave の作り方**  
-> Direction → `Outward`、Spread ° → `0`、Pitch ° で平面の傾きを調整。
+**Burst / Cycle**
+
+| パラメーター | 説明 |
+|-------------|------|
+| Type | Continuous（連続放出）/ Burst（一括放出） |
+| Alpha Threshold | Billboardエミッター使用時、放出するピクセルのアルファ閾値 |
+| Interval (s) | Burstの繰り返し間隔（秒） |
+| Duration (s) | Burstの持続時間（秒） |
+
+**Emission（放出設定）**
+
+| パラメーター | 説明 |
+|-------------|------|
+| Particles / sec | 毎秒の放出数（直接入力で最大 5,000,000） |
+| Velocity | 初速 |
+| Vel Random % | 速度のランダム幅（%） |
+| Direction | 放出方向（Up / Down / Outward / Inward / Uniform / Twirl） |
+| Spread ° | 放出角度の広がり（度） |
+| Pitch ° / Yaw ° | エミッターの向き |
+| Twirl Speed | Direction=Twirl 時の螺旋速度 |
+| Emitter Size X / Y / Z | Box・Sphereエミッターのサイズ |
 
 ---
 
-### Particle（パーティクル）
+### PARTICLE（パーティクル）
 
 | パラメーター | 説明 |
-|---|---|
+|-------------|------|
 | Lifespan (s) | 寿命（秒） |
-| Life Random % | 寿命のランダムばらつき |
-| Size | パーティクルサイズ |
-| Size Random % | サイズのランダムばらつき |
-| Size over Life | 寿命中のサイズ変化カーブ（下記参照） |
-| Feather % | エッジのぼかし量 |
-| Opacity | 不透明度 |
-| Spin Amplitude | 回転速度 |
-| Spin Random % | 回転方向のランダムばらつき |
-| Birth / Mid / End | 誕生・中間・消滅時のカラー（グラデーション） |
-| Blend Mode | 描画モード（Additive / Normal / Screen） |
+| Life Random % | 寿命のランダム幅 |
+| Size | サイズ |
+| Size Random % | サイズのランダム幅 |
+| Size over Life | 寿命に応じたサイズ変化カーブ |
+| Feather % | エッジのぼかし量（Sphere・Star・Dust Blob） |
+| Opacity | 全体の不透明度 |
+| Flicker Speed | 点滅速度（0=オフ） |
+| Flicker Rand | 各パーティクルがランダムに消えやすくなる度合い（0〜10） |
+| Spin Amplitude | 回転の振れ幅 |
+| Spin Random % | 回転速度のランダム幅 |
 
-**Size over Life オプション**
+**Color over Life（寿命カラー）**
 
-| 値 | 説明 |
-|---|---|
-| Linear ↓ | 直線的に縮小 |
-| Ease out | 素早く縮小して消える |
-| Hold → Drop | 一定サイズを維持して最後に消える |
-| Bell ∩ | 山なりに拡大してから縮小 |
-| Grow → Drop | 拡大してから急に消える |
-| Late Drop | 最後まで大きいまま急に消える |
+Birth / Mid / End の3点でグラデーションを設定します。  
+色見本をクリックしてカラーピッカーを開きます。
 
-**Particle Shape**
+**Blend Mode**
 
 | 値 | 説明 |
-|---|---|
-| ● Sphere | 円形（標準） |
-| ─ Line / Streak | 速度方向に伸びるライン（Streak Length / Thickness / Taper で調整） |
+|----|------|
+| Additive (Add) | 加算合成。光・炎・発光エフェクト向き |
+| Screen | スクリーン合成。柔らかい発光 |
+| Normal | 通常合成 |
+| Lighten | 明るい方を残す |
+
+**Particle Shape（パーティクル形状）**
+
+| 形状 | 説明 |
+|------|------|
+| ● Sphere | 円（デフォルト） |
+| ─ Line / Streak | 速度方向に伸びる線。Streak Length・Thickness・Taper で調整 |
 | ✦ Star | 星形 |
-| ☁ Dust Blob | 不規則な雲状ブロブ（煙・埃向き） |
-| ▣ Billboard (PNG) | 画像をパーティクルとして使用（PNG/WebP/GIF対応） |
+| ☁ Dust Blob | 有機的な塊 |
+| ▣ Billboard (PNG) | PNG画像を貼り付け。Color Tint でカラー乗算 |
 
 ---
 
-### Physics / Air（空気・乱流）
+### PHYSICS / AIR（空気抵抗・風）
 
 | パラメーター | 説明 |
-|---|---|
-| Air Resistance | 空気抵抗（値が大きいほど早く減速） |
-| Air Res Rotation | 回転への空気抵抗 |
-| Wind X / Y / Z | 風の強さ（3軸） |
+|-------------|------|
+| Air Resistance | 速度への抵抗係数（大きいほど早く減速） |
+| Air Res Rotation | 回転への抵抗係数 |
+| Wind X / Y / Z | ワールド座標系での風力 |
 
 **Turbulence Field（乱流フィールド）**
 
+3Dノイズフィールドでパーティクルをランダムにうねらせます。
+
 | パラメーター | 説明 |
-|---|---|
-| Affect Position | 乱流の位置への影響強度 |
-| Scale | 乱流の空間スケール（小さいほど細かくゆらぐ） |
-| Evolution | 乱流の時間変化速度 |
-| Octaves | 乱流の複雑さ（重ね合わせ回数） |
-| Oct Multiplier | 各オクターブの振幅倍率 |
-| Affect Rotation | 乱流の回転への影響強度 |
+|-------------|------|
+| Affect Position | 位置への影響強度 |
+| Scale | ノイズのスケール（大きいほどなだらか） |
+| Evolution | ノイズの時間変化速度 |
+| Octaves | ノイズの重ね数（多いほど細かい） |
+| Oct Multiplier | 高周波成分の倍率 |
+| Affect Rotation | 回転への影響強度 |
 
 ---
 
-### Physics / Gravity（重力）
+### PHYSICS / GRAVITY（重力）
 
 | パラメーター | 説明 |
-|---|---|
-| Gravity | 重力（正 = 下向き、負 = 上向き浮力） |
+|-------------|------|
+| Gravity | 重力加速度。正=下向き、負=上向き |
 
 ---
 
-### Physics / Bounce（バウンス・床）
+### PHYSICS / BOUNCE（床バウンス）
 
 | パラメーター | 説明 |
-|---|---|
-| Floor | 床の有効 / 無効 |
-| Floor Position % | 床の縦位置（画面上端を0%、下端を100%） |
+|-------------|------|
+| Floor | On / Off |
+| Floor Position % | 床の高さ（画面の上端0%〜下端100%） |
 | Bounciness % | 反発係数 |
-| Friction % | 摩擦 |
-| Bounce Rand % | 反発のランダムばらつき |
+| Friction % | 横方向の摩擦 |
+| Bounce Rand % | バウンスのランダム幅 |
 
 ---
 
-### Rendering（レンダリング）
+### RENDERING（レンダリング）
 
 | パラメーター | 説明 |
-|---|---|
+|-------------|------|
 | Max Particles | 同時存在できるパーティクルの上限数 |
-| Depth of Field | ぼかし量（奥行き感） |
-| Focal Length | 焦点距離（透視変換の強さ） |
+| Depth of Field | 奥行きに応じたぼかし強度 |
+| Motion Blur | モーションブラー強度（0=オフ、100=最大）。実際に通過した軌跡を記録してトレイルを描画します。Turbulenceでくねった動きもそのまま尾になります |
+| Focal Length | 透視投影の焦点距離。大きいほど望遠・小さいほど広角 |
 
 ---
 
-### Export / Render（書き出し）
+### EXPORT / RENDER
 
-| 項目 | 説明 |
-|---|---|
-| Width / Height (px) | 出力解像度。Auto ボタンでアスペクト比から自動計算 |
-| FPS | フレームレート（12 / 24 / 30 / 60） |
-| Duration (s) | 書き出し時間 |
-| BG Type | 背景（透過 / 黒 / カスタムカラー） |
-| ▶ Render & Export ZIP | 全フレームをPNG連番でZIP書き出し |
-| ● REC | リアルタイム録画（WebM形式で保存） |
+PNG連番をZIP圧縮してダウンロードします。  
+エクスポートはリアルタイムと切り離された固定dtシミュレーションで動作するため、PCの処理速度に関係なく一定品質で出力されます。
 
----
-
-## JSONプリセット形式
-
-Import / Export するJSONの構造：
-
-```json
-{
-  "version": 1,
-  "slots": [
-    {
-      "name": "🔥 Fire",
-      "preset": "fire",
-      "data": {
-        "pps": 313,
-        "vel": 4.8,
-        "dir": "up",
-        "c1": "#ffee80",
-        "c2": "#ff3300",
-        "c3": "#220000"
-      }
-    }
-  ]
-}
-```
-
-`preset` には `fire` / `sparks` / `snow` / `shockwave` / `embers` / `smoke` / `dust` / `magic` が指定可能（UIの初期レイアウトに影響）。
+| パラメーター | 説明 |
+|-------------|------|
+| Width / Height (px) | 出力解像度。Auto ボタンでアスペクト比を自動計算 |
+| FPS | 12 / 24 / 30 / 60 fps から選択 |
+| Duration (s) | 書き出す秒数 |
+| BG Type | Transparent（アルファ付きPNG）/ Black / Custom color |
+| ● REC（リアルタイム録画） | チェックを入れてエフェクトを再生し、■ 保存 で停止するとリアルタイム録画をZIPで保存 |
+| ▶ Render & Export ZIP | 設定した解像度・FPS・秒数でオフスクリーンレンダリングしてZIP出力 |
 
 ---
 
-## ファイル構成
+## 操作
 
-```
-particle.html       メインファイル（これ1つで動作）
-README.md           本ドキュメント
-presets_all.json    プリセット集（Import で読み込み可能）
-```
+| 操作 | 動作 |
+|------|------|
+| キャンバスをクリック | エミッター位置を移動 |
+| キャンバスをドラッグ | エミッター位置をリアルタイムに動かす |
+| 数値ラベルをクリック | 直接入力モード（Enterで確定、Escでキャンセル） |
+| セクションヘッダーをクリック | セクションの開閉 |
+
+---
+
+## 技術仕様
+
+- 純粋なHTML + JavaScript（Canvas 2D API）、依存ライブラリなし
+- 3D透視投影（焦点距離可変）
+- Catmull-Romスプライン補間によるモーションブラー
+- fBmノイズ（フラクタルブラウン運動）による乱流フィールド
+- エクスポートは固定dt（デターミニスティック）シミュレーション
