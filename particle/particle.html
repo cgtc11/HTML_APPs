@@ -218,6 +218,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
     <div class="sb" id="rnd">
       <div class="r"><span class="lb">Max Particles</span><input type="range" id="maxP" min="100" max="500000" value="2000" step="100"><span class="vl" id="maxPV">2000</span></div>
       <div class="r"><span class="lb">Depth of Field</span><input type="range" id="dof" min="0" max="100" value="0"><span class="vl" id="dofV">0</span></div>
+      <div class="r"><span class="lb">Motion Blur</span><input type="range" id="motionBlur" min="0" max="100" value="0" step="1"><span class="vl" id="motionBlurV">0</span></div>
       <div class="r"><span class="lb">Focal Length</span><input type="range" id="fl" min="100" max="1500" value="450" step="10"><span class="vl" id="flV">450</span></div>
     </div>
 
@@ -302,7 +303,7 @@ const P={
   aRes:2,aResR:0,wX:0,wY:0,wZ:0,
   tAP:0,tSc:100,tEv:1,tOc:3,tOM:0.5,tAR:0,
   grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
-  maxP:2000,dof:0,fl:450
+  maxP:2000,dof:0,fl:450,motionBlur:0
 };
 
 // Billboard image state
@@ -528,7 +529,7 @@ function spawn(){
   const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
   const twirlPhase=Math.random()*Math.PI*2;
-  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase});
+  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[]});
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -615,6 +616,14 @@ function update(dt){
       const cz2=p.vz*c+((ux*p.vy-uy*p.vx)*s2)+(uz*dot*(1-c));
       p.vx=cx2;p.vy=cy2;p.vz=cz2;
     }
+    // Trail recording (position BEFORE this frame's integration)
+    if(P.motionBlur>0){
+      const maxLen=Math.ceil(P.motionBlur*0.8)+2;
+      p.trail.push(p.x,p.y,p.z);
+      if(p.trail.length>maxLen*3) p.trail.splice(0,3);
+    }else if(p.trail.length){
+      p.trail.length=0;
+    }
     // Integrate
     const ps=dt*60;
     p.x+=p.vx*ps; p.y+=p.vy*ps; p.z+=p.vz*ps;
@@ -637,6 +646,61 @@ SPR.width=SPR.height=64;
   g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.4,'rgba(255,255,255,0.85)');g.addColorStop(1,'rgba(255,255,255,0)');
   s.fillStyle=g;s.beginPath();s.arc(32,32,32,0,Math.PI*2);s.fill();})();
 
+// ── Per-particle shape drawing helper ────────────────────────────────────────
+function drawParticleShape(cx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,CW,CH){
+  if(ptType==='sphere'){
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);
+    if(fthR>.1&&renderSz>1.5){
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*.18})`;
+      cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*.5})`;
+      cx.beginPath();cx.arc(0,0,Math.max(.1,renderSz*(1-fthR*.6)),0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(0,0,Math.max(.1,renderSz*(1-fthR*.88)),0,Math.PI*2);cx.fill();
+    }else{
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
+    }
+    cx.restore();
+  }else if(ptType==='line'){
+    const dz=FL+p.z;if(dz<8)return;
+    const s=FL/dz;
+    const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.0001;
+    const szF=renderSz/(p.sz*s||1);
+    const lenScale=P.lineLen*szF;
+    const tx0=p.x-(p.vx/spd)*lenScale,ty0=p.y-(p.vy/spd)*lenScale,tz0=p.z-(p.vz/spd)*lenScale;
+    const dz0=FL+tz0;if(dz0<8)return;
+    const s0=FL/dz0;
+    const sx0=CW/2+tx0*s0,sy0=CH/2+ty0*s0;
+    const thk=Math.max(.2,P.lineTh*s*szF);
+    cx.save();
+    if(P.lineTaper){
+      const grd=cx.createLinearGradient(sx0,sy0,sx,sy);
+      grd.addColorStop(0,`rgba(${r},${g},${b},0)`);
+      grd.addColorStop(1,`rgba(${r},${g},${b},${renderA})`);
+      cx.strokeStyle=grd;
+    }else{cx.strokeStyle=`rgba(${r},${g},${b},${renderA})`;}
+    cx.lineWidth=thk;cx.lineCap='round';
+    cx.beginPath();cx.moveTo(sx0,sy0);cx.lineTo(sx,sy);cx.stroke();
+    cx.restore();
+  }else if(ptType==='star'){
+    drawStar(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
+  }else if(ptType==='dustblob'){
+    drawDustBlob(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
+  }else if(ptType==='billboard'&&bbImg){
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);cx.globalAlpha=renderA;
+    cx.drawImage(bbImg,-renderSz,-renderSz,renderSz*2,renderSz*2);
+    if(P.bbTint&&P.bbTintAmt>0){
+      cx.globalCompositeOperation='source-atop';
+      cx.globalAlpha=P.bbTintAmt*renderA;
+      cx.fillStyle=`rgb(${r},${g},${b})`;
+      cx.fillRect(-renderSz,-renderSz,renderSz*2,renderSz*2);
+      cx.globalCompositeOperation=P.bld;
+    }
+    cx.restore();
+  }
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function render(){
   const FL=P.fl;
@@ -657,6 +721,9 @@ function render(){
 
   const dof=P.dof*.01,fthR=P.fth*.01,opa=P.opa;
   const ptType=P.ptType;
+  const mbOn=P.motionBlur>0;
+  const MB_GHOST_N=6; // fixed ghost count — cost constant regardless of slider
+  const mbSpread=P.motionBlur*0.8; // kept for reference
 
   for(const p of pts){
     const t=1-(p.li/p.ml);
@@ -679,90 +746,57 @@ function render(){
     }
     renderA=Math.min(1,renderA);
 
-    // ── Sphere ────────────────────────────────────────────────────────────────
-    if(ptType==='sphere'){
-      ctx.save();
-      ctx.translate(sx,sy);
-      ctx.rotate(p.rot);
-      if(fthR>.1&&renderSz>1.5){
-        const a1=renderA*.18,a2=renderA*.5,a3=renderA;
-        ctx.fillStyle=`rgba(${r},${g},${b},${a1})`;
-        ctx.beginPath();ctx.arc(0,0,renderSz,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle=`rgba(${r},${g},${b},${a2})`;
-        ctx.beginPath();ctx.arc(0,0,Math.max(.1,renderSz*(1-fthR*.6)),0,Math.PI*2);ctx.fill();
-        ctx.fillStyle=`rgba(${r},${g},${b},${a3})`;
-        ctx.beginPath();ctx.arc(0,0,Math.max(.1,renderSz*(1-fthR*.88)),0,Math.PI*2);ctx.fill();
-      }else{
-        ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
-        ctx.beginPath();ctx.arc(0,0,renderSz,0,Math.PI*2);ctx.fill();
+    // ── Motion Blur: Catmull-Rom spline trail ─────────────────────────────────
+    if(mbOn && p.trail.length>=6){
+      const trail=p.trail;
+      const n=trail.length/3|0;
+      // project all recorded world positions to screen
+      const sp=[];
+      for(let i=0;i<n;i++){
+        const dzt=FL+trail[i*3+2]; if(dzt<8)continue;
+        const st=FL/dzt;
+        sp.push(W/2+trail[i*3]*st, H/2+trail[i*3+1]*st);
       }
-      ctx.restore();
-    }
-
-    // ── Line / Streak ─────────────────────────────────────────────────────────
-    else if(ptType==='line'){
-      // Tail point: step back along velocity direction by lineLen in world space
-      const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.0001;
-      const lenScale=P.lineLen*(szF);
-      const tx0=p.x-(p.vx/spd)*lenScale;
-      const ty0=p.y-(p.vy/spd)*lenScale;
-      const tz0=p.z-(p.vz/spd)*lenScale;
-      const dz0=FL+tz0;
-      if(dz0<8){ctx.restore&&ctx.restore();continue;}
-      const s0=FL/dz0;
-      const sx0=W/2+tx0*s0,sy0=H/2+ty0*s0;
-      const thk=Math.max(.2,P.lineTh*s*szF);
-
-      if(P.lineTaper){
-        // Tapered: gradient from transparent tail to solid head
-        const grd=ctx.createLinearGradient(sx0,sy0,sx,sy);
-        grd.addColorStop(0,`rgba(${r},${g},${b},0)`);
-        grd.addColorStop(1,`rgba(${r},${g},${b},${renderA})`);
+      sp.push(sx,sy); // append current head
+      const m=sp.length>>1;
+      if(m>=2){
         ctx.save();
+        ctx.lineCap='round';
+        ctx.lineJoin='round';
+        ctx.lineWidth=Math.max(renderSz*1.8, 1);
+        // Draw Catmull-Rom as one continuous path, colour per-segment gradient
+        // But to keep transparency smooth without overdraw artifacts,
+        // draw ONE path with a single linear gradient tail→head
+        const tx0=sp[0],ty0=sp[1],txN=sp[(m-1)*2],tyN=sp[(m-1)*2+1];
+        const grd=ctx.createLinearGradient(tx0,ty0,txN,tyN);
+        grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
+        grd.addColorStop(0.3, `rgba(${r},${g},${b},${renderA*0.05})`);
+        grd.addColorStop(0.6, `rgba(${r},${g},${b},${renderA*0.4})`);
+        grd.addColorStop(0.85,`rgba(${r},${g},${b},${renderA*0.8})`);
+        grd.addColorStop(1,   `rgba(${r},${g},${b},${renderA*0.92})`);
         ctx.strokeStyle=grd;
-        ctx.lineWidth=thk;
-        ctx.lineCap='round';
-        ctx.beginPath();ctx.moveTo(sx0,sy0);ctx.lineTo(sx,sy);ctx.stroke();
-        ctx.restore();
-      }else{
-        ctx.save();
-        ctx.strokeStyle=`rgba(${r},${g},${b},${renderA})`;
-        ctx.lineWidth=thk;
-        ctx.lineCap='round';
-        ctx.beginPath();ctx.moveTo(sx0,sy0);ctx.lineTo(sx,sy);ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(sp[0],sp[1]);
+        // Catmull-Rom: each segment uses 4 control points
+        for(let i=0;i<m-1;i++){
+          const p0x=sp[Math.max(i-1,0)*2],   p0y=sp[Math.max(i-1,0)*2+1];
+          const p1x=sp[i*2],                  p1y=sp[i*2+1];
+          const p2x=sp[(i+1)*2],              p2y=sp[(i+1)*2+1];
+          const p3x=sp[Math.min(i+2,m-1)*2], p3y=sp[Math.min(i+2,m-1)*2+1];
+          // convert Catmull-Rom to cubic bezier
+          const cp1x=p1x+(p2x-p0x)/6;
+          const cp1y=p1y+(p2y-p0y)/6;
+          const cp2x=p2x-(p3x-p1x)/6;
+          const cp2y=p2y-(p3y-p1y)/6;
+          ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,p2x,p2y);
+        }
+        ctx.stroke();
         ctx.restore();
       }
     }
 
-    // ── Star ──────────────────────────────────────────────────────────────────
-    else if(ptType==='star'){
-      drawStar(ctx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
-    }
-
-    // ── Dust Blob ─────────────────────────────────────────────────────────────
-    else if(ptType==='dustblob'){
-      drawDustBlob(ctx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
-    }
-
-    // ── Billboard (PNG) ───────────────────────────────────────────────────────
-    else if(ptType==='billboard'){
-      const img=bbImg;
-      if(!img)continue;
-      ctx.save();
-      ctx.translate(sx,sy);
-      ctx.rotate(p.rot);
-      ctx.globalAlpha=renderA;
-      ctx.drawImage(img,-renderSz,-renderSz,renderSz*2,renderSz*2);
-      // Color-over-life tint using source-atop (preserves PNG alpha boundary)
-      if(P.bbTint&&P.bbTintAmt>0){
-        ctx.globalCompositeOperation='source-atop';
-        ctx.globalAlpha=P.bbTintAmt*renderA;
-        ctx.fillStyle=`rgb(${r},${g},${b})`;
-        ctx.fillRect(-renderSz,-renderSz,renderSz*2,renderSz*2);
-        ctx.globalCompositeOperation=P.bld;
-      }
-      ctx.restore();
-    }
+    // ── Main particle ─────────────────────────────────────────────────────────
+    drawParticleShape(ctx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,W,H);
   }
 
   // Emitter crosshair
@@ -867,7 +901,7 @@ bindR('wX','wX',1);bindR('wY','wY',1);bindR('wZ','wZ',1);
 bindR('tAP','tAP');bindR('tSc','tSc');bindR('tEv','tEv',2);bindR('tOc','tOc');bindR('tOM','tOM',2);bindR('tAR','tAR',1);
 bindR('grav','grav');
 bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
-bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');
+bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');
 bindR('lineLen','lineLen');bindR('lineTh','lineTh',1);bindR('bbTintAmt','bbTintAmt',2);
 bindR('burstDur','burstDur',2);
 // burstInt needs to reset cycle timer on change
@@ -1356,7 +1390,7 @@ async function startRender(){
     const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
     const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
     const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
-    rPts.push({x:rEX+ox,y:rEY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss});
+    rPts.push({x:rEX+ox,y:rEY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,trail:[]});
   }
 
   function rUpdate(){
@@ -1393,6 +1427,12 @@ async function startRender(){
         p.vz+=fbm(tx+100,ty+100,tz,oct,P.tOM)*ap;
         if(P.tAR>0)p.rot+=fbm(tx+200,ty+200,tz,oct,P.tOM)*P.tAR*dt*2.5;
       }
+      // Trail recording
+      if(P.motionBlur>0){
+        const maxLen=Math.ceil(P.motionBlur*0.8)+2;
+        p.trail.push(p.x,p.y,p.z);
+        if(p.trail.length>maxLen*3)p.trail.splice(0,3);
+      }else if(p.trail.length){p.trail.length=0;}
       const ps=dt*60;
       p.x+=p.vx*ps;p.y+=p.vy*ps;p.z+=p.vz*ps;
       p.rot+=p.ss*dt*2;
@@ -1430,6 +1470,7 @@ async function startRender(){
     rPts.sort((a,b)=>b.z-a.z);
     oc2.globalCompositeOperation=P.bld;
     const dof=P.dof*.01,fthR=P.fth*.01,opa=P.opa,ptType=P.ptType;
+    const mbOn2=P.motionBlur>0;
 
     for(const p of rPts){
       const t=1-(p.li/p.ml),szF=sol(t,P.szC);
@@ -1444,50 +1485,40 @@ async function startRender(){
       if(dof>0){const blur=1+Math.abs(p.z)*dof*.003;renderSz*=blur;renderA/=blur;}
       renderA=Math.min(1,renderA);
 
-      if(ptType==='sphere'){
-        oc2.save();oc2.translate(sx,sy);oc2.rotate(p.rot);
-        if(fthR>.1&&renderSz>1.5){
-          oc2.fillStyle=`rgba(${r},${g},${b},${renderA*.18})`;oc2.beginPath();oc2.arc(0,0,renderSz,0,Math.PI*2);oc2.fill();
-          oc2.fillStyle=`rgba(${r},${g},${b},${renderA*.5})`;oc2.beginPath();oc2.arc(0,0,Math.max(.1,renderSz*(1-fthR*.6)),0,Math.PI*2);oc2.fill();
-          oc2.fillStyle=`rgba(${r},${g},${b},${renderA})`;oc2.beginPath();oc2.arc(0,0,Math.max(.1,renderSz*(1-fthR*.88)),0,Math.PI*2);oc2.fill();
-        }else{
-          oc2.fillStyle=`rgba(${r},${g},${b},${renderA})`;oc2.beginPath();oc2.arc(0,0,renderSz,0,Math.PI*2);oc2.fill();
+      if(mbOn2 && p.trail.length>=6){
+        const trail=p.trail;
+        const n=trail.length/3|0;
+        const sp=[];
+        for(let i=0;i<n;i++){
+          const dzt=FL+trail[i*3+2]; if(dzt<8)continue;
+          const st=FL/dzt;
+          sp.push(rW/2+trail[i*3]*st, rH/2+trail[i*3+1]*st);
         }
-        oc2.restore();
-      }else if(ptType==='line'){
-        const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||.0001;
-        const ls=P.lineLen*szF;
-        const tx0=p.x-(p.vx/spd)*ls,ty0=p.y-(p.vy/spd)*ls,tz0=p.z-(p.vz/spd)*ls;
-        const dz0=FL+tz0;if(dz0<8)continue;
-        const s0=FL/dz0;
-        const sx0=rW/2+tx0*s0,sy0=rH/2+ty0*s0;
-        const thk=Math.max(.2,P.lineTh*s*szF);
-        oc2.save();
-        if(P.lineTaper){
-          const grd=oc2.createLinearGradient(sx0,sy0,sx,sy);
-          grd.addColorStop(0,`rgba(${r},${g},${b},0)`);
-          grd.addColorStop(1,`rgba(${r},${g},${b},${renderA})`);
+        sp.push(sx,sy);
+        const m=sp.length>>1;
+        if(m>=2){
+          oc2.save();
+          oc2.lineCap='round'; oc2.lineJoin='round';
+          oc2.lineWidth=Math.max(renderSz*1.8,1);
+          const grd=oc2.createLinearGradient(sp[0],sp[1],sp[(m-1)*2],sp[(m-1)*2+1]);
+          grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
+          grd.addColorStop(0.3, `rgba(${r},${g},${b},${renderA*0.05})`);
+          grd.addColorStop(0.6, `rgba(${r},${g},${b},${renderA*0.4})`);
+          grd.addColorStop(0.85,`rgba(${r},${g},${b},${renderA*0.8})`);
+          grd.addColorStop(1,   `rgba(${r},${g},${b},${renderA*0.92})`);
           oc2.strokeStyle=grd;
-        }else{oc2.strokeStyle=`rgba(${r},${g},${b},${renderA})`;}
-        oc2.lineWidth=thk;oc2.lineCap='round';
-        oc2.beginPath();oc2.moveTo(sx0,sy0);oc2.lineTo(sx,sy);oc2.stroke();
-        oc2.restore();
-      }else if(ptType==='star'){
-        drawStar(oc2,p,sx,sy,renderSz,renderA,r,g,b,fthR);
-      }else if(ptType==='dustblob'){
-        drawDustBlob(oc2,p,sx,sy,renderSz,renderA,r,g,b,fthR);
-      }else if(ptType==='billboard'&&bbImg){
-        oc2.save();oc2.translate(sx,sy);oc2.rotate(p.rot);oc2.globalAlpha=renderA;
-        oc2.drawImage(bbImg,-renderSz,-renderSz,renderSz*2,renderSz*2);
-        if(P.bbTint&&P.bbTintAmt>0){
-          oc2.globalCompositeOperation='source-atop';
-          oc2.globalAlpha=P.bbTintAmt*renderA;
-          oc2.fillStyle=`rgb(${r},${g},${b})`;
-          oc2.fillRect(-renderSz,-renderSz,renderSz*2,renderSz*2);
-          oc2.globalCompositeOperation=P.bld;
+          oc2.beginPath(); oc2.moveTo(sp[0],sp[1]);
+          for(let i=0;i<m-1;i++){
+            const p0x=sp[Math.max(i-1,0)*2],   p0y=sp[Math.max(i-1,0)*2+1];
+            const p1x=sp[i*2],                  p1y=sp[i*2+1];
+            const p2x=sp[(i+1)*2],              p2y=sp[(i+1)*2+1];
+            const p3x=sp[Math.min(i+2,m-1)*2], p3y=sp[Math.min(i+2,m-1)*2+1];
+            oc2.bezierCurveTo(p1x+(p2x-p0x)/6,p1y+(p2y-p0y)/6,p2x-(p3x-p1x)/6,p2y-(p3y-p1y)/6,p2x,p2y);
+          }
+          oc2.stroke(); oc2.restore();
         }
-        oc2.restore();
       }
+      drawParticleShape(oc2,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
     }
     oc2.globalCompositeOperation='source-over';
     oc2.globalAlpha=1;
