@@ -222,6 +222,10 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="r"><span class="lb">Depth of Field</span><input type="range" id="dof" min="0" max="100" value="0"><span class="vl" id="dofV">0</span></div>
       <div class="r"><span class="lb">Motion Blur</span><input type="range" id="motionBlur" min="0" max="100" value="0" step="1"><span class="vl" id="motionBlurV">0</span></div>
       <div class="r"><span class="lb">Focal Length</span><input type="range" id="fl" min="100" max="1500" value="450" step="10"><span class="vl" id="flV">450</span></div>
+      <div class="dl">Displacement Field</div>
+      <div class="r"><span class="lb">Strength</span><input type="range" id="dispAmt" min="0" max="300" value="0" step="1"><span class="vl" id="dispAmtV">0</span></div>
+      <div class="r"><span class="lb">Scale</span><input type="range" id="dispScale" min="10" max="2000" value="200" step="10"><span class="vl" id="dispScaleV">200</span></div>
+      <div class="r"><span class="lb">Speed</span><input type="range" id="dispSpd" min="0" max="5" value="0.5" step="0.05"><span class="vl" id="dispSpdV">0.50</span></div>
     </div>
 
     <div class="sh" data-s="exp">Export / Render<span id="exp_a">▸</span></div>
@@ -305,11 +309,11 @@ const P={
   aRes:2,aResR:0,wX:0,wY:0,wZ:0,
   tAP:0,tSc:100,tEv:1,tOc:3,tOM:0.5,tAR:0,
   grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
-  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5
+  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5
 };
 
 // Billboard image state
-let bbImg=null;
+let dispTime=0;
 
 // ── Billboard Emitter ─────────────────────────────────────────────────────────
 let bbEmitPx=[];  // [{nx,ny}] normalised pixel coords of opaque pixels (−0.5…+0.5)
@@ -536,7 +540,7 @@ function spawn(){
 
 // ── Update ────────────────────────────────────────────────────────────────────
 function update(dt){
-  // ── Burst / Cycle gating ───────────────────────────────────────────────────
+  dispTime+=dt*P.dispSpd;
   let shouldEmit=true;
   const bi=P.burstInt,bd=P.burstDur;
   if(bi>0){
@@ -745,11 +749,18 @@ function render(){
     const dz=FL+p.z;
     if(dz<8)continue;
     const s=FL/dz;
-    const sx=W/2+p.x*s,sy=H/2+p.y*s;
+    let sx=W/2+p.x*s,sy=H/2+p.y*s;
     if(sx<-400||sx>W+400||sy<-400||sy>H+400)continue;
     const fs=p.sz*szF*s;
     if(fs<.04)continue;
     const[r,g,b]=colOL(t);
+
+    // ── Displacement Field (render-time, visual only) ─────────────────────────
+    if(P.dispAmt>0){
+      const sc=1/P.dispScale;
+      sx+=fbm(sx*sc,        sy*sc,        dispTime,   3,0.5)*P.dispAmt;
+      sy+=fbm(sx*sc+31.71,  sy*sc+17.39,  dispTime,   3,0.5)*P.dispAmt;
+    }
 
     let renderSz=fs,renderA=opa;
     if(dof>0){
@@ -917,7 +928,7 @@ bindR('wX','wX',1);bindR('wY','wY',1);bindR('wZ','wZ',1);
 bindR('tAP','tAP');bindR('tSc','tSc');bindR('tEv','tEv',2);bindR('tOc','tOc');bindR('tOM','tOM',2);bindR('tAR','tAR',1);
 bindR('grav','grav');
 bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
-bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');
+bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');bindR('dispAmt','dispAmt');bindR('dispScale','dispScale');bindR('dispSpd','dispSpd');
 bindR('lineLen','lineLen');bindR('lineTh','lineTh',1);bindR('bbTintAmt','bbTintAmt',2);
 bindR('burstDur','burstDur',2);
 // burstInt needs to reset cycle timer on change
@@ -1388,7 +1399,7 @@ async function startRender(){
 
   // Separate sim state
   const rPts=[];
-  let rTime=0,rAccum=0,rCycleT=0;
+  let rTime=0,rAccum=0,rCycleT=0,rDispTime=0;
 
   // Emitter scaled to render canvas
   const rEX=eX*(rW/W), rEY=eY*(rH/H);
@@ -1461,6 +1472,7 @@ async function startRender(){
       if(p.li<=0)rPts.splice(i,1);
     }
     rTime+=dt;
+    rDispTime+=dt*P.dispSpd;
   }
 
   function rDraw(){
@@ -1493,10 +1505,15 @@ async function startRender(){
       if(szF<.005)continue;
       const dz=FL+p.z; if(dz<8)continue;
       const s=FL/dz;
-      const sx=rW/2+p.x*s,sy=rH/2+p.y*s;
+      let sx=rW/2+p.x*s,sy=rH/2+p.y*s;
       if(sx<-400||sx>rW+400||sy<-400||sy>rH+400)continue;
       const fs=p.sz*szF*s; if(fs<.04)continue;
       const[r,g,b]=colOL(t);
+      if(P.dispAmt>0){
+        const sc=1/P.dispScale;
+        sx+=fbm(sx*sc,       sy*sc,       rDispTime,3,0.5)*P.dispAmt;
+        sy+=fbm(sx*sc+31.71, sy*sc+17.39, rDispTime,3,0.5)*P.dispAmt;
+      }
       let renderSz=fs,renderA=opa;
       if(dof>0){const blur=1+Math.abs(p.z)*dof*.003;renderSz*=blur;renderA/=blur;}
       renderA=Math.min(1,renderA);
