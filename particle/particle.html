@@ -10,6 +10,7 @@
 body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:100vh}
 #root{display:flex;height:100vh}
 #cvw{flex:1;min-width:0;position:relative;background:#000;cursor:crosshair}
+#cvw.checker{background-image:linear-gradient(45deg,#444 25%,transparent 25%),linear-gradient(-45deg,#444 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#444 75%),linear-gradient(-45deg,transparent 75%,#444 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;background-color:#222}
 #cv{display:block;width:100%;height:100%}
 #pi{position:absolute;top:8px;right:10px;font-size:10px;color:rgba(255,255,255,.18);pointer-events:none}
 #hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.18);pointer-events:none;white-space:nowrap}
@@ -98,7 +99,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
 
     <div class="sh" data-s="em">Emitter<span id="em_a">▾</span></div>
     <div class="sb open" id="em">
-      <div class="r"><span class="lb">Type</span><select id="emT"><option value="point">Point</option><option value="box">Box</option><option value="sphere">Sphere</option><option value="bbEmit">▣ Billboard (PNG)</option></select></div>
+      <div class="r"><span class="lb">Type</span><select id="emT"><option value="point">Point</option><option value="box">Box</option><option value="sphere">Sphere</option><option value="bbEmit">▣ Billboard (PNG)</option><option value="gifEmit">🎞 GIF Anim</option></select></div>
       <div id="bbEmitOpts" style="display:none">
         <div class="r">
           <label id="bbEmitLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="PNG/WebP — アルファ非透明ピクセルからパーティクル発生">📁 Emitter PNG を選択...</label>
@@ -108,6 +109,16 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
           <img id="bbEmitThumbImg" style="width:100%;border-radius:2px;image-rendering:pixelated;max-height:80px;object-fit:contain">
         </div>
         <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="bbEmitAlpha" min="1" max="254" value="10"><span class="vl" id="bbEmitAlphaV">10</span></div>
+      </div>
+      <div id="gifEmitOpts" style="display:none">
+        <div class="r">
+          <label id="gifEmitLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 Emitter GIF を選択...</label>
+          <input type="file" id="gifEmitFile" accept="image/gif" style="display:none">
+        </div>
+        <div class="r" id="gifEmitThumbRow" style="display:none">
+          <img id="gifEmitThumbImg" style="width:100%;border-radius:2px;max-height:80px;object-fit:contain">
+        </div>
+        <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="gifEmitAlpha" min="1" max="254" value="10"><span class="vl" id="gifEmitAlphaV">10</span></div>
       </div>
       <div class="dl">Burst / Cycle</div>
       <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="10" value="0" step="0.1" data-input-max="600"><span class="vl" id="burstIntV">0</span></div>
@@ -145,6 +156,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       </select></div>
       <div class="r"><span class="lb">Feather %</span><input type="range" id="fth" min="0" max="100" value="70"><span class="vl" id="fthV">70</span></div>
       <div class="r"><span class="lb">Opacity</span><input type="range" id="opa" min="0.05" max="1" value="0.9" step="0.01"><span class="vl" id="opaV">0.90</span></div>
+      <div class="r"><span class="lb">Cutout %</span><input type="range" id="cutoutPct" min="0" max="100" value="0" step="1"><span class="vl" id="cutoutPctV">0</span></div>
       <div class="r"><span class="lb">Flicker Speed</span><input type="range" id="flickerSpd" min="0" max="30" value="0" step="0.5"><span class="vl" id="flickerSpdV">0.0</span></div>
       <div class="r"><span class="lb">Flicker Rand</span><input type="range" id="flickerRand" min="0" max="10" value="5" step="0.1"><span class="vl" id="flickerRandV">5.0</span></div>
       <div class="r"><span class="lb">Spin Amplitude</span><input type="range" id="spin" min="0" max="20" value="0" step="0.1"><span class="vl" id="spinV">0.0</span></div>
@@ -159,6 +171,10 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <option value="lighter">Additive (Add)</option>
         <option value="source-over">Normal</option>
         <option value="screen">Screen</option>
+        <option value="multiply">Multiply</option>
+        <option value="overlay">Overlay</option>
+        <option value="subtract">Subtract</option>
+        <option value="difference">Difference</option>
       </select></div>
       <div class="dl">Particle Shape</div>
       <div class="r"><span class="lb">Type</span><select id="ptType">
@@ -167,6 +183,7 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <option value="star">✦ Star</option>
         <option value="dustblob">☁ Dust Blob</option>
         <option value="billboard">▣ Billboard (PNG)</option>
+        <option value="gifanim">🎞 GIF Anim</option>
       </select></div>
       <div id="lineOpts" style="display:none">
         <div class="r"><span class="lb">Streak Length</span><input type="range" id="lineLen" min="1" max="300" value="40"><span class="vl" id="lineLenV">40</span></div>
@@ -183,6 +200,17 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         </div>
         <div class="r"><span class="lb">Color Tint</span><select id="bbTint"><option value="0">Off (original colors)</option><option value="1">Apply color over life</option></select></div>
         <div class="r" id="bbTintAmtRow" style="display:none"><span class="lb">Tint Amount</span><input type="range" id="bbTintAmt" min="0" max="1" value="0.5" step="0.01"><span class="vl" id="bbTintAmtV">0.50</span></div>
+      </div>
+      <div id="gifOpts" style="display:none">
+        <div class="r">
+          <label id="gifLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 GIF を選択...</label>
+          <input type="file" id="gifFile" accept="image/gif" style="display:none">
+        </div>
+        <div id="gifThumbRow" style="display:none;padding:3px 0 1px;text-align:center">
+          <img id="gifThumbImg" style="max-width:72px;max-height:36px;border:1px solid #252535;border-radius:2px">
+        </div>
+        <div class="r"><span class="lb">Color Tint</span><select id="gifTint"><option value="0">Off (original colors)</option><option value="1">Apply color over life</option></select></div>
+        <div class="r" id="gifTintAmtRow" style="display:none"><span class="lb">Tint Amount</span><input type="range" id="gifTintAmt" min="0" max="1" value="0.5" step="0.01"><span class="vl" id="gifTintAmtV">0.50</span></div>
       </div>
     </div>
 
@@ -218,6 +246,11 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
 
     <div class="sh" data-s="rnd">Rendering<span id="rnd_a">▸</span></div>
     <div class="sb" id="rnd">
+      <div class="dl">Background</div>
+      <div class="r" style="align-items:center;gap:6px">
+        <span class="lb">Color</span>
+        <input type="color" id="bgColor" value="#000000" style="width:32px;height:18px;cursor:pointer;flex-shrink:0">
+      </div>
       <div class="r"><span class="lb">Max Particles</span><input type="range" id="maxP" min="100" max="500000" value="2000" step="100"><span class="vl" id="maxPV">2000</span></div>
       <div class="r"><span class="lb">Depth of Field</span><input type="range" id="dof" min="0" max="100" value="0"><span class="vl" id="dofV">0</span></div>
       <div class="r"><span class="lb">Motion Blur</span><input type="range" id="motionBlur" min="0" max="100" value="0" step="1"><span class="vl" id="motionBlurV">0</span></div>
@@ -247,9 +280,8 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="dl">Background</div>
       <div class="r"><span class="lb">BG Type</span>
         <select id="rndBg" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#aab;font-size:9.5px;padding:1px 3px">
-          <option value="transparent">Transparent (alpha)</option>
-          <option value="black">Black</option>
-          <option value="custom">Custom color</option>
+          <option value="color">Color（不透明）</option>
+          <option value="coloralpha" selected>Color + Alpha（透明PNG）</option>
         </select>
       </div>
       <div class="r" id="rndBgColorRow" style="display:none"><span class="lb">Color</span><input type="color" id="rndBgColor" value="#000000" style="width:38px;height:18px;border:1px solid #333;border-radius:2px;cursor:pointer;padding:0;background:none"></div>
@@ -305,15 +337,17 @@ const P={
   burstInt:0,burstDur:1,
   life:3,lifeR:30,sz:4,szR:40,szC:'ease',fth:70,opa:0.9,spin:0,spinR:50,
   c1:[255,136,0],c2:[255,34,0],c3:[34,0,0],bld:'lighter',
-  ptType:'sphere',lineLen:40,lineTh:2,lineTaper:1,bbTint:0,bbTintAmt:0.5,
+  ptType:'sphere',lineLen:40,lineTh:2,lineTaper:1,bbTint:0,bbTintAmt:0.5,gifTint:0,gifTintAmt:0.5,
   aRes:2,aResR:0,wX:0,wY:0,wZ:0,
   tAP:0,tSc:100,tEv:1,tOc:3,tOM:0.5,tAR:0,
   grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
-  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5
+  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5,cutoutPct:0,bgColor:'#000000'
 };
 
 // Billboard image state
+let bbImg=null, gifImg=null, gifEmitImg=null;
 let dispTime=0;
+const _cutoutQueue=[];
 
 // ── Billboard Emitter ─────────────────────────────────────────────────────────
 let bbEmitPx=[];  // [{nx,ny}] normalised pixel coords of opaque pixels (−0.5…+0.5)
@@ -433,6 +467,12 @@ function spawnOffset(){
     ox=p2.nx*P.eSX;
     oy=p2.ny*P.eSY;
     oz=(Math.random()-.5)*P.eSZ;
+  }else if(P.emT==='gifEmit'&&bbEmitPx.length>0){
+    // GIF emitter uses the same sampled pixel array (sampleBBEmitImage handles it)
+    const p2=bbEmitPx[Math.floor(Math.random()*bbEmitPx.length)];
+    ox=p2.nx*P.eSX;
+    oy=p2.ny*P.eSY;
+    oz=(Math.random()-.5)*P.eSZ;
   }
   // Point: no offset, always (0,0,0)
   return[ox,oy,oz];
@@ -535,7 +575,7 @@ function spawn(){
   const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
   const twirlPhase=Math.random()*Math.PI*2;
-  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[],flickerPhase:Math.random()*Math.PI*2,flickerFreq:0.5+Math.random(),flickTimer:Math.random(),flickVisible:true});
+  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[],flickerPhase:Math.random()*Math.PI*2,flickerFreq:0.5+Math.random(),flickTimer:Math.random(),flickVisible:true,isCutout:Math.random()*100<P.cutoutPct});
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -715,6 +755,18 @@ function drawParticleShape(cx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,CW,C
       cx.globalCompositeOperation=P.bld;
     }
     cx.restore();
+  }else if(ptType==='gifanim'&&gifImg){
+    // ブラウザが <img> のフレームを自動更新するのでそのまま drawImage するだけ
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);cx.globalAlpha=renderA;
+    cx.drawImage(gifImg,-renderSz,-renderSz,renderSz*2,renderSz*2);
+    if(P.gifTint&&P.gifTintAmt>0){
+      cx.globalCompositeOperation='source-atop';
+      cx.globalAlpha=P.gifTintAmt*renderA;
+      cx.fillStyle=`rgb(${r},${g},${b})`;
+      cx.fillRect(-renderSz,-renderSz,renderSz*2,renderSz*2);
+      cx.globalCompositeOperation=P.bld;
+    }
+    cx.restore();
   }
 }
 
@@ -722,7 +774,7 @@ function drawParticleShape(cx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,CW,C
 function render(){
   const FL=P.fl;
   ctx.globalCompositeOperation='source-over';
-  ctx.fillStyle='#000';
+  ctx.fillStyle=P.bgColor;
   ctx.fillRect(0,0,W,H);
 
   if(P.flrOn){
@@ -823,7 +875,23 @@ function render(){
     }
 
     // ── Main particle ─────────────────────────────────────────────────────────
-    drawParticleShape(ctx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,W,H);
+    if(p.isCutout){
+      ctx.globalCompositeOperation='destination-out';
+      drawParticleShape(ctx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,W,H);
+      ctx.globalCompositeOperation=P.bld;
+    }else{
+      drawParticleShape(ctx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,W,H);
+    }
+  }
+
+  // ── Cutout pass: punch holes through everything drawn so far ─────────────────
+  if(_cutoutQueue.length>0){
+    ctx.globalCompositeOperation='destination-out';
+    for(const q of _cutoutQueue){
+      drawParticleShape(ctx,ptType,q.p,q.sx,q.sy,q.renderSz,q.renderA,q.r,q.g,q.b,fthR,FL,W,H);
+    }
+    _cutoutQueue.length=0;
+    ctx.globalCompositeOperation=P.bld;
   }
 
   // Emitter crosshair
@@ -928,7 +996,21 @@ bindR('wX','wX',1);bindR('wY','wY',1);bindR('wZ','wZ',1);
 bindR('tAP','tAP');bindR('tSc','tSc');bindR('tEv','tEv',2);bindR('tOc','tOc');bindR('tOM','tOM',2);bindR('tAR','tAR',1);
 bindR('grav','grav');
 bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
-bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');bindR('dispAmt','dispAmt');bindR('dispScale','dispScale');bindR('dispSpd','dispSpd');
+bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');bindR('dispAmt','dispAmt');bindR('dispScale','dispScale');bindR('dispSpd','dispSpd');bindR('cutoutPct','cutoutPct');
+
+// ── Background color ──────────────────────────────────────────────────────────
+document.getElementById('bgColor').addEventListener('input',e=>{
+  P.bgColor=e.target.value;
+  document.getElementById('cvw').style.background=e.target.value;
+  // Export に自動同期
+  const rndBgColor=document.getElementById('rndBgColor');
+  const rndBg=document.getElementById('rndBg');
+  rndBgColor.value=e.target.value;
+  if(rndBg.value!=='transparent'&&rndBg.value!=='coloralpha'){
+    rndBg.value='custom';
+    document.getElementById('rndBgColorRow').style.display='flex';
+  }
+});
 bindR('lineLen','lineLen');bindR('lineTh','lineTh',1);bindR('bbTintAmt','bbTintAmt',2);
 bindR('burstDur','burstDur',2);
 // burstInt needs to reset cycle timer on change
@@ -1026,6 +1108,7 @@ function updatePtTypeUI(){
   const v=P.ptType;
   document.getElementById('lineOpts').style.display=v==='line'?'block':'none';
   document.getElementById('bbOpts').style.display=v==='billboard'?'block':'none';
+  document.getElementById('gifOpts').style.display=v==='gifanim'?'block':'none';
 }
 document.getElementById('ptType').addEventListener('change',e=>{P.ptType=e.target.value;updatePtTypeUI();});
 updatePtTypeUI();
@@ -1055,7 +1138,51 @@ bbFileEl.addEventListener('change',e=>{
   img.src=url;
 });
 
-// ── Billboard Emitter file picker ─────────────────────────────────────────────
+// ── GIF Anim particle file input ──────────────────────────────────────────────
+document.getElementById('gifLabel').addEventListener('click',()=>document.getElementById('gifFile').click());
+document.getElementById('gifFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  gifImg=new Image();
+  gifImg.onload=()=>{
+    document.getElementById('gifLabel').textContent='✓ '+f.name;
+    document.getElementById('gifLabel').style.color='#88ccaa';
+    const th=document.getElementById('gifThumbImg');
+    th.src=url;
+    document.getElementById('gifThumbRow').style.display='block';
+    toast('GIFを読み込みました');
+  };
+  gifImg.onerror=()=>toast('GIFの読み込みに失敗しました');
+  gifImg.src=url;
+});
+document.getElementById('gifTint').addEventListener('change',e=>{
+  P.gifTint=parseInt(e.target.value);
+  document.getElementById('gifTintAmtRow').style.display=P.gifTint?'flex':'none';
+});
+bindR('gifTintAmt','gifTintAmt',2);
+
+// ── GIF Emitter file input ────────────────────────────────────────────────────
+document.getElementById('gifEmitLabel').addEventListener('click',()=>document.getElementById('gifEmitFile').click());
+document.getElementById('gifEmitFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  gifEmitImg=new Image();
+  gifEmitImg.onload=()=>{
+    sampleBBEmitImage(gifEmitImg, bbEmitAlphaThresh);
+    document.getElementById('gifEmitLabel').textContent='✓ '+f.name;
+    document.getElementById('gifEmitLabel').style.color='#88ccaa';
+    document.getElementById('gifEmitThumbImg').src=url;
+    document.getElementById('gifEmitThumbRow').style.display='block';
+    toast('Emitter GIF: '+bbEmitPx.length+'px サンプル済み');
+  };
+  gifEmitImg.onerror=()=>toast('GIFの読み込みに失敗しました');
+  gifEmitImg.src=url;
+});
+bindR('gifEmitAlpha','gifEmitAlpha',0,v=>{
+  bbEmitAlphaThresh=v;
+  const img=gifEmitImg;
+  if(img&&img.complete)sampleBBEmitImage(img,v);
+});
 document.getElementById('bbEmitLabel').addEventListener('click',()=>document.getElementById('bbEmitFile').click());
 document.getElementById('bbEmitFile').addEventListener('change',e=>{
   const f=e.target.files[0];if(!f)return;
@@ -1089,8 +1216,10 @@ document.getElementById('bbEmitFile').addEventListener('change',e=>{
 }
 function updateEmTUI(){
   const isBB=P.emT==='bbEmit';
+  const isGIF=P.emT==='gifEmit';
   document.getElementById('bbEmitOpts').style.display=isBB?'block':'none';
-  if(isBB){
+  document.getElementById('gifEmitOpts').style.display=isGIF?'block':'none';
+  if(isBB||isGIF){
     const xEl=document.getElementById('eSX'),yEl=document.getElementById('eSY'),zEl=document.getElementById('eSZ');
     xEl.value=100; P.eSX=100; document.getElementById('eSXV').textContent='100';
     yEl.value=100; P.eSY=100; document.getElementById('eSYV').textContent='100';
@@ -1396,6 +1525,10 @@ async function startRender(){
   const oc=document.createElement('canvas');
   oc.width=rW; oc.height=rH;
   const oc2=oc.getContext('2d');
+  // Alpha用キャンバス（透明背景、Color+Alpha時のみ使用）
+  const ocAlpha=document.createElement('canvas');
+  ocAlpha.width=rW; ocAlpha.height=rH;
+  const oc2a=ocAlpha.getContext('2d');
 
   // Separate sim state
   const rPts=[];
@@ -1417,7 +1550,7 @@ async function startRender(){
     const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
     const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
     const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
-    rPts.push({x:rEX+ox,y:rEY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,trail:[]});
+    rPts.push({x:rEX+ox,y:rEY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,trail:[],isCutout:Math.random()*100<P.cutoutPct});
   }
 
   function rUpdate(){
@@ -1477,14 +1610,18 @@ async function startRender(){
 
   function rDraw(){
     const FL=P.fl;
-    // Background
+    const isAlpha=bgType==='coloralpha';
+
+    // メインキャンバス（bgColor）
     oc2.globalCompositeOperation='source-over';
-    if(bgType==='transparent'){
-      oc2.clearRect(0,0,rW,rH);
-    }else if(bgType==='custom'){
-      oc2.fillStyle=bgColor; oc2.fillRect(0,0,rW,rH);
-    }else{
-      oc2.fillStyle='#000'; oc2.fillRect(0,0,rW,rH);
+    oc2.clearRect(0,0,rW,rH);
+    oc2.fillStyle=P.bgColor;
+    oc2.fillRect(0,0,rW,rH);
+
+    // アルファ用キャンバス（透明）
+    if(isAlpha){
+      oc2a.globalCompositeOperation='source-over';
+      oc2a.clearRect(0,0,rW,rH);
     }
 
     if(P.flrOn){
@@ -1497,6 +1634,7 @@ async function startRender(){
 
     rPts.sort((a,b)=>b.z-a.z);
     oc2.globalCompositeOperation=P.bld;
+    if(isAlpha) oc2a.globalCompositeOperation=P.bld;
     const dof=P.dof*.01,fthR=P.fth*.01,opa=P.opa,ptType=P.ptType;
     const mbOn2=P.motionBlur>0;
 
@@ -1530,31 +1668,47 @@ async function startRender(){
         sp.push(sx,sy);
         const m=sp.length>>1;
         if(m>=2){
-          oc2.save();
-          oc2.lineCap='round'; oc2.lineJoin='round';
-          oc2.lineWidth=Math.max(renderSz*1.8,1);
-          const grd=oc2.createLinearGradient(sp[0],sp[1],sp[(m-1)*2],sp[(m-1)*2+1]);
-          grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
-          grd.addColorStop(0.3, `rgba(${r},${g},${b},${renderA*0.05})`);
-          grd.addColorStop(0.6, `rgba(${r},${g},${b},${renderA*0.4})`);
-          grd.addColorStop(0.85,`rgba(${r},${g},${b},${renderA*0.8})`);
-          grd.addColorStop(1,   `rgba(${r},${g},${b},${renderA*0.92})`);
-          oc2.strokeStyle=grd;
-          oc2.beginPath(); oc2.moveTo(sp[0],sp[1]);
-          for(let i=0;i<m-1;i++){
-            const p0x=sp[Math.max(i-1,0)*2],   p0y=sp[Math.max(i-1,0)*2+1];
-            const p1x=sp[i*2],                  p1y=sp[i*2+1];
-            const p2x=sp[(i+1)*2],              p2y=sp[(i+1)*2+1];
-            const p3x=sp[Math.min(i+2,m-1)*2], p3y=sp[Math.min(i+2,m-1)*2+1];
-            oc2.bezierCurveTo(p1x+(p2x-p0x)/6,p1y+(p2y-p0y)/6,p2x-(p3x-p1x)/6,p2y-(p3y-p1y)/6,p2x,p2y);
+          const contexts=isAlpha?[oc2,oc2a]:[oc2];
+          for(const cx of contexts){
+            cx.save();
+            cx.lineCap='round'; cx.lineJoin='round';
+            cx.lineWidth=Math.max(renderSz*1.8,1);
+            const grd=cx.createLinearGradient(sp[0],sp[1],sp[(m-1)*2],sp[(m-1)*2+1]);
+            grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
+            grd.addColorStop(0.3, `rgba(${r},${g},${b},${renderA*0.05})`);
+            grd.addColorStop(0.6, `rgba(${r},${g},${b},${renderA*0.4})`);
+            grd.addColorStop(0.85,`rgba(${r},${g},${b},${renderA*0.8})`);
+            grd.addColorStop(1,   `rgba(${r},${g},${b},${renderA*0.92})`);
+            cx.strokeStyle=grd;
+            cx.beginPath(); cx.moveTo(sp[0],sp[1]);
+            for(let i=0;i<m-1;i++){
+              const p0x=sp[Math.max(i-1,0)*2],   p0y=sp[Math.max(i-1,0)*2+1];
+              const p1x=sp[i*2],                  p1y=sp[i*2+1];
+              const p2x=sp[(i+1)*2],              p2y=sp[(i+1)*2+1];
+              const p3x=sp[Math.min(i+2,m-1)*2], p3y=sp[Math.min(i+2,m-1)*2+1];
+              cx.bezierCurveTo(p1x+(p2x-p0x)/6,p1y+(p2y-p0y)/6,p2x-(p3x-p1x)/6,p2y-(p3y-p1y)/6,p2x,p2y);
+            }
+            cx.stroke(); cx.restore();
           }
-          oc2.stroke(); oc2.restore();
         }
       }
-      drawParticleShape(oc2,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+      if(p.isCutout){
+        oc2.globalCompositeOperation='destination-out';
+        drawParticleShape(oc2,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+        oc2.globalCompositeOperation=P.bld;
+        if(isAlpha){
+          oc2a.globalCompositeOperation='destination-out';
+          drawParticleShape(oc2a,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+          oc2a.globalCompositeOperation=P.bld;
+        }
+      }else{
+        drawParticleShape(oc2,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+        if(isAlpha) drawParticleShape(oc2a,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+      }
     }
     oc2.globalCompositeOperation='source-over';
     oc2.globalAlpha=1;
+    if(isAlpha){ oc2a.globalCompositeOperation='source-over'; oc2a.globalAlpha=1; }
   }
 
   // Render loop — fixed dt, guaranteed frame ordering
@@ -1565,7 +1719,28 @@ async function startRender(){
   for(let f=0;f<totalFrames&&!renderStop;f++){
     rUpdate();
     rDraw();
-    const blob=await new Promise(res=>oc.toBlob(res,'image/png'));
+    const ocFinal=document.createElement('canvas');
+    ocFinal.width=rW; ocFinal.height=rH;
+    const ctxF=ocFinal.getContext('2d');
+
+    if(bgType==='color'){
+      ctxF.drawImage(oc,0,0);
+    }else{
+      // RGB = oc（bgColor背景で正しいブレンド済み）
+      ctxF.drawImage(oc,0,0);
+      const rgbData=ctxF.getImageData(0,0,rW,rH);
+      // Alpha = ocAlpha（透明背景、パーティクルのAlphaだけ）
+      const ctxTmp=ocAlpha.getContext('2d');
+      const alphaData=ctxTmp.getImageData(0,0,rW,rH);
+      const d=rgbData.data;
+      const a=alphaData.data;
+      for(let i=0;i<d.length;i+=4){
+        d[i+3]=a[i+3]; // Alphaだけ差し替え、RGBは触らない
+      }
+      ctxF.putImageData(rgbData,0,0);
+    }
+
+    const blob=await new Promise(res=>ocFinal.toBlob(res,'image/png'));
     folder.file(`frame_${String(f).padStart(5,'0')}.png`,blob);
 
     const pct=((f+1)/totalFrames*100);
