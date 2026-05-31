@@ -454,13 +454,13 @@ function importJSON(e){
 
 // ======== RACE ========
 let raceRAF=null,raceRunning=false;
-let gameState='wait',lapNum=1,totalLaps=5,raceTime=0,lapTime=0,startTS=0;
-const player={x:0,y:0,angle:0,speed:0,lap:1,cpIdx:0,rank:1,onTrack:true,aboveMask:false};
+let gameState='wait',lapNum=1,totalLaps=3,raceTime=0,lapTime=0,startTS=0;
+const player={x:0,y:0,angle:0,speed:0,lap:0,cpIdx:0,rank:1,onTrack:true,aboveMask:false,wasOnMask:false};
 const CPU_COLORS=['#f44','#ffcc00','#ff8800'];
 const cpus=[
-  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.03,rate:0.022,color:CPU_COLORS[0],aboveMask:false},
-  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.06,rate:0.018,color:CPU_COLORS[1],aboveMask:false},
-  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.09,rate:0.020,color:CPU_COLORS[2],aboveMask:false},
+  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.03,rate:0.022,color:CPU_COLORS[0],aboveMask:false,wasOnMask:false},
+  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.06,rate:0.018,color:CPU_COLORS[1],aboveMask:false,wasOnMask:false},
+  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.09,rate:0.020,color:CPU_COLORS[2],aboveMask:false,wasOnMask:false},
 ];
 const keys={};
 document.addEventListener('keydown',e=>{
@@ -478,11 +478,11 @@ function initRacePositions(){
   const ang=Math.atan2(sp2[1]-sp[1],sp2[0]-sp[0]);
   const nx=-Math.sin(ang),ny=Math.cos(ang);
   player.x=sp[0]+nx*10;player.y=sp[1]+ny*10;
-  player.angle=ang;player.speed=0;player.lap=1;player.cpIdx=0;player.aboveMask=false;
+  player.angle=ang;player.speed=0;player.lap=0;player.cpIdx=0;player.aboveMask=false;player.wasOnMask=false;
   cpus.forEach((c,i)=>{
     c.x=sp[0]-nx*10*(i%2===0?1:-1)-Math.cos(ang)*(i+1)*28;
     c.y=sp[1]-ny*10*(i%2===0?1:-1)-Math.sin(ang)*(i+1)*28;
-    c.angle=ang;c.speed=0;c.cpIdx=0;c.lap=1;c.progress=(i+1)*0.03;c.aboveMask=false;
+    c.angle=ang;c.speed=0;c.cpIdx=0;c.lap=1;c.progress=(i+1)*0.03;c.aboveMask=false;c.wasOnMask=false;
   });
 }
 function startRace(){
@@ -521,34 +521,10 @@ function nearestSegG0(x,y){
   return bi;
 }
 
-// 車のaboveMask状態を更新する
-// マスク線の始点付近に来たら上(true)
-// 終点を完全に通過してマスク領域外に出たら下(false)
-const MASK_TRIGGER_R = ()=> trackWidth * 1.5;
+// 縁幅（#555部分のワールド単位幅）
+const MASK_BORDER=4;
 
-function updateCarMaskState(car){
-  const maskGs = groups.filter(g=>g.layer>0 && g.pts.length>=2);
-  const r=MASK_TRIGGER_R();
-  for(const g of maskGs){
-    const pts=g.pts;
-    const startPt=pts[0];
-    const endPt=pts[pts.length-1];
-
-    // 始点 or 終点どちらに近づいても上に上がる（双方向対応）
-    const dStart=Math.sqrt((car.x-startPt[0])**2+(car.y-startPt[1])**2);
-    const dEnd  =Math.sqrt((car.x-endPt[0]  )**2+(car.y-endPt[1]  )**2);
-    if(dStart<r || dEnd<r){
-      car.aboveMask=true;
-      return;
-    }
-  }
-  // aboveMask=true の車が、全マスク線の幅から完全に外れたら下に戻す
-  if(car.aboveMask){
-    if(!isOnAnyMask(car.x,car.y)) car.aboveMask=false;
-  }
-}
-
-// 車がマスク線の幅内（t問わず全体）にいるか
+// 車がマスク線の幅内（全体）にいるか
 function isOnAnyMask(cx,cy){
   const tw=trackWidth;
   for(const g of groups){
@@ -560,6 +536,64 @@ function isOnAnyMask(cx,cy){
     }
   }
   return false;
+}
+
+// セグメントに対する垂直距離（横幅方向のみ）を返す
+// t が 0〜1 の範囲外なら Infinity（端点付近は判定しない）
+function perpDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax, dy=by-ay;
+  const len2=dx*dx+dy*dy;
+  if(len2===0)return Infinity;
+  const t=((px-ax)*dx+(py-ay)*dy)/len2;
+  if(t<0.05||t>0.95)return Infinity; // 端点付近は判定しない
+  // 垂直距離
+  return Math.abs((py-ay)*dx-(px-ax)*dy)/Math.sqrt(len2);
+}
+
+// マスク上下判定：
+//   セグメントへの垂直距離で判定（継ぎ目の影響を受けない）
+//   垂直距離 < trackWidth-MASK_BORDER → 路面内 → 上
+//   垂直距離 >= trackWidth-MASK_BORDER → 縁 → 下
+//   マスク内にいる間は状態を保持、出たら下に戻す
+function updateCarMaskState(car){
+  const tw=trackWidth;
+  const innerTW=Math.max(1,tw-MASK_BORDER);
+
+  let onMask=false;
+  let bestPerpDist=Infinity;
+
+  for(const g of groups){
+    if(g.layer===0)continue;
+    const pts=g.pts;if(pts.length<2)continue;
+    const ep=g.closed?[...pts,pts[0]]:pts;
+    for(let i=0;i<ep.length-1;i++){
+      const ax=ep[i][0],ay=ep[i][1],bx=ep[i+1][0],by=ep[i+1][1];
+      // まずdistSegでマスク範囲内かチェック
+      const d=distSeg(car.x,car.y,ax,ay,bx,by);
+      if(d<tw){
+        onMask=true;
+        // 垂直距離で縁/路面を判定
+        const pd=perpDist(car.x,car.y,ax,ay,bx,by);
+        if(pd<bestPerpDist)bestPerpDist=pd;
+      }
+    }
+  }
+
+  if(onMask){
+    if(!car.wasOnMask){
+      // 進入した瞬間だけ判定（垂直距離が有効な場合のみ）
+      if(bestPerpDist<Infinity){
+        car.aboveMask=(bestPerpDist<innerTW);
+      } else {
+        // 端点付近から進入（t範囲外）→ 路面内扱いで上
+        car.aboveMask=true;
+      }
+    }
+    car.wasOnMask=true;
+  }else{
+    car.aboveMask=false;
+    car.wasOnMask=false;
+  }
 }
 
 // aboveMask=false の車がマスク線の幅内（端除く）にいるか（隠す対象かどうか）
@@ -601,9 +635,10 @@ function updatePlayer(dt){
   const ci=nearestSegG0(player.x,player.y);
   if(ci!==player.cpIdx){
     if(player.cpIdx>N*0.7&&ci<N*0.1){
-      player.lap++;lapTime=0;
-      if(player.lap>totalLaps){gameState='finish';return;}
+      player.lap++;
+      lapTime=0;
       lapNum=player.lap;
+      if(player.lap>totalLaps){gameState='finish';return;}
     }
     player.cpIdx=ci;
   }
@@ -696,7 +731,8 @@ function drawRaceLayer0(){
 function drawRaceMask(g){
   const pts=g.pts;if(pts.length<2)return;
   const ep=g.closed?[...pts,pts[0]]:pts;
-  const tw=trackWidth-2;
+  const tw=trackWidth;
+  // 本体：butt端で縁+路面
   ctx.lineCap='butt';ctx.lineJoin='round';
   ctx.strokeStyle='#555';ctx.lineWidth=tw*2;
   ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
@@ -707,6 +743,25 @@ function drawRaceMask(g){
   for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
   ctx.stroke();
   ctx.lineCap='round';
+  // 端部を路面色でroundキャップはみ出し描画（進入口の視覚的ガイド）
+  if(!g.closed){
+    const overhang=tw*0.6;
+    // 始点側
+    const p0=pts[0],p1=pts[1];
+    const a0=Math.atan2(p0[1]-p1[1],p0[0]-p1[0]);
+    ctx.strokeStyle='#999';ctx.lineWidth=tw*2-5;ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(p0[0],p0[1]);
+    ctx.lineTo(p0[0]+Math.cos(a0)*overhang,p0[1]+Math.sin(a0)*overhang);
+    ctx.stroke();
+    // 終点側
+    const pn=pts[pts.length-1],pn1=pts[pts.length-2];
+    const an=Math.atan2(pn[1]-pn1[1],pn[0]-pn1[0]);
+    ctx.beginPath();
+    ctx.moveTo(pn[0],pn[1]);
+    ctx.lineTo(pn[0]+Math.cos(an)*overhang,pn[1]+Math.sin(an)*overhang);
+    ctx.stroke();
+  }
 }
 // 半透明用：1パスで路面色のみ（多重描画しないのでglobalAlphaが正しく効く）
 function drawRaceMaskFlat(g){
@@ -741,19 +796,24 @@ function drawRace(){
   const maskGroups=[...groups.filter(g=>g.layer>0)].sort((a,b)=>a.layer-b.layer);
   for(const g of maskGroups)drawRaceMask(g);
 
-  // 3. 全車を描画（まず全員）
+  // 3. 下にいる車を先に描いてマスク上書き、上にいる車を後から描く
   const allCars=[
     {obj:player,isPlayer:true,color:'#3af'},
     ...cpus.map(c=>({obj:c,isPlayer:false,color:c.color}))
   ];
-  for(const car of allCars){
+  const underCars=allCars.filter(car=>isUnderMask(car.obj));
+  const aboveCars=allCars.filter(car=>!isUnderMask(car.obj));
+
+  // 下の車を描画→マスクで隠す
+  for(const car of underCars){
     drawCarAt(car.obj.x,car.obj.y,car.obj.angle,car.color,car.isPlayer,zoom);
   }
-
-  // 4. マスク下にいる車の上にマスクを再描画
-  const anyUnder=allCars.some(car=>isUnderMask(car.obj));
-  if(anyUnder){
+  if(underCars.length>0){
     for(const g of maskGroups)drawRaceMask(g);
+  }
+  // 上の車を描画（マスクに消されない）
+  for(const car of aboveCars){
+    drawCarAt(car.obj.x,car.obj.y,car.obj.angle,car.color,car.isPlayer,zoom);
   }
 
   ctx.restore();
