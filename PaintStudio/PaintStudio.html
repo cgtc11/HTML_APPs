@@ -357,6 +357,28 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
       </div>
     </div>
 
+    <!-- Resize -->
+    <div id="fResize" style="display:none">
+      <div style="font-size:10px;color:var(--dim);margin-bottom:8px">現在のサイズ: <span id="fResizeCur"></span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">幅 (px)</span>
+        <input type="number" id="fResizeW" min="1" max="8000" style="flex:1;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:4px" oninput="onResizeWInput()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:60px">高さ (px)</span>
+        <input type="number" id="fResizeH" min="1" max="8000" style="flex:1;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:4px" oninput="onResizeHInput()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="fResizeLock" checked>
+        <label for="fResizeLock" style="font-size:10px;color:var(--tx);cursor:pointer">縦横比を維持</label>
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:4px">補間方法</div>
+      <select id="fResizeInterp" style="width:100%;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:4px;margin-bottom:4px">
+        <option value="smooth">スムーズ（写真向け）</option>
+        <option value="pixelated">ニアレストネイバー（ドット絵向け）</option>
+      </select>
+    </div>
+
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="tbtn" onclick="applyFilter()" style="flex:1;padding:6px">適用</button>
       <button class="tbtn" onclick="closeFilter()" style="flex:1;padding:6px">キャンセル</button>
@@ -370,6 +392,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <div class="fmitem" onclick="openFilter('blur')">ぼかし</div>
   <div class="fmitem" onclick="applyInvert()">階調の反転</div>
   <div class="fmitem" onclick="openFilter('tile')">タイル / オフセット</div>
+  <div class="fmitem" onclick="openFilter('resize')">解像度変更</div>
 </div>
 <div id="mouseCfgModal" style="display:none" class="moverlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="mdlg" style="min-width:340px">
@@ -404,6 +427,16 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
         </td>
       </tr>
     </table>
+    <table style="border-collapse:collapse;width:100%">
+      <tr>
+        <td style="padding:5px 8px;font-size:10px;color:var(--dim)">Undo 回数</td>
+        <td style="padding:5px 8px">
+          <input type="number" id="cfgUndo" value="50" min="10" max="500" style="width:70px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:3px"
+            onchange="undoMax=Math.max(10,Math.min(500,parseInt(this.value)||50));undoStack=undoStack.slice(-undoMax);">
+          <span style="font-size:10px;color:var(--dim)"> (10〜500)</span>
+        </td>
+      </tr>
+    </table>
     <button class="mclose" onclick="G('mouseCfgModal').style.display='none'">閉じる</button>
   </div>
 </div>
@@ -427,6 +460,7 @@ function showMouseCfg(){
     sel.value=[mbCfg.left,mbCfg.right,mbCfg.mid][bi];
   });
   G('cfgW').value=mbCfg.wheel;
+  G('cfgUndo').value=undoMax;
   G('mouseCfgModal').style.display='flex';
 }
 </script>
@@ -441,6 +475,7 @@ let layers=[],ali=0,lid=0;
 let sel={active:false,type:'rect',x:0,y:0,w:0,h:0,pts:[],path:null};
 let float_=null;
 let drawing=false,startX=0,startY=0,prevX=0,prevY=0;
+let lastStrokeX=null,lastStrokeY=null; // Shift+クリック直線用の前回終点
 let lassoPts=[];
 let hDrag=null,hDragO=null;
 let spaceDown=false,_shiftDown=false,panning=false,panSX=0,panSY=0,panOX=0,panOY=0;
@@ -686,25 +721,79 @@ function comp(){
 // undo()  → undoスタックから取り出して適用。現在状態はredoスタックへ
 // redo()  → redoスタックから取り出して適用。現在状態はundoスタックへ
 let undoStack=[],redoStack=[];
+let undoMax=50; // 設定で変更可能
 function saveH(){
-  const snap=layers.map(l=>l.ctx.getImageData(0,0,W,H));
+  const snap={
+    w:W,h:H,
+    layers:layers.map(l=>({
+      id:l.id,name:l.name,vis:l.vis,opac:l.opac,blend:l.blend,
+      data:l.ctx.getImageData(0,0,W,H),
+      maskData:l.mask?l.mask.getContext('2d').getImageData(0,0,W,H):null,
+      maskEnabled:l.maskEnabled
+    })),
+    ali
+  };
   undoStack.push(snap);
-  if(undoStack.length>50)undoStack.shift();
-  redoStack=[];  // 新しいアクションでリドゥは消える
+  if(undoStack.length>undoMax)undoStack.shift();
+  redoStack=[];
+}
+function _snapCur(){
+  return{
+    w:W,h:H,
+    layers:layers.map(l=>({
+      id:l.id,name:l.name,vis:l.vis,opac:l.opac,blend:l.blend,
+      data:l.ctx.getImageData(0,0,W,H),
+      maskData:l.mask?l.mask.getContext('2d').getImageData(0,0,W,H):null,
+      maskEnabled:l.maskEnabled
+    })),
+    ali
+  };
 }
 function undo(){
   if(!undoStack.length)return;
-  const cur=layers.map(l=>l.ctx.getImageData(0,0,W,H));
-  redoStack.push(cur);
+  redoStack.push(_snapCur());
   applyH(undoStack.pop());
 }
 function redo(){
   if(!redoStack.length)return;
-  const cur=layers.map(l=>l.ctx.getImageData(0,0,W,H));
-  undoStack.push(cur);
+  undoStack.push(_snapCur());
   applyH(redoStack.pop());
 }
-function applyH(s){s.forEach((d,i)=>{if(layers[i])layers[i].ctx.putImageData(d,0,0);});comp();renderLL();}
+function applyH(snap){
+  // サイズが変わっている場合はキャンバスをリサイズ
+  if(snap.w!==W||snap.h!==H){
+    setSz(snap.w,snap.h);
+    layers=[];
+  }
+  // レイヤー数が違う場合は再構築
+  if(snap.layers.length!==layers.length){
+    layers=snap.layers.map(ls=>{
+      const cv=document.createElement('canvas');cv.width=snap.w;cv.height=snap.h;
+      const ctx=cv.getContext('2d');ctx.putImageData(ls.data,0,0);
+      let mask=null;
+      if(ls.maskData){mask=document.createElement('canvas');mask.width=snap.w;mask.height=snap.h;mask.getContext('2d').putImageData(ls.maskData,0,0);}
+      return{id:ls.id,name:ls.name,cv,ctx,vis:ls.vis,opac:ls.opac,blend:ls.blend,mask,maskEnabled:ls.maskEnabled};
+    });
+  }else{
+    snap.layers.forEach((ls,i)=>{
+      if(!layers[i])return;
+      // サイズが変わった場合はcanvasを再生成
+      if(layers[i].cv.width!==snap.w||layers[i].cv.height!==snap.h){
+        layers[i].cv.width=snap.w;layers[i].cv.height=snap.h;
+      }
+      layers[i].ctx.putImageData(ls.data,0,0);
+      layers[i].name=ls.name;layers[i].vis=ls.vis;layers[i].opac=ls.opac;layers[i].blend=ls.blend;
+      layers[i].maskEnabled=ls.maskEnabled;
+      if(ls.maskData){
+        if(!layers[i].mask){layers[i].mask=document.createElement('canvas');layers[i].mask.width=snap.w;layers[i].mask.height=snap.h;}
+        else if(layers[i].mask.width!==snap.w||layers[i].mask.height!==snap.h){layers[i].mask.width=snap.w;layers[i].mask.height=snap.h;}
+        layers[i].mask.getContext('2d').putImageData(ls.maskData,0,0);
+      }else{layers[i].mask=null;}
+    });
+  }
+  ali=Math.min(snap.ali,layers.length-1);
+  comp();renderLL();fitView();
+}
 
 // ═══ SELECTION
 function mkE(){return{active:false,type:'rect',x:0,y:0,w:0,h:0,pts:[],path:null};}
@@ -1217,7 +1306,7 @@ function drawShape(ctx,x0,y0,x1,y1,col,sh){
 // ═══ MOVE
 function beginMove(cx,cy){
   const ctx=aC2();if(!ctx)return;
-  saveH();if(float_)commitMove();
+  if(float_)commitMove();
   if(sel.active&&sel.w>1&&sel.h>1){
     const{x,y,w,h}=sel;
     const id2=ctx.getImageData(x,y,w,h);
@@ -1576,8 +1665,8 @@ function onDown(e){
     if(h){
       // float_がまだない場合、ハンドル操作前に自動でfloat化する
       if(!float_&&sel.w>1&&sel.h>1){
+        saveH();
         beginMove(cp.x,cp.y);
-        // beginMoveはoffXを使って移動にするが、ここではハンドル操作なのでoffXをリセット
         if(float_){float_.offX=0;float_.offY=0;}
       }
       if(h==='float-rot'&&float_){
@@ -1620,7 +1709,7 @@ function onDown(e){
   if(actTool==='select'){if(float_)commitMove();clearSel();lassoPts=[];}
   else if(actTool==='lasso'){if(float_)commitMove();clearSel();lassoPts=[{x:cp.x,y:cp.y}];}
   else if(actTool==='wand'){if(float_)commitMove();wandSelect(cp.x,cp.y);drawing=false;}
-  else if(actTool==='move'){beginMove(cp.x,cp.y);}
+  else if(actTool==='move'){saveH();beginMove(cp.x,cp.y);}
   else if(actTool==='rotate'){saveH();beginRotate(cp.x,cp.y);}
   else if(actTool==='scale'){saveH();beginScale(cp.x,cp.y);}
   else if(actTool==='fill'){
@@ -1638,10 +1727,17 @@ function onDown(e){
   else if(['line','rect','ellipse'].includes(actTool)){saveH();}
   else{
     saveH();
+    const dc=getDrawCol(useCol);
+    // Shift+クリックで前回終点から直線
+    if(_shiftDown&&lastStrokeX!==null&&(actTool==='brush'||actTool==='dotpen'||actTool==='eraser')){
+      if(actTool==='eraser') withPressure(()=>applyErase(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y));
+      else withPressure(()=>applyBrush(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y,dc));
+      lastStrokeX=cp.x;lastStrokeY=cp.y;
+      comp();drawing=false;return;
+    }
     if(actTool==='eraser')withPressure(()=>applyErase(aC2(),cp.x,cp.y,cp.x,cp.y));
     else if(actTool==='blur')applyBlur(aC2(),cp.x,cp.y);
     else{
-      const dc=getDrawCol(useCol);
       if(useWet()&&!maskEditMode){initWet();addWetPt(cp.x,cp.y,bSz,bOp/100);}
       else withPressure(()=>applyBrush(aC2(),cp.x,cp.y,cp.x,cp.y,dc));
     }
@@ -1725,6 +1821,7 @@ function onUp(e){
   if(panning){endPan();return;}
   if(hDrag){
     if(hDrag==='float-rot'){_selRotOrigCv=null;}
+    if(float_)commitMove();
     hDrag=null;hDragO=null;updCur();return;
   }
   if(!drawing)return;drawing=false;
@@ -1748,10 +1845,15 @@ function onUp(e){
   else if(actTool==='brush'&&useWet()&&strokePts.length>0&&!maskEditMode){
     px.clearRect(0,0,W,H);
     commitWet(ctx,eC._useCol||fg);
+    lastStrokeX=cp.x;lastStrokeY=cp.y;
     comp();renderLL();
   }
   else{
-    if(maskEditMode)renderLL(); // マスクサムネイル更新
+    // ブラシ・消しゴムのストローク終点を記録
+    if(actTool==='brush'||actTool==='dotpen'||actTool==='eraser'){
+      lastStrokeX=prevX;lastStrokeY=prevY;
+    }
+    if(maskEditMode)renderLL();
     renderLL();
   }
 }
@@ -2208,13 +2310,18 @@ function openFilter(type){
   // 元データを保存（プレビュー用）
   _filterOrig=l.ctx.getImageData(0,0,W,H);
   // 各パネル表示切替
-  ['fHSL','fLev','fBlur','fTile'].forEach(id=>G(id).style.display='none');
-  const titles={hsl:'色相・彩度・明度',levels:'レベル補正',blur:'ぼかし',tile:'タイル / オフセット'};
+  ['fHSL','fLev','fBlur','fTile','fResize'].forEach(id=>G(id).style.display='none');
+  const titles={hsl:'色相・彩度・明度',levels:'レベル補正',blur:'ぼかし',tile:'タイル / オフセット',resize:'解像度変更'};
   G('filterTitle').textContent=titles[type]||'フィルター';
   if(type==='hsl'){G('fHSL').style.display='block';G('fH').value=0;G('fS').value=0;G('fL').value=0;G('fHn').value=0;G('fSn').value=0;G('fLn').value=0;}
   if(type==='levels'){G('fLev').style.display='block';G('fLevBl').value=0;G('fLevMd').value=100;G('fLevWh').value=255;G('fOutBl').value=0;G('fOutWh').value=255;}
   if(type==='blur'){G('fBlur').style.display='block';G('fBlurR').value=3;G('fBlurRn').value=3;}
   if(type==='tile'){G('fTile').style.display='block';G('fTX').value=0;G('fTXn').value=0;G('fTY').value=0;G('fTYn').value=0;}
+  if(type==='resize'){
+    G('fResize').style.display='block';
+    G('fResizeCur').textContent=`${W} × ${H}`;
+    G('fResizeW').value=W;G('fResizeH').value=H;
+  }
   G('filterModal').style.display='block';
   // パネルのドラッグ移動
   const bar=G('filterDragBar');
@@ -2243,6 +2350,7 @@ function fPreview(){
 }
 
 function applyFilter(){
+  if(_filterType==='resize'){applyResizeFilter();return;}
   const l=aL();if(!l)return;
   saveH();
   if(_filterOrig)l.ctx.putImageData(_filterOrig,0,0);
@@ -2307,6 +2415,50 @@ function applyInvert(){
   const id=l.ctx.getImageData(0,0,W,H),d=id.data;
   for(let i=0;i<d.length;i+=4){d[i]=255-d[i];d[i+1]=255-d[i+1];d[i+2]=255-d[i+2];}
   l.ctx.putImageData(id,0,0);comp();renderLL();
+}
+
+// 縦横比維持の入力連動
+function onResizeWInput(){
+  if(!G('fResizeLock').checked)return;
+  const ratio=H/W;
+  G('fResizeH').value=Math.round(parseInt(G('fResizeW').value)*ratio)||1;
+}
+function onResizeHInput(){
+  if(!G('fResizeLock').checked)return;
+  const ratio=W/H;
+  G('fResizeW').value=Math.round(parseInt(G('fResizeH').value)*ratio)||1;
+}
+
+// 解像度変更の適用（_applyFilterToLayerとは別に直接処理）
+function applyResizeFilter(){
+  const nw=parseInt(G('fResizeW').value);
+  const nh=parseInt(G('fResizeH').value);
+  const interp=G('fResizeInterp').value;
+  if(!nw||!nh||nw<1||nh<1)return;
+  if(nw===W&&nh===H){G('filterModal').style.display='none';return;}
+  saveH();
+  // 全レイヤーをリサイズ
+  layers.forEach(l=>{
+    const tmp=document.createElement('canvas');tmp.width=nw;tmp.height=nh;
+    const tc=tmp.getContext('2d');
+    tc.imageSmoothingEnabled=(interp==='smooth');
+    tc.imageSmoothingQuality='high';
+    tc.drawImage(l.cv,0,0,nw,nh);
+    l.cv.width=nw;l.cv.height=nh;
+    l.ctx.drawImage(tmp,0,0);
+    // マスクもリサイズ
+    if(l.mask){
+      const mt=document.createElement('canvas');mt.width=nw;mt.height=nh;
+      const mc=mt.getContext('2d');
+      mc.imageSmoothingEnabled=(interp==='smooth');
+      mc.drawImage(l.mask,0,0,nw,nh);
+      l.mask.width=nw;l.mask.height=nh;
+      l.mask.getContext('2d').drawImage(mt,0,0);
+    }
+  });
+  setSz(nw,nh);clearSel();comp();renderLL();fitView();
+  _filterOrig=null;
+  G('filterModal').style.display='none';
 }
 </script>
 </body>
