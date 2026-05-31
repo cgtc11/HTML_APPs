@@ -1260,6 +1260,7 @@ function updatePRPlayBtn(){
 document.getElementById('prDrawTool').addEventListener('click',()=>setPRTool('draw'));
 document.getElementById('prEraseTool').addEventListener('click',()=>setPRTool('erase'));
 document.getElementById('prClose').addEventListener('click',closePianoRoll);
+document.getElementById('prInst').addEventListener('click',e=>e.stopPropagation());
 document.getElementById('prInst').addEventListener('change',function(){if(PR.clip){pushUndo();PR.clip.instrument=this.value;drawAll();updateUI();}});
 document.getElementById('prTrimIn').addEventListener('change',function(){if(PR.clip){PR.clip.trimStart=Math.max(0,+this.value||0);drawPR();drawAll();updateUI();updateSelPanel();}});
 document.getElementById('prTrimOut').addEventListener('change',function(){if(PR.clip){const v=parseFloat(this.value);PR.clip.trimEnd=(isNaN(v)||this.value.trim()==='')?null:Math.max((PR.clip.trimStart||0)+0.01,v);drawPR();drawAll();updateUI();updateSelPanel();}});
@@ -1274,7 +1275,12 @@ function hideCtxMenu(){document.getElementById('ctxMenu').classList.add('hidden'
 document.getElementById('ctxMute').addEventListener('click',()=>{if(PR.clip&&ctxNoteIdx>=0){PR.clip.notes[ctxNoteIdx].muted=!PR.clip.notes[ctxNoteIdx].muted;drawPR();drawAll();}hideCtxMenu();});
 document.getElementById('ctxSolo').addEventListener('click',()=>{if(PR.clip&&ctxNoteIdx>=0){pushUndo();PR.clip.notes.forEach((n,i)=>n.muted=i!==ctxNoteIdx);drawPR();drawAll();}hideCtxMenu();});
 document.getElementById('ctxDelete').addEventListener('click',()=>{if(PR.clip&&ctxNoteIdx>=0){pushUndo();PR.clip.notes.splice(ctxNoteIdx,1);PR.selected.clear();drawPR();drawAll();updateUI();}hideCtxMenu();});
-window.addEventListener('click',()=>hideCtxMenu());
+window.addEventListener('click',e=>{
+  // selectなど入力系要素の操作では閉じない
+  if(e.target.tagName==='SELECT'||e.target.tagName==='OPTION')return;
+  if(e.target.closest('#ctxMenu'))return;
+  hideCtxMenu();
+});
 // ── SETTINGS ──────────────────────────────────────────────────
 function openSettings(){
   document.getElementById('settModal').classList.remove('hidden');
@@ -1444,6 +1450,7 @@ function updateUI(){
         const instRow=document.createElement('div');instRow.className='tc-row';
         const instSel=document.createElement('select');instSel.className='inst-sel';
         ['synth','lead','bass','pad','pluck','drum'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v.toUpperCase();if(v===cl.instrument)o.selected=true;instSel.appendChild(o);});
+        instSel.addEventListener('click',e=>e.stopPropagation());
         instSel.addEventListener('change',e=>{e.stopPropagation();pushUndo();cl.instrument=instSel.value;drawAll();});
         instRow.appendChild(instSel);div.appendChild(instRow);
         // Trim controls
