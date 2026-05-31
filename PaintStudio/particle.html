@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Particle Simulator — Particular Style</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:100vh}
+#root{display:flex;height:100vh}
+#cvw{flex:1;min-width:0;position:relative;background:#000;cursor:crosshair}
+#cvw.checker{background-image:linear-gradient(45deg,#444 25%,transparent 25%),linear-gradient(-45deg,#444 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#444 75%),linear-gradient(-45deg,transparent 75%,#444 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;background-color:#222}
+#cv{display:block;width:100%;height:100%}
+#pi{position:absolute;top:8px;right:10px;font-size:10px;color:rgba(255,255,255,.18);pointer-events:none}
+#hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.18);pointer-events:none;white-space:nowrap}
+#pn{width:230px;flex-shrink:0;background:#111118;overflow-y:auto;overflow-x:hidden;border-left:1px solid #1e1e2a;font-size:11px;color:#bbb;padding-bottom:120px}
+.sh{background:#18181f;padding:5px 9px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#556;border-bottom:1px solid #1e1e28;user-select:none;letter-spacing:.07em;text-transform:uppercase}
+.sh:hover{background:#1f1f2c;color:#889}
+.sb{padding:4px 8px 6px;border-bottom:1px solid #16161e;display:none}
+.sb.open{display:block}
+.r{display:flex;align-items:center;gap:4px;margin:2.5px 0;min-height:18px}
+.lb{font-size:9.5px;color:#4a4a5f;min-width:80px;flex-shrink:0;white-space:nowrap}
+.r input[type=range]{flex:1;min-width:0;cursor:pointer;height:3px;accent-color:#4466ee}
+.vl{font-size:9.5px;color:#778;min-width:30px;text-align:right;flex-shrink:0;cursor:text}
+.vl:hover{color:#aab;text-decoration:underline dotted #446;}
+.vl:hover{color:#aab}
+.vl-editing{background:#0e0e1a;border:1px solid #4466ee;border-radius:2px;color:#ccd;outline:none;width:52px;font-size:9.5px;padding:0 3px;text-align:right;flex-shrink:0}
+.r select{flex:1;min-width:0;background:#161622;color:#aab;border:1px solid #252535;border-radius:2px;font-size:9.5px;padding:1px 3px}
+.r input[type=color]{width:22px;height:15px;border:1px solid #333;border-radius:2px;cursor:pointer;padding:0;background:none}
+.dl{font-size:8.5px;color:#3a3a50;margin:5px 0 1px 1px;letter-spacing:.07em;text-transform:uppercase}
+.pbs{display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;border-bottom:1px solid #1a1a22}
+.pb{padding:2px 7px;border-radius:10px;border:1px solid #252535;background:transparent;color:#55568a;font-size:9.5px;cursor:pointer;transition:background .12s}
+.pb.on{background:#1b1e50;color:#8899ff;border-color:#2a3598}
+.pb:hover:not(.on){background:#1a1a2a;color:#7788cc}
+.acts{display:flex;gap:4px;padding:5px 8px;border-bottom:1px solid #1a1a22;flex-wrap:wrap}
+.ab{flex:1;min-width:56px;padding:3px 6px;border-radius:4px;border:1px solid #252535;background:#161622;color:#8899cc;font-size:9.5px;cursor:pointer;text-align:center;transition:background .12s}
+.ab:hover{background:#1e2044;color:#aabbff}
+.ab.danger{border-color:#3a1818;color:#cc6666}
+.ab.danger:hover{background:#2a0f0f;color:#ff8888}
+#saveNameWrap{display:none;padding:4px 8px 6px;border-bottom:1px solid #1a1a22;gap:4px;flex-direction:column}
+#saveNameWrap.open{display:flex}
+#saveName{background:#0e0e1a;border:1px solid #252535;border-radius:3px;color:#aab;font-size:9.5px;padding:3px 6px;outline:none;width:100%}
+#saveName:focus{border-color:#4466ee}
+.save-actions{display:flex;gap:4px}
+.save-actions .ab{flex:1}
+#slotList{padding:4px 8px 6px;border-bottom:1px solid #1a1a22;display:none;max-height:160px;overflow-y:auto}
+#slotList.open{display:block}
+.slot{display:flex;align-items:center;gap:4px;padding:2px 0;border-bottom:1px solid #14141e}
+.slot:last-child{border-bottom:none}
+.sn{flex:1;font-size:9.5px;color:#8899bb;cursor:pointer;padding:2px 3px;border-radius:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sn:hover{background:#1a1e38;color:#aabbff}
+.sd{font-size:9px;color:#334;cursor:pointer;padding:2px 4px;border-radius:2px;flex-shrink:0}
+.sd:hover{background:#2a1010;color:#ff6666}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#1e2240;color:#8899ff;border:1px solid #2a3598;border-radius:6px;padding:5px 14px;font-size:11px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.ni{width:100%;background:#0e0e1a;border:1px solid #252535;border-radius:2px;color:#aab;font-size:9.5px;padding:2px 5px;outline:none}
+.ni:focus{border-color:#4466ee}
+.rnd-prog{margin:4px 0 2px;height:5px;background:#1a1a28;border-radius:3px;overflow:hidden}
+.rnd-prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#2244aa,#4477ff);border-radius:3px;transition:width .1s}
+.rnd-label{font-size:9px;color:#556;margin:2px 0 4px;text-align:center}
+.rbtn{width:100%;margin-top:4px;padding:4px 0;border-radius:4px;border:1px solid #2a3598;background:#1b1e50;color:#8899ff;font-size:10px;cursor:pointer;text-align:center}
+.rbtn:hover{background:#222866}
+.rbtn.stop{border-color:#5a1818;background:#2a0f0f;color:#ff8888}
+.rbtn.stop:hover{background:#3a1010}
+</style>
+<div id="toast"></div>
+</head>
+<body>
+<div id="root">
+  <div id="cvw"><canvas id="cv"></canvas><div id="pi">0 particles</div><div id="hint">Click / drag to move emitter</div></div>
+  <div id="pn">
+    <div class="pbs">
+      <button class="pb on" data-m="fire">🔥 Fire</button>
+      <button class="pb" data-m="sparks">✨ Sparks</button>
+      <button class="pb" data-m="snow">❄ Snow</button>
+      <button class="pb" data-m="shockwave">💥 ShockWave</button>
+      <button class="pb" data-m="embers">🌋 Embers</button>
+    </div>
+
+    <div class="acts">
+      <button class="ab danger" id="btnReset">↺ Reset</button>
+      <button class="ab" id="btnSave">💾 Save</button>
+      <button class="ab" id="btnLoad">📂 Load</button>
+      <button class="ab" id="btnExport">⬇ Export</button>
+      <button class="ab" id="btnImport">⬆ Import</button>
+      <button class="ab" id="btnFullscreen">⛶ Full</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+    </div>
+    <div id="saveNameWrap">
+      <div style="font-size:9px;color:#446;margin-bottom:2px">プリセット: <span id="savePresetTag" style="color:#8899cc"></span></div>
+      <input id="saveName" type="text" placeholder="設定名を入力..." maxlength="40" spellcheck="false">
+      <div class="save-actions">
+        <button class="ab" id="btnSaveOK">保存</button>
+        <button class="ab danger" id="btnSaveCancel">キャンセル</button>
+      </div>
+    </div>
+    <div id="slotList"></div>
+
+    <div class="sh" data-s="em">Emitter<span id="em_a">▾</span></div>
+    <div class="sb open" id="em">
+      <div class="r"><span class="lb">Type</span><select id="emT"><option value="point">Point</option><option value="box">Box</option><option value="sphere">Sphere</option><option value="bbEmit">▣ Billboard (PNG)</option><option value="gifEmit">🎞 GIF Anim</option></select></div>
+      <div id="bbEmitOpts" style="display:none">
+        <div class="r">
+          <label id="bbEmitLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="PNG/WebP — アルファ非透明ピクセルからパーティクル発生">📁 Emitter PNG を選択...</label>
+          <input type="file" id="bbEmitFile" accept="image/png,image/webp" style="display:none">
+        </div>
+        <div class="r" id="bbEmitThumbRow" style="display:none">
+          <img id="bbEmitThumbImg" style="width:100%;border-radius:2px;image-rendering:pixelated;max-height:80px;object-fit:contain">
+        </div>
+        <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="bbEmitAlpha" min="1" max="254" value="10"><span class="vl" id="bbEmitAlphaV">10</span></div>
+      </div>
+      <div id="gifEmitOpts" style="display:none">
+        <div class="r">
+          <label id="gifEmitLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 Emitter GIF を選択...</label>
+          <input type="file" id="gifEmitFile" accept="image/gif" style="display:none">
+        </div>
+        <div class="r" id="gifEmitThumbRow" style="display:none">
+          <img id="gifEmitThumbImg" style="width:100%;border-radius:2px;max-height:80px;object-fit:contain">
+        </div>
+        <div class="r"><span class="lb">Alpha Threshold</span><input type="range" id="gifEmitAlpha" min="1" max="254" value="10"><span class="vl" id="gifEmitAlphaV">10</span></div>
+      </div>
+      <div class="dl">Burst / Cycle</div>
+      <div class="r"><span class="lb">Interval (s)</span><input type="range" id="burstInt" min="0" max="10" value="0" step="0.1" data-input-max="600"><span class="vl" id="burstIntV">0</span></div>
+      <div class="r"><span class="lb">Duration (s)</span><input type="range" id="burstDur" min="0.01" max="10" value="1" step="0.01"><span class="vl" id="burstDurV">1.0</span></div>
+      <div id="cycleBar" style="display:none;margin:2px 0 4px;height:4px;background:#1a1a28;border-radius:2px;overflow:hidden;position:relative">
+        <div id="cycleBarFill" style="position:absolute;left:0;top:0;height:100%;background:#4466ee;transition:width .05s linear;border-radius:2px"></div>
+      </div>
+      <div class="dl">Emission</div>
+      <div class="r"><span class="lb">Particles / sec</span><input type="range" id="pps" min="1" max="1000" value="30" step="1" data-input-max="5000000"><span class="vl" id="ppsV">30</span></div>
+      <div class="r"><span class="lb">Velocity</span><input type="range" id="vel" min="0" max="20" value="4" step="0.1"><span class="vl" id="velV">4.0</span></div>
+      <div class="r"><span class="lb">Vel Random %</span><input type="range" id="velR" min="0" max="100" value="40"><span class="vl" id="velRV">40</span></div>
+      <div class="r"><span class="lb">Direction</span><select id="dir"><option value="uniform">Uniform</option><option value="up">Upward</option><option value="down">Downward</option><option value="outward">Outward</option><option value="twirl">Twirl</option></select></div>
+      <div class="r"><span class="lb">Spread °</span><input type="range" id="sprd" min="0" max="180" value="50"><span class="vl" id="sprdV">50</span></div>
+      <div class="r"><span class="lb">Pitch °</span><input type="range" id="emPitch" min="-90" max="90" value="0" step="1" data-input-min="-180" data-input-max="180"><span class="vl" id="emPitchV">0</span></div>
+      <div class="r"><span class="lb">Yaw °</span><input type="range" id="emYaw" min="-90" max="90" value="0" step="1" data-input-min="-180" data-input-max="180"><span class="vl" id="emYawV">0</span></div>
+      <div class="r"><span class="lb">Twirl Speed</span><input type="range" id="twirlSpd" min="0.1" max="10" value="2" step="0.1"><span class="vl" id="twirlSpdV">2.0</span></div>
+      <div class="r"><span class="lb">Emitter Size X</span><input type="range" id="eSX" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSXV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size Y</span><input type="range" id="eSY" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSYV">0</span></div>
+      <div class="r"><span class="lb">Emitter Size Z</span><input type="range" id="eSZ" min="0" max="500" value="0" data-input-max="5000"><span class="vl" id="eSZV">0</span></div>
+    </div>
+
+    <div class="sh" data-s="pt">Particle<span id="pt_a">▾</span></div>
+    <div class="sb open" id="pt">
+      <div class="r"><span class="lb">Lifespan (s)</span><input type="range" id="life" min="0.2" max="12" value="3" step="0.1"><span class="vl" id="lifeV">3.0</span></div>
+      <div class="r"><span class="lb">Life Random %</span><input type="range" id="lifeR" min="0" max="100" value="30"><span class="vl" id="lifeRV">30</span></div>
+      <div class="r"><span class="lb">Size</span><input type="range" id="sz" min="1" max="100" value="4" step="0.5"><span class="vl" id="szV">4.0</span></div>
+      <div class="r"><span class="lb">Size Random %</span><input type="range" id="szR" min="0" max="100" value="40"><span class="vl" id="szRV">40</span></div>
+      <div class="r"><span class="lb">Size over Life</span><select id="szC">
+        <option value="linear">Linear ↓</option>
+        <option value="ease">Ease out</option>
+        <option value="hold">Hold → Drop</option>
+        <option value="bell">Bell ∩</option>
+        <option value="grow">Grow → Drop</option>
+        <option value="late">Late Drop</option>
+      </select></div>
+      <div class="r"><span class="lb">Feather %</span><input type="range" id="fth" min="0" max="100" value="70"><span class="vl" id="fthV">70</span></div>
+      <div class="r"><span class="lb">Opacity</span><input type="range" id="opa" min="0.05" max="1" value="0.9" step="0.01"><span class="vl" id="opaV">0.90</span></div>
+      <div class="r"><span class="lb">Cutout %</span><input type="range" id="cutoutPct" min="0" max="100" value="0" step="1"><span class="vl" id="cutoutPctV">0</span></div>
+      <div class="r"><span class="lb">Flicker Speed</span><input type="range" id="flickerSpd" min="0" max="30" value="0" step="0.5"><span class="vl" id="flickerSpdV">0.0</span></div>
+      <div class="r"><span class="lb">Flicker Rand</span><input type="range" id="flickerRand" min="0" max="10" value="5" step="0.1"><span class="vl" id="flickerRandV">5.0</span></div>
+      <div class="r"><span class="lb">Spin Amplitude</span><input type="range" id="spin" min="0" max="20" value="0" step="0.1"><span class="vl" id="spinV">0.0</span></div>
+      <div class="r"><span class="lb">Spin Random %</span><input type="range" id="spinR" min="0" max="100" value="50"><span class="vl" id="spinRV">50</span></div>
+      <div class="dl">Color over Life</div>
+      <div class="r">
+        <span class="lb">Birth</span><input type="color" id="c1" value="#ff8800">
+        <span class="lb" style="min-width:28px;text-align:center">Mid</span><input type="color" id="c2" value="#ff2200">
+        <span class="lb" style="min-width:28px;text-align:center">End</span><input type="color" id="c3" value="#220000">
+      </div>
+      <div class="r"><span class="lb">Blend Mode</span><select id="bld">
+        <option value="lighter">Additive (Add)</option>
+        <option value="source-over">Normal</option>
+        <option value="screen">Screen</option>
+        <option value="multiply">Multiply</option>
+        <option value="overlay">Overlay</option>
+        <option value="subtract">Subtract</option>
+        <option value="difference">Difference</option>
+      </select></div>
+      <div class="dl">Particle Shape</div>
+      <div class="r"><span class="lb">Type</span><select id="ptType">
+        <option value="sphere">● Sphere</option>
+        <option value="line">─ Line / Streak</option>
+        <option value="star">✦ Star</option>
+        <option value="dustblob">☁ Dust Blob</option>
+        <option value="billboard">▣ Billboard (PNG)</option>
+        <option value="gifanim">🎞 GIF Anim</option>
+      </select></div>
+      <div id="lineOpts" style="display:none">
+        <div class="r"><span class="lb">Streak Length</span><input type="range" id="lineLen" min="1" max="300" value="40"><span class="vl" id="lineLenV">40</span></div>
+        <div class="r"><span class="lb">Thickness</span><input type="range" id="lineTh" min="0.5" max="20" value="2" step="0.5"><span class="vl" id="lineThV">2.0</span></div>
+        <div class="r"><span class="lb">Taper</span><select id="lineTaper"><option value="1">Tapered</option><option value="0">Uniform</option></select></div>
+      </div>
+      <div id="bbOpts" style="display:none">
+        <div class="r">
+          <label id="bbLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="PNG/WebP/GIF — 透過そのまま有効">📁 PNG を選択...</label>
+          <input type="file" id="bbFile" accept="image/png,image/webp,image/gif" style="display:none">
+        </div>
+        <div id="bbThumbRow" style="display:none;padding:3px 0 1px;text-align:center">
+          <img id="bbThumbImg" style="max-width:72px;max-height:36px;border:1px solid #252535;border-radius:2px;image-rendering:pixelated">
+        </div>
+        <div class="r"><span class="lb">Color Tint</span><select id="bbTint"><option value="0">Off (original colors)</option><option value="1">Apply color over life</option></select></div>
+        <div class="r" id="bbTintAmtRow" style="display:none"><span class="lb">Tint Amount</span><input type="range" id="bbTintAmt" min="0" max="1" value="0.5" step="0.01"><span class="vl" id="bbTintAmtV">0.50</span></div>
+      </div>
+      <div id="gifOpts" style="display:none">
+        <div class="r">
+          <label id="gifLabel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#668;font-size:9.5px;padding:2px 6px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 GIF を選択...</label>
+          <input type="file" id="gifFile" accept="image/gif" style="display:none">
+        </div>
+        <div id="gifThumbRow" style="display:none;padding:3px 0 1px;text-align:center">
+          <img id="gifThumbImg" style="max-width:72px;max-height:36px;border:1px solid #252535;border-radius:2px">
+        </div>
+        <div class="r"><span class="lb">Color Tint</span><select id="gifTint"><option value="0">Off (original colors)</option><option value="1">Apply color over life</option></select></div>
+        <div class="r" id="gifTintAmtRow" style="display:none"><span class="lb">Tint Amount</span><input type="range" id="gifTintAmt" min="0" max="1" value="0.5" step="0.01"><span class="vl" id="gifTintAmtV">0.50</span></div>
+      </div>
+    </div>
+
+    <div class="sh" data-s="air">Physics / Air<span id="air_a">▾</span></div>
+    <div class="sb open" id="air">
+      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="aRes" min="0" max="100" value="2" step="0.1" data-input-max="500"><span class="vl" id="aResV">2.0</span></div>
+      <div class="r"><span class="lb">Air Res Rotation</span><input type="range" id="aResR" min="0" max="30" value="0" step="0.1"><span class="vl" id="aResRV">0.0</span></div>
+      <div class="r"><span class="lb">Wind X</span><input type="range" id="wX" min="-50" max="50" value="0" step="0.1" data-input-min="-500" data-input-max="500"><span class="vl" id="wXV">0.0</span></div>
+      <div class="r"><span class="lb">Wind Y</span><input type="range" id="wY" min="-50" max="50" value="0" step="0.1" data-input-min="-500" data-input-max="500"><span class="vl" id="wYV">0.0</span></div>
+      <div class="r"><span class="lb">Wind Z</span><input type="range" id="wZ" min="-50" max="50" value="0" step="0.1" data-input-min="-500" data-input-max="500"><span class="vl" id="wZV">0.0</span></div>
+      <div class="dl">Turbulence Field</div>
+      <div class="r"><span class="lb">Affect Position</span><input type="range" id="tAP" min="0" max="300" value="0"><span class="vl" id="tAPV">0</span></div>
+      <div class="r"><span class="lb">Scale</span><input type="range" id="tSc" min="10" max="1000" value="100" step="5"><span class="vl" id="tScV">100</span></div>
+      <div class="r"><span class="lb">Evolution</span><input type="range" id="tEv" min="0" max="5" value="1" step="0.05"><span class="vl" id="tEvV">1.00</span></div>
+      <div class="r"><span class="lb">Octaves</span><input type="range" id="tOc" min="1" max="8" value="3" step="1"><span class="vl" id="tOcV">3</span></div>
+      <div class="r"><span class="lb">Oct Multiplier</span><input type="range" id="tOM" min="0.1" max="1" value="0.5" step="0.05"><span class="vl" id="tOMV">0.50</span></div>
+      <div class="r"><span class="lb">Affect Rotation</span><input type="range" id="tAR" min="0" max="10" value="0" step="0.1"><span class="vl" id="tARV">0.0</span></div>
+    </div>
+
+    <div class="sh" data-s="grv">Physics / Gravity<span id="grv_a">▸</span></div>
+    <div class="sb" id="grv">
+      <div class="r"><span class="lb">Gravity</span><input type="range" id="grav" min="-500" max="500" value="0" step="5"><span class="vl" id="gravV">0</span></div>
+    </div>
+
+    <div class="sh" data-s="bnc">Physics / Bounce<span id="bnc_a">▸</span></div>
+    <div class="sb" id="bnc">
+      <div class="r"><span class="lb">Floor</span><select id="flrOn"><option value="0">Off</option><option value="1">On</option></select></div>
+      <div class="r"><span class="lb">Floor Position %</span><input type="range" id="flrY" min="0" max="100" value="85"><span class="vl" id="flrYV">85</span></div>
+      <div class="r"><span class="lb">Bounciness %</span><input type="range" id="bnce" min="0" max="100" value="50"><span class="vl" id="bnceV">50</span></div>
+      <div class="r"><span class="lb">Friction %</span><input type="range" id="frct" min="0" max="100" value="20"><span class="vl" id="frctV">20</span></div>
+      <div class="r"><span class="lb">Bounce Rand %</span><input type="range" id="bnceR" min="0" max="100" value="20"><span class="vl" id="bnceRV">20</span></div>
+    </div>
+
+    <div class="sh" data-s="sub">Sub Emitter<span id="sub_a">▸</span></div>
+    <div class="sb" id="sub">
+      <div class="r"><span class="lb">Enable</span><input type="checkbox" id="spEnable"></div>
+      <div class="dl">Trigger</div>
+      <div style="padding:2px 8px 4px;display:flex;flex-direction:column;gap:3px;font-size:10px;color:#aab">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigDeath"> On Death（消滅時）</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigBounce"> On Bounce（床衝突時）</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigBirth"> On Birth（発生時）</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigLife"> Over Life（生存中に連続放出）</label>
+      </div>
+      <div class="r"><span class="lb">Count</span><input type="range" id="spCount" min="1" max="100" value="8" step="1"><span class="vl" id="spCountV">8</span></div>
+      <div class="r" id="spRateRow"><span class="lb">Rate (pps)</span><input type="range" id="spRate" min="1" max="200" value="20" step="1"><span class="vl" id="spRateV">20</span></div>
+      <div class="dl">Physics</div>
+      <div class="r"><span class="lb">Direction</span><select id="spDir">
+        <option value="random">Random（全方向）</option>
+        <option value="up">Up（上向き）</option>
+        <option value="down">Down（下向き）</option>
+        <option value="parent">Parent Velocity（親の方向）</option>
+        <option value="outward">Outward（中心から外向き）</option>
+      </select></div>
+      <div class="r"><span class="lb">Velocity</span><input type="range" id="spVel" min="0" max="1000" value="150" step="1"><span class="vl" id="spVelV">150</span></div>
+      <div class="r"><span class="lb">Vel Random %</span><input type="range" id="spVelR" min="0" max="100" value="50"><span class="vl" id="spVelRV">50</span></div>
+      <div class="r"><span class="lb">Inherit Vel %</span><input type="range" id="spInhVel" min="0" max="100" value="20"><span class="vl" id="spInhVelV">20</span></div>
+      <div class="r"><span class="lb">Spread °</span><input type="range" id="spSprd" min="0" max="180" value="180"><span class="vl" id="spSprdV">180</span></div>
+      <div class="r"><span class="lb">Gravity</span><input type="range" id="spGrav" min="-200" max="200" value="0" step="1"><span class="vl" id="spGravV">0</span></div>
+      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="spARes" min="0" max="100" value="10" step="0.5"><span class="vl" id="spAResV">10.0</span></div>
+      <div class="dl">Particle</div>
+      <div class="r"><span class="lb">Shape</span><select id="spShape">
+        <option value="sphere">● Sphere</option>
+        <option value="star">✦ Star</option>
+        <option value="line">─ Line</option>
+      </select></div>
+      <div class="r"><span class="lb">Size</span><input type="range" id="spSz" min="0.1" max="50" value="3" step="0.1"><span class="vl" id="spSzV">3.0</span></div>
+      <div class="r"><span class="lb">Size Random %</span><input type="range" id="spSzR" min="0" max="100" value="50"><span class="vl" id="spSzRV">50</span></div>
+      <div class="r"><span class="lb">Size over Life</span><select id="spSzC">
+        <option value="ease-out">Ease Out（大→小）</option>
+        <option value="ease-in">Ease In（小→大）</option>
+        <option value="linear">Linear（一定）</option>
+        <option value="constant">Constant（変化なし）</option>
+      </select></div>
+      <div class="r"><span class="lb">Lifespan (s)</span><input type="range" id="spLife" min="0.1" max="10" value="1" step="0.1"><span class="vl" id="spLifeV">1.0</span></div>
+      <div class="r"><span class="lb">Life Random %</span><input type="range" id="spLifeR" min="0" max="100" value="30"><span class="vl" id="spLifeRV">30</span></div>
+      <div class="r"><span class="lb">Feather %</span><input type="range" id="spFth" min="0" max="100" value="60"><span class="vl" id="spFthV">60</span></div>
+      <div class="r"><span class="lb">Opacity</span><input type="range" id="spOpa" min="0.05" max="1" value="0.8" step="0.01"><span class="vl" id="spOpaV">0.80</span></div>
+      <div class="r"><span class="lb">Blend Mode</span><select id="spBld">
+        <option value="inherit">Inherit（メインと同じ）</option>
+        <option value="lighter">Additive (Add)</option>
+        <option value="source-over">Normal</option>
+        <option value="screen">Screen</option>
+        <option value="multiply">Multiply</option>
+        <option value="overlay">Overlay</option>
+        <option value="subtract">Subtract</option>
+        <option value="difference">Difference</option>
+      </select></div>
+      <div class="dl">Color</div>
+      <div class="r">
+        <span class="lb">Birth</span><input type="color" id="spC1" value="#ffffff">
+        <span class="lb" style="min-width:24px;text-align:center">Mid</span><input type="color" id="spCm" value="#ffaa00">
+        <span class="lb" style="min-width:24px;text-align:center">End</span><input type="color" id="spC2" value="#ff4400">
+      </div>
+    </div>
+
+    <div class="sh" data-s="rnd">Rendering<span id="rnd_a">▸</span></div>
+    <div class="sb" id="rnd">
+      <div class="dl">Background</div>
+      <div class="r" style="align-items:center;gap:6px">
+        <span class="lb">Color</span>
+        <input type="color" id="bgColor" value="#000000" style="width:32px;height:18px;cursor:pointer;flex-shrink:0">
+      </div>
+      <div class="r"><span class="lb">Max Particles</span><input type="range" id="maxP" min="100" max="500000" value="2000" step="100"><span class="vl" id="maxPV">2000</span></div>
+      <div class="r"><span class="lb">Depth of Field</span><input type="range" id="dof" min="0" max="100" value="0"><span class="vl" id="dofV">0</span></div>
+      <div class="r"><span class="lb">Motion Blur</span><input type="range" id="motionBlur" min="0" max="100" value="0" step="1"><span class="vl" id="motionBlurV">0</span></div>
+      <div class="r"><span class="lb">Focal Length</span><input type="range" id="fl" min="100" max="1500" value="450" step="10"><span class="vl" id="flV">450</span></div>
+      <div class="dl">Displacement Field</div>
+      <div class="r"><span class="lb">Strength</span><input type="range" id="dispAmt" min="0" max="300" value="0" step="1"><span class="vl" id="dispAmtV">0</span></div>
+      <div class="r"><span class="lb">Scale</span><input type="range" id="dispScale" min="10" max="2000" value="200" step="10"><span class="vl" id="dispScaleV">200</span></div>
+      <div class="r"><span class="lb">Speed</span><input type="range" id="dispSpd" min="0" max="5" value="0.5" step="0.05"><span class="vl" id="dispSpdV">0.50</span></div>
+    </div>
+
+    <div class="sh" data-s="exp">Export / Render<span id="exp_a">▸</span></div>
+    <div class="sb" id="exp">
+      <div class="dl">Output Size</div>
+      <div class="r"><span class="lb">Width (px)</span><input class="ni" type="number" id="rndW" value="1280" min="100" max="7680" step="1"></div>
+      <div class="r"><span class="lb">Height (px)</span><input class="ni" type="number" id="rndH" value="720" min="100" max="4320" step="1"><button id="btnAutoH" style="margin-left:3px;padding:1px 5px;background:#161622;border:1px solid #252535;border-radius:2px;color:#556;font-size:9px;cursor:pointer" title="アスペクト比から自動計算">Auto</button></div>
+      <div class="dl">Timing</div>
+      <div class="r"><span class="lb">FPS</span>
+        <select id="rndFps" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#aab;font-size:9.5px;padding:1px 3px">
+          <option value="12">12 fps</option>
+          <option value="24">24 fps</option>
+          <option value="30" selected>30 fps</option>
+          <option value="60">60 fps</option>
+        </select>
+      </div>
+      <div class="r"><span class="lb">Duration (s)</span><input class="ni" type="number" id="rndDur" value="10" min="0.1" max="300" step="0.1"></div>
+      <div id="rndFrameCount" style="font-size:9px;color:#446;text-align:right;margin:1px 0 3px">300 frames</div>
+      <div class="dl">Background</div>
+      <div class="r"><span class="lb">BG Type</span>
+        <select id="rndBg" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#aab;font-size:9.5px;padding:1px 3px">
+          <option value="color">Color（不透明）</option>
+          <option value="coloralpha" selected>Color + Alpha（透明PNG）</option>
+        </select>
+      </div>
+      <div class="r" id="rndBgColorRow" style="display:none"><span class="lb">Color</span><input type="color" id="rndBgColor" value="#000000" style="width:38px;height:18px;border:1px solid #333;border-radius:2px;cursor:pointer;padding:0;background:none"></div>
+      <div class="dl">Realtime Recording</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:2px 0 4px">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:9.5px;color:#778">
+          <input type="checkbox" id="recCheck" style="accent-color:#cc3333">
+          <span style="color:#cc4444">● REC</span> リアルタイム録画
+        </label>
+        <span id="recCounter" style="font-size:9px;color:#553;margin-left:auto;display:none">0f</span>
+        <button id="btnRecStop" style="display:none;padding:2px 7px;background:#2a0f0f;border:1px solid #5a1818;border-radius:3px;color:#ff8888;font-size:9px;cursor:pointer">■ 保存</button>
+      </div>
+      <div class="rnd-prog" id="rndProg" style="display:none"><div class="rnd-prog-fill" id="rndProgFill"></div></div>
+      <div class="rnd-label" id="rndProgLabel"></div>
+      <button class="rbtn" id="btnRender">▶ Render &amp; Export ZIP</button>
+      <button class="rbtn stop" id="btnRenderStop" style="display:none">■ Stop</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),cvw=document.getElementById('cvw');
+let W,H;
+function resize(){const r=cvw.getBoundingClientRect();W=cv.width=r.width;H=cv.height=r.height;}
+resize();window.addEventListener('resize',()=>{resize();});
+
+// Emitter world position (absolute, decoupled from existing particles)
+let eX=0,eY=0;
+function s2w(sx,sy){eX=sx-W/2;eY=sy-H/2;}
+
+// ── Noise (trilinear value noise + fBm) ────────────────────────────────────────
+function hsh(a,b,c){const v=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return v-Math.floor(v);}
+function fd(t){return t*t*t*(t*(t*6-15)+10);}
+function lp(a,b,t){return a+t*(b-a);}
+function vn3(x,y,z){
+  const ix=Math.floor(x)|0,iy=Math.floor(y)|0,iz=Math.floor(z)|0;
+  const fx=x-ix,fy=y-iy,fz=z-iz,ux=fd(fx),uy=fd(fy),uz=fd(fz);
+  return lp(
+    lp(lp(hsh(ix,iy,iz),hsh(ix+1,iy,iz),ux),lp(hsh(ix,iy+1,iz),hsh(ix+1,iy+1,iz),ux),uy),
+    lp(lp(hsh(ix,iy,iz+1),hsh(ix+1,iy,iz+1),ux),lp(hsh(ix,iy+1,iz+1),hsh(ix+1,iy+1,iz+1),ux),uy),
+    uz
+  )*2-1;
+}
+function fbm(x,y,z,o,gn){
+  let v=0,a=0.5,f=1;
+  for(let i=0;i<o;i++){v+=a*vn3(x*f,y*f,z*f);a*=gn;f*=2;}
+  return v;
+}
+
+// ── Parameters ────────────────────────────────────────────────────────────────
+const P={
+  pps:30,vel:4,velR:40,dir:'up',emPitch:0,emYaw:0,twirlSpd:2,sprd:50,eSX:0,eSY:0,eSZ:0,emT:'point',
+  burstInt:0,burstDur:1,
+  life:3,lifeR:30,sz:4,szR:40,szC:'ease',fth:70,opa:0.9,spin:0,spinR:50,
+  c1:[255,136,0],c2:[255,34,0],c3:[34,0,0],bld:'lighter',
+  ptType:'sphere',lineLen:40,lineTh:2,lineTaper:1,bbTint:0,bbTintAmt:0.5,gifTint:0,gifTintAmt:0.5,
+  aRes:2,aResR:0,wX:0,wY:0,wZ:0,
+  tAP:0,tSc:100,tEv:1,tOc:3,tOM:0.5,tAR:0,
+  grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
+  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5,cutoutPct:0,bgColor:'#000000',
+  spEnable:false,spTrigDeath:true,spTrigBounce:false,spTrigBirth:false,spTrigLife:false,
+  spCount:8,spRate:20,spDir:'random',spVel:150,spVelR:50,spInhVel:20,spSprd:180,spGrav:0,spARes:10,
+  spShape:'sphere',spSz:3,spSzR:50,spSzC:'ease-out',spLife:1,spLifeR:30,spFth:60,spOpa:0.8,spBld:'inherit',
+  spC1:[255,255,255],spCm:[255,170,0],spC2:[255,68,0]
+};
+
+// Billboard image state
+let bbImg=null, gifImg=null, gifEmitImg=null;
+let dispTime=0;
+const _cutoutQueue=[];
+let subPts=[];
+
+// ── Sub-emitter spawn ─────────────────────────────────────────────────────────
+function spawnSub(x,y,z,pvx,pvy,pvz,count){
+  if(!P.spEnable)return;
+  const inh=P.spInhVel*0.01;
+  const sprdRad=P.spSprd*Math.PI/180;
+  // Direction axis
+  let ax=0,ay=-1,az=0; // default: up
+  if(P.spDir==='down'){ax=0;ay=1;az=0;}
+  else if(P.spDir==='parent'){
+    const pm=Math.sqrt(pvx*pvx+pvy*pvy+pvz*pvz)||1;
+    ax=pvx/pm;ay=pvy/pm;az=pvz/pm;
+  }else if(P.spDir==='outward'){
+    const pm=Math.sqrt(x*x+y*y+z*z)||1;
+    ax=x/pm;ay=y/pm;az=z/pm;
+  }else{ax=0;ay=0;az=0;} // random: no bias axis
+  for(let i=0;i<count;i++){
+    const phi=Math.random()*Math.PI*2;
+    const cosMax=Math.cos(sprdRad);
+    const cosT=1-Math.random()*(1-cosMax);
+    const sinT=Math.sqrt(1-cosT*cosT);
+    let dx,dy,dz;
+    if(P.spDir==='random'){
+      // 完全ランダム球面
+      dx=sinT*Math.cos(phi);
+      dy=cosT*(Math.random()<0.5?1:-1);
+      dz=sinT*Math.sin(phi);
+    }else{
+      // axis 周りのコーン
+      // axis に垂直な基底を作る
+      let bx=1,by=0,bz=0;
+      if(Math.abs(ax)>0.9){bx=0;by=1;bz=0;}
+      // cross(axis, b)
+      const tx=ay*bz-az*by,ty=az*bx-ax*bz,tz=ax*by-ay*bx;
+      const tl=Math.sqrt(tx*tx+ty*ty+tz*tz)||1;
+      const ex=tx/tl,ey=ty/tl,ez=tz/tl;
+      // cross(axis, e)
+      const fx=ay*ez-az*ey,fy=az*ex-ax*ez,fz=ax*ey-ay*ex;
+      const cp=Math.cos(phi),sp2=Math.sin(phi);
+      dx=sinT*(cp*ex+sp2*fx)+cosT*ax;
+      dy=sinT*(cp*ey+sp2*fy)+cosT*ay;
+      dz=sinT*(cp*ez+sp2*fz)+cosT*az;
+    }
+    const vMag=P.spVel*(1+(Math.random()*2-1)*P.spVelR*0.01);
+    const ls=Math.max(0.05,P.spLife*(1+(Math.random()*2-1)*P.spLifeR*0.01));
+    const sz=Math.max(0.1,P.spSz*(1+(Math.random()*2-1)*P.spSzR*0.01)*0.5);
+    subPts.push({x,y,z,vx:dx*vMag+pvx*inh,vy:dy*vMag+pvy*inh,vz:dz*vMag+pvz*inh,
+      ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,spAccum:0});
+  }
+}
+
+// ── Billboard Emitter ─────────────────────────────────────────────────────────
+let bbEmitPx=[];  // [{nx,ny}] normalised pixel coords of opaque pixels (−0.5…+0.5)
+let bbEmitAlphaThresh=10;
+
+function sampleBBEmitImage(img, thresh){
+  const oc=document.createElement('canvas');
+  const sz=Math.min(img.naturalWidth,img.naturalHeight,512);
+  oc.width=img.naturalWidth; oc.height=img.naturalHeight;
+  const ox=oc.getContext('2d');
+  ox.drawImage(img,0,0);
+  const d=ox.getImageData(0,0,oc.width,oc.height).data;
+  const px=[];
+  for(let y=0;y<oc.height;y++){
+    for(let x=0;x<oc.width;x++){
+      const a=d[(y*oc.width+x)*4+3];
+      if(a>thresh){
+        px.push({nx:(x/oc.width)-0.5, ny:(y/oc.height)-0.5});
+      }
+    }
+  }
+  // Subsample to max 8000 points for performance
+  if(px.length>8000){
+    const step=Math.ceil(px.length/8000);
+    bbEmitPx=px.filter((_,i)=>i%step===0);
+  }else{
+    bbEmitPx=px;
+  }
+}
+
+const pts=[];
+let time=0,lastT=0,accum=0,cycleT=0;
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function sol(t,c){
+  switch(c){
+    case'linear':return Math.max(0,1-t);
+    case'ease':return Math.max(0,Math.pow(1-t,2.5));
+    case'hold':return t<.72?1:Math.max(0,(1-t)/.28);
+    case'bell':return Math.max(0,Math.sin(t*Math.PI));
+    case'grow':return t<.2?t/.2:Math.max(0,Math.pow((1-t)/.8,.9));
+    case'late':return t<.75?1-t*.2:Math.max(0,(1-t)/.25);
+    default:return Math.max(0,1-t);
+  }
+}
+function colOL(t){
+  const[r1,g1,b1]=P.c1,[r2,g2,b2]=P.c2,[r3,g3,b3]=P.c3;
+  const u=t<.5?t*2:(t-.5)*2;
+  const[rA,gA,bA]=t<.5?[r1,g1,b1]:[r2,g2,b2];
+  const[rB,gB,bB]=t<.5?[r2,g2,b2]:[r3,g3,b3];
+  return[(rA*(1-u)+rB*u)|0,(gA*(1-u)+gB*u)|0,(bA*(1-u)+bB*u)|0];
+}
+function randDir(){
+  const sp=P.sprd*Math.PI/180;
+  const pitch=P.emPitch*Math.PI/180;
+  const yaw=P.emYaw*Math.PI/180;
+  // base axis rotated by pitch/yaw: default axis is -Y (upward)
+  const cpitch=Math.cos(pitch),spitch=Math.sin(pitch);
+  const cyaw=Math.cos(yaw),syaw=Math.sin(yaw);
+  // axis direction after pitch(rotate around X) then yaw(rotate around Y)
+  const axX=spitch*syaw, axY=-cpitch, axZ=spitch*cyaw;
+
+  if(P.dir==='uniform'||sp>=Math.PI-.001){
+    const u=Math.random()*Math.PI*2,v=Math.acos(2*Math.random()-1);
+    return[Math.sin(v)*Math.cos(u),Math.sin(v)*Math.sin(u),Math.cos(v)];
+  }
+  if(P.dir==='outward'){
+    // Shockwave: radiate uniformly in the plane perpendicular to the emission axis.
+    // Pitch/Yaw tilt the plane. Spread adds a cone angle around that plane.
+    // Perpendicular basis of the axis:
+    const px=-syaw, py=0, pz=cyaw;                                   // right vector
+    const qx=axY*pz-axZ*py, qy=axZ*px-axX*pz, qz=axX*py-axY*px;    // up vector (in-plane)
+    const qLen=Math.sqrt(qx*qx+qy*qy+qz*qz)||1;
+    const qnx=qx/qLen, qny=qy/qLen, qnz=qz/qLen;
+    // Random angle around the circle in that plane
+    const a=Math.random()*Math.PI*2;
+    const baseX=Math.cos(a)*px+Math.sin(a)*qnx;
+    const baseY=Math.cos(a)*py+Math.sin(a)*qny;
+    const baseZ=Math.cos(a)*pz+Math.sin(a)*qnz;
+    // Spread: tilt away from the plane toward the axis by spread/2 at most
+    const halfSp=sp/2;
+    const tilt=(Math.random()-.5)*halfSp;  // signed tilt (-halfSp … +halfSp)
+    const ct=Math.cos(tilt),st=Math.sin(tilt);
+    return[baseX*ct+axX*st, baseY*ct+axY*st, baseZ*ct+axZ*st];
+  }
+  const cosMax=Math.cos(sp/2),cosA=cosMax+(1-cosMax)*Math.random();
+  const sinA=Math.sqrt(1-cosA*cosA),ang=Math.random()*Math.PI*2;
+  // local frame: perpendicular to axis
+  const px=-syaw, py=0, pz=cyaw;
+  const qx=axY*pz-axZ*py, qy=axZ*px-axX*pz, qz=axX*py-axY*px;
+  const lx=sinA*Math.cos(ang),lz=sinA*Math.sin(ang);
+  if(P.dir==='up')  return[lx*px+lz*qx+cosA*axX, lx*py+lz*qy+cosA*axY, lx*pz+lz*qz+cosA*axZ];
+  if(P.dir==='down') return[lx*px+lz*qx-cosA*axX, lx*py+lz*qy-cosA*axY, lx*pz+lz*qz-cosA*axZ];
+  if(P.dir==='twirl'){
+    // cone around axis, twirl phase stored on particle at spawn via rndV
+    return[lx*px+lz*qx+cosA*axX, lx*py+lz*qy+cosA*axY, lx*pz+lz*qz+cosA*axZ];
+  }
+  return[lx*px+lz*qx+cosA*axX, lx*py+lz*qy+cosA*axY, lx*pz+lz*qz+cosA*axZ];
+}
+function hexRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+
+// ── Spawn ─────────────────────────────────────────────────────────────────────
+function spawnOffset(){
+  let ox=0,oy=0,oz=0;
+  if(P.emT==='box'){
+    ox=(Math.random()-.5)*P.eSX;
+    oy=(Math.random()-.5)*P.eSY;
+    oz=(Math.random()-.5)*P.eSZ;
+  }else if(P.emT==='sphere'){
+    // uniform fill inside ellipsoid
+    const u=Math.random()*Math.PI*2,v=Math.acos(2*Math.random()-1),r=Math.cbrt(Math.random());
+    ox=r*(P.eSX*.5)*Math.sin(v)*Math.cos(u);
+    oy=r*(P.eSY*.5)*Math.sin(v)*Math.sin(u);
+    oz=r*(P.eSZ*.5)*Math.cos(v);
+  }else if(P.emT==='bbEmit'&&bbEmitPx.length>0){
+    const p2=bbEmitPx[Math.floor(Math.random()*bbEmitPx.length)];
+    ox=p2.nx*P.eSX;
+    oy=p2.ny*P.eSY;
+    oz=(Math.random()-.5)*P.eSZ;
+  }else if(P.emT==='gifEmit'&&bbEmitPx.length>0){
+    // GIF emitter uses the same sampled pixel array (sampleBBEmitImage handles it)
+    const p2=bbEmitPx[Math.floor(Math.random()*bbEmitPx.length)];
+    ox=p2.nx*P.eSX;
+    oy=p2.ny*P.eSY;
+    oz=(Math.random()-.5)*P.eSZ;
+  }
+  // Point: no offset, always (0,0,0)
+  return[ox,oy,oz];
+}
+// ── Star & DustBlob draw helpers ─────────────────────────────────────────────
+function drawStar(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR){
+  // Per-particle variation: rndV 0=compact/round  1=long/spikey
+  const rv=p.rndV;
+  const topL  =renderSz*(1.0+rv*0.45);  // top spike   1.0x … 1.45x
+  const botL  =renderSz*(0.95+rv*0.35); // bottom spike 0.95x … 1.3x
+  const sideL =renderSz*(0.88+rv*0.22); // side spikes  0.88x … 1.1x
+  const coreR =renderSz*Math.max(0.08, 0.22-rv*0.10); // core circle
+  const hw    =renderSz*(0.07+rv*0.02); // half-width of spike base
+
+  cx.save();
+  cx.translate(sx,sy);
+  cx.rotate(p.rot);
+
+  function spike(x0,y0,x1,y1,x2,y2){
+    cx.beginPath();cx.moveTo(x0,y0);cx.lineTo(x1,y1);cx.lineTo(x2,y2);cx.closePath();cx.fill();
+  }
+
+  if(fthR>.1&&renderSz>2){
+    // Outer glow layer
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.18})`;
+    const gf=1.35;
+    spike(0,-topL*gf, hw*gf,-coreR*gf, -hw*gf,-coreR*gf);
+    spike(0, botL*gf, hw*gf, coreR*gf, -hw*gf, coreR*gf);
+    spike( sideL*gf,0,  coreR*gf, hw*gf,  coreR*gf,-hw*gf);
+    spike(-sideL*gf,0, -coreR*gf, hw*gf, -coreR*gf,-hw*gf);
+    cx.beginPath();cx.arc(0,0,coreR*gf,0,Math.PI*2);cx.fill();
+    // Mid layer
+    const mf=1.0;
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.55})`;
+    spike(0,-topL*mf, hw,-coreR, -hw,-coreR);
+    spike(0, botL*mf, hw, coreR, -hw, coreR);
+    spike( sideL,0,  coreR, hw,  coreR,-hw);
+    spike(-sideL,0, -coreR, hw, -coreR,-hw);
+    cx.beginPath();cx.arc(0,0,coreR,0,Math.PI*2);cx.fill();
+    // Core bright layer
+    const cf=1-fthR*0.55;
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+    spike(0,-topL*cf, hw*0.7,-coreR*0.7, -hw*0.7,-coreR*0.7);
+    spike(0, botL*cf, hw*0.7, coreR*0.7, -hw*0.7, coreR*0.7);
+    spike( sideL*cf,0,  coreR*0.7, hw*0.7,  coreR*0.7,-hw*0.7);
+    spike(-sideL*cf,0, -coreR*0.7, hw*0.7, -coreR*0.7,-hw*0.7);
+    cx.beginPath();cx.arc(0,0,coreR*0.55,0,Math.PI*2);cx.fill();
+  }else{
+    cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+    spike(0,-topL, hw,-coreR, -hw,-coreR);
+    spike(0, botL, hw, coreR, -hw, coreR);
+    spike( sideL,0,  coreR, hw,  coreR,-hw);
+    spike(-sideL,0, -coreR, hw, -coreR,-hw);
+    cx.beginPath();cx.arc(0,0,coreR,0,Math.PI*2);cx.fill();
+  }
+  cx.restore();
+}
+
+function drawDustBlob(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR){
+  // 3 overlapping circles, arrangement rotated by rndV
+  const rv=p.rndV;
+  const baseAng=rv*Math.PI*0.7;  // cluster rotation varies per particle
+  const r0=renderSz*0.72;
+  const r1=renderSz*(0.54+rv*0.14);
+  const r2=renderSz*(0.50+(1-rv)*0.14);
+  const sep=renderSz*0.42;
+
+  // blob positions: top-center + two lower offset
+  const blobs=[
+    {ox:0,               oy:-renderSz*0.18, rad:r0},
+    {ox: Math.cos(baseAng+Math.PI*0.75)*sep,  oy: Math.sin(baseAng+Math.PI*0.75)*sep+renderSz*0.18,  rad:r1},
+    {ox: Math.cos(baseAng+Math.PI*1.35)*sep*0.9, oy: Math.sin(baseAng+Math.PI*1.35)*sep*0.9+renderSz*0.18, rad:r2},
+  ];
+
+  cx.save();
+  cx.translate(sx,sy);
+  cx.rotate(p.rot);
+
+  for(const b3 of blobs){
+    if(fthR>.1&&renderSz>2){
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.18})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad,0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*0.52})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad*(1-fthR*0.5),0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad*(1-fthR*0.85),0,Math.PI*2);cx.fill();
+    }else{
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(b3.ox,b3.oy,b3.rad,0,Math.PI*2);cx.fill();
+    }
+  }
+  cx.restore();
+}
+
+function spawn(){
+  const[dx,dy,dz]=randDir();
+  const vr=1+(Math.random()-.5)*P.velR*.02,v=P.vel*vr;
+  const[ox,oy,oz]=spawnOffset();
+  const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
+  const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
+  const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
+  const twirlPhase=Math.random()*Math.PI*2;
+  pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[],flickerPhase:Math.random()*Math.PI*2,flickerFreq:0.5+Math.random(),flickTimer:Math.random(),flickVisible:true,isCutout:Math.random()*100<P.cutoutPct});
+  // On Birth
+  if(P.spEnable&&P.spTrigBirth) spawnSub(eX+ox,eY+oy,oz,dx*v,dy*v,dz*v,P.spCount|0);
+}
+
+// ── Update ────────────────────────────────────────────────────────────────────
+function update(dt){
+  dispTime+=dt*P.dispSpd;
+  let shouldEmit=true;
+  const bi=P.burstInt,bd=P.burstDur;
+  if(bi>0){
+    cycleT+=dt;
+    const cycleLen=bd+bi;
+    if(cycleT>=cycleLen)cycleT-=Math.floor(cycleT/cycleLen)*cycleLen;
+    shouldEmit=cycleT<bd;
+    // update progress bar
+    const bar=document.getElementById('cycleBar');
+    const fill=document.getElementById('cycleBarFill');
+    bar.style.display='block';
+    if(shouldEmit){
+      fill.style.background='#4466ee';
+      fill.style.width=(cycleT/bd*100).toFixed(1)+'%';
+      bar.title='発射中 '+(cycleT).toFixed(2)+'s / '+bd+'s';
+    }else{
+      fill.style.background='#332244';
+      const waitPct=((cycleT-bd)/bi*100).toFixed(1);
+      fill.style.width=waitPct+'%';
+      bar.title='待機中 '+(cycleT-bd).toFixed(2)+'s / '+bi+'s';
+    }
+  }else{
+    cycleT=0;
+    document.getElementById('cycleBar').style.display='none';
+    shouldEmit=true;
+  }
+
+  if(shouldEmit){
+    accum+=P.pps*dt;
+    const n=Math.min(Math.floor(accum), Math.max(200, P.pps|0));
+    accum-=n;
+    for(let i=0;i<n&&pts.length<P.maxP;i++)spawn();
+  }else{
+    accum=0;
+  }
+
+  const sc=Math.max(1,P.tSc);
+  const ap=P.tAP*dt*0.22;
+  const oct=P.tOc|0;
+  const flrWY=H*(P.flrY*.01-.5);
+  const dragV=Math.exp(-P.aRes*0.12*dt);
+  const dragR=P.aResR>0?Math.exp(-P.aResR*0.12*dt):1;
+  const tEv=P.tEv,tOM=P.tOM,tAR=P.tAR;
+  const wXd=P.wX*dt*4,wYd=P.wY*dt*4,wZd=P.wZ*dt*4;
+  const gd=P.grav*dt*0.0003*60;
+
+  for(let i=pts.length-1;i>=0;i--){
+    const p=pts[i];
+    // Air resistance (exponential drag)
+    p.vx*=dragV; p.vy*=dragV; p.vz*=dragV;
+    if(P.aResR>0) p.ss*=dragR;
+    // Wind
+    p.vx+=wXd; p.vy+=wYd; p.vz+=wZd;
+    // Gravity
+    p.vy+=gd;
+    // Turbulence (spatial fBm field, position-sampled)
+    if(ap>0){
+      const tx=p.x/sc,ty=p.y/sc,tz=p.z/sc+time*tEv;
+      p.vx+=fbm(tx,   ty,   tz,   oct,tOM)*ap;
+      p.vy+=fbm(tx+50,ty+50,tz,   oct,tOM)*ap;
+      p.vz+=fbm(tx+100,ty+100,tz, oct,tOM)*ap;
+      if(tAR>0) p.rot+=fbm(tx+200,ty+200,tz,oct,tOM)*tAR*dt*2.5;
+    }
+    // Twirl rotation around emission axis
+    if(P.dir==='twirl'){
+      const spd=P.twirlSpd;
+      p.twirlPhase=(p.twirlPhase||0)+spd*dt*Math.PI*2;
+      const pitch=P.emPitch*Math.PI/180,yaw=P.emYaw*Math.PI/180;
+      const cpitch=Math.cos(pitch),spitch2=Math.sin(pitch);
+      const cyaw=Math.cos(yaw),syaw=Math.sin(yaw);
+      const axX=spitch2*syaw,axY=-cpitch,axZ=spitch2*cyaw;
+      const axLen=Math.sqrt(axX*axX+axY*axY+axZ*axZ)||1;
+      const ux=axX/axLen,uy=axY/axLen,uz=axZ/axLen;
+      const speed=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.0001;
+      const c=Math.cos(spd*dt*0.15),s2=Math.sin(spd*dt*0.15);
+      const dot=p.vx*ux+p.vy*uy+p.vz*uz;
+      const cx2=p.vx*c+((uy*p.vz-uz*p.vy)*s2)+(ux*dot*(1-c));
+      const cy2=p.vy*c+((uz*p.vx-ux*p.vz)*s2)+(uy*dot*(1-c));
+      const cz2=p.vz*c+((ux*p.vy-uy*p.vx)*s2)+(uz*dot*(1-c));
+      p.vx=cx2;p.vy=cy2;p.vz=cz2;
+    }
+    // Trail recording (position BEFORE this frame's integration)
+    if(P.motionBlur>0){
+      const maxLen=Math.ceil(P.motionBlur*0.8)+2;
+      p.trail.push(p.x,p.y,p.z);
+      if(p.trail.length>maxLen*3) p.trail.splice(0,3);
+    }else if(p.trail.length){
+      p.trail.length=0;
+    }
+    // ── Flicker timer update ──────────────────────────────────────────────────
+    if(P.flickerSpd>0){
+      p.flickTimer-=dt*P.flickerSpd;
+      if(p.flickTimer<=0){
+        // ランダムな間隔でON/OFFを切り替える
+        p.flickVisible=Math.random()>P.flickerRand*0.07;
+        // 次の切り替えまでのランダム待機時間（パーティクルごとにバラバラ）
+        p.flickTimer=0.05+Math.random()*0.8;
+      }
+    }else{
+      p.flickVisible=true;
+    }
+    const ps=dt*60;
+    p.x+=p.vx*ps; p.y+=p.vy*ps; p.z+=p.vz*ps;
+    p.rot+=p.ss*dt*2;
+    // Floor bounce
+    if(P.flrOn&&p.y>flrWY){
+      p.y=flrWY;
+      const br=P.bnce*.01*(1+(Math.random()-.5)*P.bnceR*.02);
+      p.vy*=-br; p.vx*=1-P.frct*.01; p.vz*=1-P.frct*.01;
+      // On Bounce
+      if(P.spEnable&&P.spTrigBounce) spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,P.spCount|0);
+    }
+    // Over Life（生存中に連続放出）
+    if(P.spEnable&&P.spTrigLife){
+      p.spAccum=(p.spAccum||0)+dt*P.spRate;
+      while(p.spAccum>=1){spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,1);p.spAccum-=1;}
+    }
+    p.li-=dt;
+    if(p.li<=0){
+      // On Death
+      if(P.spEnable&&P.spTrigDeath) spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,P.spCount|0);
+      pts.splice(i,1);
+    }
+  }
+}
+
+// ── Sub-particle update ───────────────────────────────────────────────────────
+function updateSub(dt){
+  if(!subPts.length)return;
+  const ps=dt*60;
+  const dragV=Math.pow(Math.max(0,1-P.spARes*0.01),ps);
+  const gd=(P.spGrav||0)*dt;
+  const ap=P.tAP*0.1,sc=P.tSc||1;
+  const wXd=P.wX*dt,wYd=P.wY*dt,wZd=P.wZ*dt;
+  const flrWY=P.flrOn?(H/2*(P.flrY*.02-1)):Infinity;
+  for(let i=subPts.length-1;i>=0;i--){
+    const p=subPts[i];
+    p.vx*=dragV; p.vy*=dragV; p.vz*=dragV;
+    p.vx+=wXd; p.vy+=wYd+gd; p.vz+=wZd;
+    if(ap>0){
+      const tx=p.x/sc,ty=p.y/sc,tz=p.z/sc+time*P.tEv;
+      p.vx+=fbm(tx,ty,tz,3,0.5)*ap;
+      p.vy+=fbm(tx+50,ty+50,tz,3,0.5)*ap;
+      p.vz+=fbm(tx+100,ty+100,tz,3,0.5)*ap;
+    }
+    p.x+=p.vx*ps; p.y+=p.vy*ps; p.z+=p.vz*ps;
+    p.rot+=dt;
+    if(P.flrOn&&p.y>flrWY){p.y=flrWY;p.vy*=-(P.bnce*.005);}
+    p.li-=dt;
+    if(p.li<=0)subPts.splice(i,1);
+  }
+}
+const SPR=document.createElement('canvas');
+SPR.width=SPR.height=64;
+(()=>{const s=SPR.getContext('2d'),g=s.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.4,'rgba(255,255,255,0.85)');g.addColorStop(1,'rgba(255,255,255,0)');
+  s.fillStyle=g;s.beginPath();s.arc(32,32,32,0,Math.PI*2);s.fill();})();
+
+// ── Per-particle shape drawing helper ────────────────────────────────────────
+function drawParticleShape(cx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,CW,CH){
+  if(ptType==='sphere'){
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);
+    if(fthR>.1&&renderSz>1.5){
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*.18})`;
+      cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA*.5})`;
+      cx.beginPath();cx.arc(0,0,Math.max(.1,renderSz*(1-fthR*.6)),0,Math.PI*2);cx.fill();
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(0,0,Math.max(.1,renderSz*(1-fthR*.88)),0,Math.PI*2);cx.fill();
+    }else{
+      cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+      cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
+    }
+    cx.restore();
+  }else if(ptType==='line'){
+    const dz=FL+p.z;if(dz<8)return;
+    const s=FL/dz;
+    const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.0001;
+    const szF=renderSz/(p.sz*s||1);
+    const lenScale=P.lineLen*szF;
+    const tx0=p.x-(p.vx/spd)*lenScale,ty0=p.y-(p.vy/spd)*lenScale,tz0=p.z-(p.vz/spd)*lenScale;
+    const dz0=FL+tz0;if(dz0<8)return;
+    const s0=FL/dz0;
+    const sx0=CW/2+tx0*s0,sy0=CH/2+ty0*s0;
+    const thk=Math.max(.2,P.lineTh*s*szF);
+    cx.save();
+    if(P.lineTaper){
+      const grd=cx.createLinearGradient(sx0,sy0,sx,sy);
+      grd.addColorStop(0,`rgba(${r},${g},${b},0)`);
+      grd.addColorStop(1,`rgba(${r},${g},${b},${renderA})`);
+      cx.strokeStyle=grd;
+    }else{cx.strokeStyle=`rgba(${r},${g},${b},${renderA})`;}
+    cx.lineWidth=thk;cx.lineCap='round';
+    cx.beginPath();cx.moveTo(sx0,sy0);cx.lineTo(sx,sy);cx.stroke();
+    cx.restore();
+  }else if(ptType==='star'){
+    drawStar(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
+  }else if(ptType==='dustblob'){
+    drawDustBlob(cx,p,sx,sy,renderSz,renderA,r,g,b,fthR);
+  }else if(ptType==='billboard'&&bbImg){
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);cx.globalAlpha=renderA;
+    cx.drawImage(bbImg,-renderSz,-renderSz,renderSz*2,renderSz*2);
+    if(P.bbTint&&P.bbTintAmt>0){
+      cx.globalCompositeOperation='source-atop';
+      cx.globalAlpha=P.bbTintAmt*renderA;
+      cx.fillStyle=`rgb(${r},${g},${b})`;
+      cx.fillRect(-renderSz,-renderSz,renderSz*2,renderSz*2);
+      cx.globalCompositeOperation=P.bld;
+    }
+    cx.restore();
+  }else if(ptType==='gifanim'&&gifImg){
+    // ブラウザが <img> のフレームを自動更新するのでそのまま drawImage するだけ
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);cx.globalAlpha=renderA;
+    cx.drawImage(gifImg,-renderSz,-renderSz,renderSz*2,renderSz*2);
+    if(P.gifTint&&P.gifTintAmt>0){
+      cx.globalCompositeOperation='source-atop';
+      cx.globalAlpha=P.gifTintAmt*renderA;
+      cx.fillStyle=`rgb(${r},${g},${b})`;
+      cx.fillRect(-renderSz,-renderSz,renderSz*2,renderSz*2);
+      cx.globalCompositeOperation=P.bld;
+    }
+    cx.restore();
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  const FL=P.fl;
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle=P.bgColor;
+  ctx.fillRect(0,0,W,H);
+
+  if(P.flrOn){
+    const fy=H/2+H*(P.flrY*.01-.5);
+    ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=.5;
+    ctx.setLineDash([4,8]);
+    ctx.beginPath();ctx.moveTo(0,fy);ctx.lineTo(W,fy);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  pts.sort((a,b)=>b.z-a.z);
+  ctx.globalCompositeOperation=P.bld;
+
+  const dof=P.dof*.01,fthR=P.fth*.01,opa=P.opa;
+  const ptType=P.ptType;
+  const mbOn=P.motionBlur>0;
+  const MB_GHOST_N=6; // fixed ghost count — cost constant regardless of slider
+  const mbSpread=P.motionBlur*0.8; // kept for reference
+
+  for(const p of pts){
+    const t=1-(p.li/p.ml);
+    const szF=sol(t,P.szC);
+    if(szF<.005)continue;
+    const dz=FL+p.z;
+    if(dz<8)continue;
+    const s=FL/dz;
+    let sx=W/2+p.x*s,sy=H/2+p.y*s;
+    if(sx<-400||sx>W+400||sy<-400||sy>H+400)continue;
+    const fs=p.sz*szF*s;
+    if(fs<.04)continue;
+    const[r,g,b]=colOL(t);
+
+    // ── Displacement Field (render-time, visual only) ─────────────────────────
+    if(P.dispAmt>0){
+      const sc=1/P.dispScale;
+      sx+=fbm(sx*sc,        sy*sc,        dispTime,   3,0.5)*P.dispAmt;
+      sy+=fbm(sx*sc+31.71,  sy*sc+17.39,  dispTime,   3,0.5)*P.dispAmt;
+    }
+
+    let renderSz=fs,renderA=opa;
+    if(dof>0){
+      const zDiff=Math.abs(p.z);
+      const blur=1+zDiff*dof*.003;
+      renderSz*=blur; renderA/=blur;
+    }
+    renderA=Math.min(1,renderA);
+
+    // ── Flicker ───────────────────────────────────────────────────────────────
+    if(P.flickerSpd>0 && p.flickVisible===false) continue;
+
+    // ── Motion Blur: Catmull-Rom spline trail ─────────────────────────────────
+    if(mbOn && p.trail.length>=6){
+      const trail=p.trail;
+      const n=trail.length/3|0;
+      // project all recorded world positions to screen
+      const sp=[];
+      for(let i=0;i<n;i++){
+        const dzt=FL+trail[i*3+2]; if(dzt<8)continue;
+        const st=FL/dzt;
+        sp.push(W/2+trail[i*3]*st, H/2+trail[i*3+1]*st);
+      }
+      sp.push(sx,sy); // append current head
+      const m=sp.length>>1;
+      if(m>=2){
+        ctx.save();
+        ctx.lineCap='round';
+        ctx.lineJoin='round';
+        ctx.lineWidth=Math.max(renderSz*1.8, 1);
+        // Draw Catmull-Rom as one continuous path, colour per-segment gradient
+        // But to keep transparency smooth without overdraw artifacts,
+        // draw ONE path with a single linear gradient tail→head
+        const tx0=sp[0],ty0=sp[1],txN=sp[(m-1)*2],tyN=sp[(m-1)*2+1];
+        const grd=ctx.createLinearGradient(tx0,ty0,txN,tyN);
+        grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
+        grd.addColorStop(0.3, `rgba(${r},${g},${b},${renderA*0.05})`);
+        grd.addColorStop(0.6, `rgba(${r},${g},${b},${renderA*0.4})`);
+        grd.addColorStop(0.85,`rgba(${r},${g},${b},${renderA*0.8})`);
+        grd.addColorStop(1,   `rgba(${r},${g},${b},${renderA*0.92})`);
+        ctx.strokeStyle=grd;
+        ctx.beginPath();
+        ctx.moveTo(sp[0],sp[1]);
+        // Catmull-Rom: each segment uses 4 control points
+        for(let i=0;i<m-1;i++){
+          const p0x=sp[Math.max(i-1,0)*2],   p0y=sp[Math.max(i-1,0)*2+1];
+          const p1x=sp[i*2],                  p1y=sp[i*2+1];
+          const p2x=sp[(i+1)*2],              p2y=sp[(i+1)*2+1];
+          const p3x=sp[Math.min(i+2,m-1)*2], p3y=sp[Math.min(i+2,m-1)*2+1];
+          // convert Catmull-Rom to cubic bezier
+          const cp1x=p1x+(p2x-p0x)/6;
+          const cp1y=p1y+(p2y-p0y)/6;
+          const cp2x=p2x-(p3x-p1x)/6;
+          const cp2y=p2y-(p3y-p1y)/6;
+          ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,p2x,p2y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ── Main particle ─────────────────────────────────────────────────────────
+    if(p.isCutout){
+      ctx.globalCompositeOperation='destination-out';
+      drawParticleShape(ctx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,W,H);
+      ctx.globalCompositeOperation=P.bld;
+    }else{
+      drawParticleShape(ctx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,W,H);
+    }
+  }
+
+  // ── Cutout pass: punch holes through everything drawn so far ─────────────────
+  if(_cutoutQueue.length>0){
+    ctx.globalCompositeOperation='destination-out';
+    for(const q of _cutoutQueue){
+      drawParticleShape(ctx,ptType,q.p,q.sx,q.sy,q.renderSz,q.renderA,q.r,q.g,q.b,fthR,FL,W,H);
+    }
+    _cutoutQueue.length=0;
+    ctx.globalCompositeOperation=P.bld;
+  }
+
+  // ── Sub-particles render ──────────────────────────────────────────────────────
+  if(subPts.length>0){
+    const spBld=P.spBld==='inherit'?P.bld:P.spBld;
+    ctx.globalCompositeOperation=spBld;
+    const spFthR=P.spFth*0.01;
+    const c1=P.spC1,cm=P.spCm,c2=P.spC2;
+    for(const p of subPts){
+      const t=1-(p.li/p.ml);
+      const dz=FL+p.z; if(dz<8)continue;
+      const s=FL/dz;
+      const sx=W/2+p.x*s,sy=H/2+p.y*s;
+      if(sx<-400||sx>W+400||sy<-400||sy>H+400)continue;
+      const fs=p.sz*s; if(fs<0.04)continue;
+      // Color Birth→Mid→End
+      let r,g,b;
+      if(t<0.5){const f=t*2;r=Math.round(c1[0]+(cm[0]-c1[0])*f);g=Math.round(c1[1]+(cm[1]-c1[1])*f);b=Math.round(c1[2]+(cm[2]-c1[2])*f);}
+      else{const f=(t-0.5)*2;r=Math.round(cm[0]+(c2[0]-cm[0])*f);g=Math.round(cm[1]+(c2[1]-cm[1])*f);b=Math.round(cm[2]+(c2[2]-cm[2])*f);}
+      // Size over Life
+      let szF;
+      if(P.spSzC==='ease-out')szF=Math.pow(1-t,0.4);
+      else if(P.spSzC==='ease-in')szF=Math.pow(t,0.4);
+      else if(P.spSzC==='linear')szF=1-t;
+      else szF=1; // constant
+      const renderSz=fs*szF; if(renderSz<0.04)continue;
+      const renderA=Math.min(1,P.spOpa*(1-Math.pow(t,2)));
+      if(renderA<0.005)continue;
+      // Shape
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(p.rot);
+      if(P.spShape==='star'){
+        // 簡易星形
+        const pts2=5,inner=renderSz*0.4;
+        ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+        ctx.beginPath();
+        for(let k=0;k<pts2*2;k++){
+          const a=k*Math.PI/pts2-Math.PI/2;
+          const rr=k%2===0?renderSz:inner;
+          k===0?ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr):ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+        }
+        ctx.closePath();ctx.fill();
+      }else if(P.spShape==='line'){
+        const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.001;
+        const lx=-(p.vx/spd)*renderSz*1.5,ly=-(p.vy/spd)*renderSz*1.5;
+        ctx.strokeStyle=`rgba(${r},${g},${b},${renderA})`;
+        ctx.lineWidth=Math.max(0.5,renderSz*0.4);ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(0,0);ctx.stroke();
+      }else{
+        // sphere
+        if(spFthR>0.1&&renderSz>1.5){
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA*0.18})`;
+          ctx.beginPath();ctx.arc(0,0,renderSz,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA*0.5})`;
+          ctx.beginPath();ctx.arc(0,0,Math.max(0.1,renderSz*(1-spFthR*0.6)),0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+          ctx.beginPath();ctx.arc(0,0,Math.max(0.1,renderSz*(1-spFthR*0.88)),0,Math.PI*2);ctx.fill();
+        }else{
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+          ctx.beginPath();ctx.arc(0,0,renderSz,0,Math.PI*2);ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation=P.bld;
+  }
+
+  // Emitter crosshair
+  ctx.globalCompositeOperation='source-over';
+  ctx.globalAlpha=1;
+  const s0=FL/(FL+0);
+  const ex0=W/2+eX*s0,ey0=H/2+eY*s0;
+  ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=.5;
+  ctx.beginPath();
+  ctx.moveTo(ex0-10,ey0);ctx.lineTo(ex0+10,ey0);
+  ctx.moveTo(ex0,ey0-10);ctx.lineTo(ex0,ey0+10);
+  ctx.stroke();
+  ctx.beginPath();ctx.arc(ex0,ey0,4,0,Math.PI*2);ctx.stroke();
+
+  document.getElementById('pi').textContent=pts.length+' / '+P.maxP+' particles';
+}
+
+// ── Loop ──────────────────────────────────────────────────────────────────────
+function loop(now){
+  if(!lastT)lastT=now;
+  const dt=Math.min((now-lastT)/1000,.05);
+  lastT=now; time+=dt;
+  update(dt); updateSub(dt); render();
+  tryRecFrame();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Fullscreen ───────────────────────────────────────────────────────────────────
+function enterFullscreen(){
+  const el=document.documentElement;
+  if(el.requestFullscreen)el.requestFullscreen();
+  else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+}
+function exitFs(){
+  if(document.exitFullscreen)document.exitFullscreen();
+  else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+}
+document.getElementById('btnFullscreen').addEventListener('click',enterFullscreen);
+// 右クリックで終了（コンテキストメニュー抑制）
+document.addEventListener('contextmenu',e=>{
+  if(document.fullscreenElement||document.webkitFullscreenElement){e.preventDefault();exitFs();}
+});
+// ESCはブラウザが自動処理するが fullscreenchange で hint を同期
+document.addEventListener('fullscreenchange',onFsChange);
+document.addEventListener('webkitfullscreenchange',onFsChange);
+function onFsChange(){
+  const inFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  // パネル・UI・テキスト全て非表示
+  document.getElementById('pn').style.display=inFs?'none':'';
+  document.getElementById('hint').style.display=inFs?'none':'';
+  document.getElementById('pi').style.display=inFs?'none':'';
+  document.getElementById('toast').style.display=inFs?'none':'';
+  document.documentElement.style.cursor=inFs?'none':'';
+  document.getElementById('cv').style.cursor=inFs?'none':'crosshair';
+  document.getElementById('cvw').style.cursor=inFs?'none':'crosshair';
+}
+
+// ── Mouse / Touch ─────────────────────────────────────────────────────────────
+let drag=false;
+function gp(e,t){const r=cv.getBoundingClientRect(),s=t||e;return[(s.clientX-r.left)*(W/r.width),(s.clientY-r.top)*(H/r.height)];}
+cv.addEventListener('mousedown',e=>{drag=true;document.getElementById('hint').style.opacity='0';s2w(...gp(e));});
+cv.addEventListener('mousemove',e=>{if(drag)s2w(...gp(e));});
+['mouseup','mouseleave'].forEach(ev=>cv.addEventListener(ev,()=>drag=false));
+cv.addEventListener('touchstart',e=>{e.preventDefault();drag=true;s2w(...gp(null,e.touches[0]));},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(drag)s2w(...gp(null,e.touches[0]));},{passive:false});
+cv.addEventListener('touchend',()=>drag=false);
+
+// ── Collapsibles ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.sh').forEach(h=>{
+  h.addEventListener('click',()=>{
+    const b=document.getElementById(h.dataset.s);
+    const op=b.classList.toggle('open');
+    document.getElementById(h.dataset.s+'_a').textContent=op?'▾':'▸';
+  });
+});
+
+// ── Binding helpers ───────────────────────────────────────────────────────────
+function bindR(id,key,dec){
+  const el=document.getElementById(id);
+  function up(){const v=parseFloat(el.value);P[key]=v;const vo=document.getElementById(id+'V');if(vo)vo.textContent=v.toFixed(dec??0);}
+  el.addEventListener('input',up);up();
+}
+function bindS(id,key){
+  const el=document.getElementById(id);
+  el.addEventListener('change',()=>P[key]=el.value);P[key]=el.value;
+}
+function bindC(id,key){
+  const el=document.getElementById(id);
+  function up(){P[key]=hexRGB(el.value);}
+  el.addEventListener('input',up);up();
+}
+
+bindR('pps','pps');bindR('vel','vel',1);bindR('velR','velR');bindR('sprd','sprd');
+bindR('eSX','eSX');bindR('eSY','eSY');bindR('eSZ','eSZ');
+bindR('life','life',1);bindR('lifeR','lifeR');
+bindR('sz','sz',1);bindR('szR','szR');
+bindR('fth','fth');bindR('opa','opa',2);
+bindR('spin','spin',1);bindR('spinR','spinR');
+bindR('aRes','aRes',1);bindR('aResR','aResR',1);
+bindR('wX','wX',1);bindR('wY','wY',1);bindR('wZ','wZ',1);
+bindR('tAP','tAP');bindR('tSc','tSc');bindR('tEv','tEv',2);bindR('tOc','tOc');bindR('tOM','tOM',2);bindR('tAR','tAR',1);
+bindR('grav','grav');
+bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
+bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');bindR('dispAmt','dispAmt');bindR('dispScale','dispScale');bindR('dispSpd','dispSpd');bindR('cutoutPct','cutoutPct');
+bindR('spCount','spCount');bindR('spRate','spRate');bindR('spVel','spVel');bindR('spVelR','spVelR');bindR('spInhVel','spInhVel');bindR('spSprd','spSprd');
+bindR('spGrav','spGrav');bindR('spARes','spARes',1);
+bindR('spSz','spSz',1);bindR('spSzR','spSzR');bindR('spLife','spLife',1);bindR('spLifeR','spLifeR');bindR('spFth','spFth');bindR('spOpa','spOpa',2);
+bindC('spC1','spC1');bindC('spCm','spCm');bindC('spC2','spC2');
+bindS('spDir','spDir');bindS('spShape','spShape');bindS('spSzC','spSzC');bindS('spBld','spBld');
+
+// Sub-emitter checkboxes
+['spEnable','spTrigDeath','spTrigBounce','spTrigBirth','spTrigLife'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el){el.checked=P[id];el.addEventListener('change',e=>{P[id]=e.target.checked;});}
+});
+
+// ── Background color ──────────────────────────────────────────────────────────
+document.getElementById('bgColor').addEventListener('input',e=>{
+  P.bgColor=e.target.value;
+  document.getElementById('cvw').style.background=e.target.value;
+  // Export に自動同期
+  const rndBgColor=document.getElementById('rndBgColor');
+  const rndBg=document.getElementById('rndBg');
+  rndBgColor.value=e.target.value;
+  if(rndBg.value!=='transparent'&&rndBg.value!=='coloralpha'){
+    rndBg.value='custom';
+    document.getElementById('rndBgColorRow').style.display='flex';
+  }
+});
+bindR('lineLen','lineLen');bindR('lineTh','lineTh',1);bindR('bbTintAmt','bbTintAmt',2);
+bindR('burstDur','burstDur',2);
+// burstInt needs to reset cycle timer on change
+(()=>{
+  const el=document.getElementById('burstInt');
+  function up(){const v=parseFloat(el.value);P.burstInt=v;const vo=document.getElementById('burstIntV');if(vo)vo.textContent=v.toFixed(1);cycleT=0;}
+  el.addEventListener('input',up);up();
+})();
+
+bindR('emPitch','emPitch');bindR('emYaw','emYaw');bindR('twirlSpd','twirlSpd',1);
+bindS('emT','emT');bindS('dir','dir');bindS('szC','szC');bindS('bld','bld');
+bindS('lineTaper','lineTaper');
+document.getElementById('flrOn').addEventListener('change',e=>P.flrOn=e.target.value==='1');
+bindC('c1','c1');bindC('c2','c2');bindC('c3','c3');
+
+// ── Double-click value labels to type directly ────────────────────────────────
+// ダブルクリックで入力した値がスライダーの新しいMAX/MINになります（双方向対応）
+const _deBound = new WeakSet(); // 二重バインド防止
+function initDirectEdit(){
+  document.querySelectorAll('.vl').forEach(vl=>{
+    if(_deBound.has(vl)) return; // すでにバインド済みならスキップ
+    _deBound.add(vl);
+    vl.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
+    vl.addEventListener('dblclick',()=>{
+      const rangeId=vl.id.replace(/V$/,'');
+      const range=document.getElementById(rangeId);
+      if(!range||range.type!=='range')return;
+
+      const savedText=vl.textContent;
+      const input=document.createElement('input');
+      input.type='text';
+      input.className='vl-editing';
+      input.value=savedText;
+      vl.replaceWith(input);
+      input.focus();input.select();
+
+      let committed=false;
+      function commit(){
+        if(committed)return;
+        committed=true;
+
+        const raw=parseFloat(input.value);
+
+        // span を DOM に復元
+        const span=document.createElement('span');
+        span.id=vl.id;
+        span.className='vl';
+        span.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
+        span.textContent=savedText;
+        input.replaceWith(span);
+        initDirectEdit(); // 新しい span にバインド（WeakSetで重複なし）
+
+        if(!isNaN(raw)){
+          const hardMax = range.dataset.inputMax!==undefined ? parseFloat(range.dataset.inputMax) : Infinity;
+          const hardMin = range.dataset.inputMin!==undefined ? parseFloat(range.dataset.inputMin) : -Infinity;
+          const clamped = Math.min(hardMax, Math.max(hardMin, raw));
+
+          if(clamped >= 0){
+            range.max = String(Math.max(clamped, parseFloat(range.min) + 0.001));
+          } else {
+            range.min = String(Math.min(clamped, parseFloat(range.max) - 0.001));
+          }
+          range.value = clamped;
+
+          // bindR 経由でラベル更新 + 念のため直接上書き
+          range.dispatchEvent(new Event('input'));
+          const snapped = parseFloat(range.value);
+          const currentSpan = document.getElementById(vl.id);
+          if(currentSpan && !isNaN(snapped)){
+            const stepStr = range.step || '1';
+            const dec = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+            currentSpan.textContent = snapped.toFixed(dec);
+          }
+        }
+      }
+
+      input.addEventListener('blur',commit);
+      input.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){e.preventDefault();commit();}
+        if(e.key==='Escape'){
+          committed=true;
+          const span=document.createElement('span');
+          span.id=vl.id;span.className='vl';
+          span.title='ダブルクリックで直接入力 — 入力値がスライダーのMAX/MINになります';
+          span.textContent=savedText;
+          input.replaceWith(span);
+          initDirectEdit();
+        }
+      });
+    });
+  });
+}
+initDirectEdit();
+function updatePtTypeUI(){
+  const v=P.ptType;
+  document.getElementById('lineOpts').style.display=v==='line'?'block':'none';
+  document.getElementById('bbOpts').style.display=v==='billboard'?'block':'none';
+  document.getElementById('gifOpts').style.display=v==='gifanim'?'block':'none';
+}
+document.getElementById('ptType').addEventListener('change',e=>{P.ptType=e.target.value;updatePtTypeUI();});
+updatePtTypeUI();
+
+// bbTint show/hide tint amount row
+function updateBBTintUI(){document.getElementById('bbTintAmtRow').style.display=P.bbTint?'flex':'none';}
+document.getElementById('bbTint').addEventListener('change',e=>{P.bbTint=parseInt(e.target.value);updateBBTintUI();});
+
+// ── Billboard file input ──────────────────────────────────────────────────────
+const bbFileEl=document.getElementById('bbFile');
+const bbLabel=document.getElementById('bbLabel');
+document.getElementById('bbLabel').addEventListener('click',()=>bbFileEl.click());
+bbFileEl.addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  const img=new Image();
+  img.onload=()=>{
+    bbImg=img;
+    bbLabel.textContent='✓ '+f.name;
+    bbLabel.style.color='#88ccaa';
+    const th=document.getElementById('bbThumbImg');
+    th.src=url;
+    document.getElementById('bbThumbRow').style.display='block';
+    toast('画像を読み込みました');
+  };
+  img.onerror=()=>toast('画像の読み込みに失敗しました');
+  img.src=url;
+});
+
+// ── GIF Anim particle file input ──────────────────────────────────────────────
+document.getElementById('gifLabel').addEventListener('click',()=>document.getElementById('gifFile').click());
+document.getElementById('gifFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  gifImg=new Image();
+  gifImg.onload=()=>{
+    document.getElementById('gifLabel').textContent='✓ '+f.name;
+    document.getElementById('gifLabel').style.color='#88ccaa';
+    const th=document.getElementById('gifThumbImg');
+    th.src=url;
+    document.getElementById('gifThumbRow').style.display='block';
+    toast('GIFを読み込みました');
+  };
+  gifImg.onerror=()=>toast('GIFの読み込みに失敗しました');
+  gifImg.src=url;
+});
+document.getElementById('gifTint').addEventListener('change',e=>{
+  P.gifTint=parseInt(e.target.value);
+  document.getElementById('gifTintAmtRow').style.display=P.gifTint?'flex':'none';
+});
+bindR('gifTintAmt','gifTintAmt',2);
+
+// ── GIF Emitter file input ────────────────────────────────────────────────────
+document.getElementById('gifEmitLabel').addEventListener('click',()=>document.getElementById('gifEmitFile').click());
+document.getElementById('gifEmitFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  gifEmitImg=new Image();
+  gifEmitImg.onload=()=>{
+    sampleBBEmitImage(gifEmitImg, bbEmitAlphaThresh);
+    document.getElementById('gifEmitLabel').textContent='✓ '+f.name;
+    document.getElementById('gifEmitLabel').style.color='#88ccaa';
+    document.getElementById('gifEmitThumbImg').src=url;
+    document.getElementById('gifEmitThumbRow').style.display='block';
+    toast('Emitter GIF: '+bbEmitPx.length+'px サンプル済み');
+  };
+  gifEmitImg.onerror=()=>toast('GIFの読み込みに失敗しました');
+  gifEmitImg.src=url;
+});
+bindR('gifEmitAlpha','gifEmitAlpha',0,v=>{
+  bbEmitAlphaThresh=v;
+  const img=gifEmitImg;
+  if(img&&img.complete)sampleBBEmitImage(img,v);
+});
+document.getElementById('bbEmitLabel').addEventListener('click',()=>document.getElementById('bbEmitFile').click());
+document.getElementById('bbEmitFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const url=URL.createObjectURL(f);
+  const img=new Image();
+  img.onload=()=>{
+    sampleBBEmitImage(img,bbEmitAlphaThresh);
+    document.getElementById('bbEmitLabel').textContent='✓ '+f.name;
+    document.getElementById('bbEmitLabel').style.color='#88ccaa';
+    document.getElementById('bbEmitThumbImg').src=url;
+    document.getElementById('bbEmitThumbRow').style.display='block';
+    toast('Emitter画像: '+bbEmitPx.length+'px サンプル済み');
+  };
+  img.onerror=()=>toast('画像の読み込みに失敗しました');
+  img.src=url;
+});
+// bbEmitAlpha: スライダーでアルファ閾値を直接管理
+{
+  const el=document.getElementById('bbEmitAlpha');
+  const vo=document.getElementById('bbEmitAlphaV');
+  el.addEventListener('input',()=>{
+    bbEmitAlphaThresh=parseFloat(el.value);
+    if(vo)vo.textContent=bbEmitAlphaThresh;
+    const th=document.getElementById('bbEmitThumbImg');
+    if(th.src&&th.complete&&th.naturalWidth){
+      const tmp=new Image();
+      tmp.onload=()=>{sampleBBEmitImage(tmp,bbEmitAlphaThresh);toast('再サンプル: '+bbEmitPx.length+'px');};
+      tmp.src=th.src;
+    }
+  });
+}
+function updateEmTUI(){
+  const isBB=P.emT==='bbEmit';
+  const isGIF=P.emT==='gifEmit';
+  document.getElementById('bbEmitOpts').style.display=isBB?'block':'none';
+  document.getElementById('gifEmitOpts').style.display=isGIF?'block':'none';
+  if(isBB||isGIF){
+    const xEl=document.getElementById('eSX'),yEl=document.getElementById('eSY'),zEl=document.getElementById('eSZ');
+    xEl.value=100; P.eSX=100; document.getElementById('eSXV').textContent='100';
+    yEl.value=100; P.eSY=100; document.getElementById('eSYV').textContent='100';
+    zEl.value=0;   P.eSZ=0;   document.getElementById('eSZV').textContent='0';
+  }
+}
+document.getElementById('emT').addEventListener('change',e=>{P.emT=e.target.value;updateEmTUI();});
+updateEmTUI();
+
+// ── Presets ───────────────────────────────────────────────────────────────────
+const PR={
+  fire:{pps:313,vel:4.8,velR:55,dir:'up',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:22,eSY:60,eSZ:22,emT:'box',
+    life:1.8,lifeR:42,sz:4,szR:55,szC:'ease',fth:84,opa:0.85,spin:1.5,spinR:80,
+    c1:'#ffee80',c2:'#ff3300',c3:'#220000',bld:'lighter',
+    aRes:0.8,aResR:2,wX:0.3,wY:0,wZ:0,tAP:58,tSc:80,tEv:2.0,tOc:3,tOM:0.5,tAR:3,
+    grav:-20,flrOn:'0',flrY:85,bnce:40,frct:30,bnceR:20,maxP:2000,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:2,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'},
+  sparks:{pps:313,vel:10,velR:88,dir:'uniform',emPitch:0,emYaw:0,twirlSpd:2,sprd:28,eSX:0,eSY:0,eSZ:0,emT:'point',
+    life:1.1,lifeR:6,sz:2,szR:52,szC:'ease',fth:30,opa:0.95,spin:0,spinR:0,
+    c1:'#ffffff',c2:'#ffaa00',c3:'#ff1100',bld:'lighter',
+    aRes:22,aResR:0.5,wX:0,wY:0,wZ:0,tAP:244,tSc:55,tEv:2.5,tOc:2,tOM:0.5,tAR:0,
+    grav:195,flrOn:'1',flrY:85,bnce:55,frct:25,bnceR:30,maxP:2000,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'line',lineTaper:'1',bbTint:'0'},
+  snow:{pps:48,vel:0.9,velR:65,dir:'down',emPitch:0,emYaw:0,twirlSpd:2,sprd:35,eSX:1000,eSY:0,eSZ:422,emT:'box',
+    life:5.9,lifeR:72,sz:2.5,szR:60,szC:'hold',fth:75,opa:0.86,spin:0.4,spinR:80,
+    c1:'#eef4ff',c2:'#ddeeff',c3:'#9aabbf',bld:'source-over',
+    aRes:62.5,aResR:0,wX:1.8,wY:4.7,wZ:0,tAP:70,tSc:270,tEv:0.4,tOc:3,tOM:0.5,tAR:0,
+    grav:60,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:1500,dof:25,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'dustblob',lineTaper:'1',bbTint:'0'},
+  shockwave:{pps:6000,vel:19.1,velR:20,dir:'outward',emPitch:-34,emYaw:31,twirlSpd:2,sprd:0,eSX:0,eSY:0,eSZ:0,emT:'point',
+    life:1.1,lifeR:30,sz:6,szR:40,szC:'ease',fth:80,opa:0.9,spin:0,spinR:0,
+    c1:'#ffffff',c2:'#88aaff',c3:'#001144',bld:'lighter',
+    aRes:35.9,aResR:13.6,wX:0,wY:-1.6,wZ:0,tAP:145,tSc:25,tEv:0.8,tOc:5,tOM:0.6,tAR:0.8,
+    grav:0,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:78200,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:1.7,burstDur:0.08,ptType:'sphere',lineTaper:'1',bbTint:'0'},
+  embers:{pps:180,vel:6,velR:75,dir:'twirl',emPitch:0,emYaw:0,twirlSpd:2.5,sprd:55,eSX:700,eSY:0,eSZ:70,emT:'box',
+    life:2.8,lifeR:55,sz:2,szR:65,szC:'bell',fth:50,opa:0.95,spin:0,spinR:0,
+    c1:'#ffffff',c2:'#ff8800',c3:'#220000',bld:'lighter',
+    aRes:4,aResR:0,wX:0.2,wY:0,wZ:0,tAP:120,tSc:60,tEv:2.5,tOc:3,tOM:0.5,tAR:0,
+    grav:-10,flrOn:'0',flrY:85,bnce:50,frct:20,bnceR:20,maxP:2000,dof:0,fl:450,
+    lineLen:40,lineTh:2,bbTintAmt:0.5,burstInt:0,burstDur:1,ptType:'sphere',lineTaper:'1',bbTint:'0'}
+};
+
+const RKEYS=['pps','vel','velR','sprd','emPitch','emYaw','twirlSpd','eSX','eSY','eSZ','life','lifeR','sz','szR','fth','opa','spin','spinR','aRes','aResR','wX','wY','wZ','tAP','tSc','tEv','tOc','tOM','tAR','grav','flrY','bnce','frct','bnceR','maxP','dof','fl','lineLen','lineTh','bbTintAmt','burstInt','burstDur'];
+const SKEYS=['emT','dir','szC','bld','flrOn','ptType','lineTaper','bbTint'];
+const CKEYS=['c1','c2','c3'];
+
+function applyPreset(m){
+  const pr=PR[m];if(!pr)return;
+  pts.length=0; accum=0;
+  RKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){
+    const v=pr[k];
+    if(v>parseFloat(el.max))el.max=v;
+    if(v<parseFloat(el.min))el.min=v;
+    el.value=v;el.dispatchEvent(new Event('input'));
+  }});
+  SKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('change'));}});
+  CKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&pr[k]!==undefined){el.value=pr[k];el.dispatchEvent(new Event('input'));}});
+  s2w(W/2, m==='snow'?H*.05:m==='embers'?H*.88:m==='shockwave'||m==='sparks'?H*.5:H*.78);
+}
+
+document.querySelectorAll('.pb').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.pb').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); applyPreset(b.dataset.m);
+  });
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// ── Snapshot helpers ──────────────────────────────────────────────────────────
+function currentSnap(){
+  const snap={};
+  RKEYS.forEach(k=>{const el=document.getElementById(k);if(el)snap[k]=parseFloat(el.value);});
+  SKEYS.forEach(k=>{const el=document.getElementById(k);if(el)snap[k]=el.value;});
+  CKEYS.forEach(k=>{const el=document.getElementById(k);if(el)snap[k]=el.value;});
+  return snap;
+}
+function applySnap(snap){
+  RKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&snap[k]!==undefined){el.value=snap[k];el.dispatchEvent(new Event('input'));}});
+  SKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&snap[k]!==undefined){el.value=snap[k];el.dispatchEvent(new Event('change'));}});
+  CKEYS.forEach(k=>{const el=document.getElementById(k);if(el&&snap[k]!==undefined){el.value=snap[k];el.dispatchEvent(new Event('input'));}});
+  pts.length=0;accum=0;
+}
+
+// ── LocalStorage slots ────────────────────────────────────────────────────────
+const LS_KEY='psim_slots';
+function loadSlots(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch{return[];}}
+function saveSlots(s){localStorage.setItem(LS_KEY,JSON.stringify(s));}
+
+function renderSlotList(){
+  const sl=document.getElementById('slotList');
+  const slots=loadSlots();
+  if(!slots.length){sl.innerHTML='<div style="font-size:9px;color:#334;padding:4px 2px">保存済みの設定はありません</div>';return;}
+  sl.innerHTML='';
+  slots.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='slot';
+    const nm=document.createElement('span');nm.className='sn';
+    const badge=s.preset?`<span style="font-size:8px;color:#4455aa;margin-right:3px;background:#0e1030;border-radius:3px;padding:0 3px">${s.preset}</span>`:'';
+    nm.innerHTML=badge+s.name;nm.title='クリックで読み込み';
+    nm.addEventListener('click',()=>{applySnap(s.data);document.getElementById('slotList').classList.remove('open');toast(`"${s.name}" を読み込みました`);});
+    const dl=document.createElement('span');dl.className='sd';dl.textContent='✕';dl.title='削除';
+    dl.addEventListener('click',e=>{e.stopPropagation();const arr=loadSlots();arr.splice(i,1);saveSlots(arr);renderSlotList();toast('削除しました');});
+    d.appendChild(nm);d.appendChild(dl);sl.appendChild(d);
+  });
+}
+
+// Reset — full factory defaults (reads HTML default value attributes)
+document.getElementById('btnReset').addEventListener('click',()=>{
+  document.querySelectorAll('#pn input[type=range]').forEach(el=>{
+    const def=el.getAttribute('value');
+    if(def!==null){el.value=def;el.dispatchEvent(new Event('input'));}
+  });
+  document.querySelectorAll('#pn select').forEach(el=>{
+    const def=el.querySelector('option');
+    if(def){el.value=def.value;el.dispatchEvent(new Event('change'));}
+  });
+  document.getElementById('c1').value='#ff8800';document.getElementById('c1').dispatchEvent(new Event('input'));
+  document.getElementById('c2').value='#ff2200';document.getElementById('c2').dispatchEvent(new Event('input'));
+  document.getElementById('c3').value='#220000';document.getElementById('c3').dispatchEvent(new Event('input'));
+  document.getElementById('burstInt').value=0;document.getElementById('burstInt').dispatchEvent(new Event('input'));
+  document.getElementById('burstDur').value=1;document.getElementById('burstDur').dispatchEvent(new Event('input'));
+  pts.length=0;accum=0;cycleT=0;
+  s2w(W/2,H*.65);
+  toast('全パラメーターをリセットしました');
+});
+
+// Save — show preset tag in dialog
+document.getElementById('btnSave').addEventListener('click',()=>{
+  const wr=document.getElementById('saveNameWrap');
+  const sl=document.getElementById('slotList');
+  sl.classList.remove('open');
+  const opening=!wr.classList.contains('open');
+  wr.classList.toggle('open');
+  if(opening){
+    const activePreset=document.querySelector('.pb.on');
+    const tag=activePreset?activePreset.textContent.trim():'';
+    document.getElementById('savePresetTag').textContent=tag;
+    const nameEl=document.getElementById('saveName');
+    if(!nameEl.value)nameEl.value=tag?tag+' ':'';
+    nameEl.focus();nameEl.select();
+  }
+});
+document.getElementById('btnSaveCancel').addEventListener('click',()=>{
+  document.getElementById('saveNameWrap').classList.remove('open');
+});
+document.getElementById('btnSaveOK').addEventListener('click',()=>{
+  const nm=document.getElementById('saveName').value.trim();
+  if(!nm){toast('名前を入力してください');return;}
+  const activePreset=document.querySelector('.pb.on');
+  const presetKey=activePreset?activePreset.dataset.m:'';
+  const slots=loadSlots();
+  const idx=slots.findIndex(s=>s.name===nm);
+  const entry={name:nm,preset:presetKey,data:currentSnap()};
+  if(idx>=0)slots[idx]=entry;else slots.push(entry);
+  saveSlots(slots);
+  document.getElementById('saveNameWrap').classList.remove('open');
+  document.getElementById('saveName').value='';
+  toast(`"${nm}" を保存しました`);
+});
+document.getElementById('saveName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btnSaveOK').click();if(e.key==='Escape')document.getElementById('btnSaveCancel').click();});
+
+// Load
+document.getElementById('btnLoad').addEventListener('click',()=>{
+  const sl=document.getElementById('slotList');
+  document.getElementById('saveNameWrap').classList.remove('open');
+  const opening=!sl.classList.contains('open');
+  sl.classList.toggle('open');
+  if(opening)renderSlotList();
+});
+
+// Export ALL slots as single JSON
+document.getElementById('btnExport').addEventListener('click',()=>{
+  const slots=loadSlots();
+  if(!slots.length){toast('保存済み設定がありません');return;}
+  const blob=new Blob([JSON.stringify({version:1,slots},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='psim_settings_'+Date.now()+'.json';
+  a.click();
+  toast(`${slots.length}件の設定をエクスポートしました`);
+});
+
+// Import JSON
+document.getElementById('btnImport').addEventListener('click',()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const json=JSON.parse(ev.target.result);
+      // Support both: array of slots (old single-export) and {version,slots}
+      const incoming=Array.isArray(json)?json:(json.slots||[json]);
+      if(!incoming.length){toast('読み込める設定がありません');return;}
+      const existing=loadSlots();
+      let added=0,updated=0;
+      incoming.forEach(s=>{
+        if(!s.name||!s.data)return;
+        const idx=existing.findIndex(x=>x.name===s.name);
+        if(idx>=0){existing[idx]=s;updated++;}else{existing.push(s);added++;}
+      });
+      saveSlots(existing);
+      renderSlotList();
+      toast(`インポート完了 追加:${added} 更新:${updated}`);
+    }catch{toast('JSONの読み込みに失敗しました');}
+  };
+  reader.readAsText(f);
+  e.target.value='';
+});
+
+// ── Realtime REC ─────────────────────────────────────────────────────────────
+let recActive=false,recFrames=[];
+const recCheck=document.getElementById('recCheck');
+const recCounter=document.getElementById('recCounter');
+const btnRecStop=document.getElementById('btnRecStop');
+
+recCheck.addEventListener('change',()=>{
+  recActive=recCheck.checked;
+  recFrames=[];
+  recCounter.style.display=recActive?'inline':'none';
+  btnRecStop.style.display=recActive?'inline-block':'none';
+  if(recActive)toast('録画開始 — ■ 保存 で ZIP ダウンロード');
+});
+
+btnRecStop.addEventListener('click',async()=>{
+  recActive=false;recCheck.checked=false;
+  recCounter.style.display='none';btnRecStop.style.display='none';
+  if(!recFrames.length){toast('フレームがありません');return;}
+  toast('ZIP生成中...');
+  const zip=new JSZip();const folder=zip.folder('frames');
+  recFrames.forEach((blob,i)=>folder.file(`frame_${String(i).padStart(5,'0')}.png`,blob));
+  recFrames=[];
+  const zipBlob=await zip.generateAsync({type:'blob',compression:'STORE'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(zipBlob);a.download='rec_'+Date.now()+'.zip';a.click();
+  toast('録画ZIPをダウンロードしました');
+});
+
+// Called from loop after each render
+function tryRecFrame(){
+  if(!recActive)return;
+  cv.toBlob(blob=>{
+    if(blob){recFrames.push(blob);recCounter.textContent=recFrames.length+'f';}
+  },'image/png');
+}
+
+// ── Export / Render ───────────────────────────────────────────────────────────
+let renderActive=false,renderStop=false;
+
+// Auto-populate size from current window on section open
+(()=>{
+  const wEl=document.getElementById('rndW'),hEl=document.getElementById('rndH');
+  const fpsEl=document.getElementById('rndFps'),durEl=document.getElementById('rndDur');
+  const countEl=document.getElementById('rndFrameCount');
+  function updateCount(){countEl.textContent=(Math.ceil(parseFloat(fpsEl.value||30)*parseFloat(durEl.value||10)))+' frames';}
+  fpsEl.addEventListener('change',updateCount);
+  durEl.addEventListener('input',updateCount);
+  updateCount();
+
+  // Auto height button
+  document.getElementById('btnAutoH').addEventListener('click',()=>{
+    const rw=parseInt(wEl.value)||W;
+    hEl.value=Math.round(rw*(H/W));
+  });
+  // Init from current canvas size
+  wEl.value=W||1280; hEl.value=H||720;
+
+  // BG color row toggle
+  document.getElementById('rndBg').addEventListener('change',e=>{
+    document.getElementById('rndBgColorRow').style.display=e.target.value==='custom'?'flex':'none';
+  });
+})();
+
+async function startRender(){
+  if(renderActive)return;
+  renderActive=true; renderStop=false;
+
+  const rW=parseInt(document.getElementById('rndW').value)||W;
+  const rH=parseInt(document.getElementById('rndH').value)||H;
+  const fps=parseInt(document.getElementById('rndFps').value)||30;
+  const dur=parseFloat(document.getElementById('rndDur').value)||10;
+  const bgType=document.getElementById('rndBg').value;
+  const bgColor=document.getElementById('rndBgColor').value;
+  const totalFrames=Math.ceil(fps*dur);
+  const dt=1/fps;
+
+  // Progress UI
+  const progEl=document.getElementById('rndProg');
+  const progFill=document.getElementById('rndProgFill');
+  const progLabel=document.getElementById('rndProgLabel');
+  progEl.style.display='block';
+  progFill.style.width='0%';
+  progLabel.textContent='準備中...';
+  document.getElementById('btnRender').style.display='none';
+  document.getElementById('btnRenderStop').style.display='block';
+
+  // Offscreen canvas
+  const oc=document.createElement('canvas');
+  oc.width=rW; oc.height=rH;
+  const oc2=oc.getContext('2d');
+  // Alpha用キャンバス（透明背景、Color+Alpha時のみ使用）
+  const ocAlpha=document.createElement('canvas');
+  ocAlpha.width=rW; ocAlpha.height=rH;
+  const oc2a=ocAlpha.getContext('2d');
+
+  // Separate sim state
+  const rPts=[];
+  let rTime=0,rAccum=0,rCycleT=0,rDispTime=0;
+
+  // Emitter scaled to render canvas
+  const rEX=eX*(rW/W), rEY=eY*(rH/H);
+
+  function rSpawn(){
+    const[dx,dy,dz]=randDir();
+    const vr=1+(Math.random()-.5)*P.velR*.02,v=P.vel*vr;
+    let ox=0,oy=0,oz=0;
+    if(P.emT==='box'){
+      ox=(Math.random()-.5)*P.eSX;oy=(Math.random()-.5)*P.eSY;oz=(Math.random()-.5)*P.eSZ;
+    }else if(P.emT==='sphere'){
+      const u=Math.random()*Math.PI*2,vv=Math.acos(2*Math.random()-1),r=Math.cbrt(Math.random());
+      ox=r*(P.eSX*.5)*Math.sin(vv)*Math.cos(u);oy=r*(P.eSY*.5)*Math.sin(vv)*Math.sin(u);oz=r*(P.eSZ*.5)*Math.cos(vv);
+    }
+    const ls=Math.max(.1,P.life*(1+(Math.random()-.5)*P.lifeR*.02));
+    const sz=Math.max(.5,P.sz*(1+(Math.random()-.5)*P.szR*.02));
+    const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
+    rPts.push({x:rEX+ox,y:rEY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,trail:[],isCutout:Math.random()*100<P.cutoutPct});
+  }
+
+  function rUpdate(){
+    let shouldEmit=true;
+    const bi=P.burstInt,bd=P.burstDur;
+    if(bi>0){
+      rCycleT+=dt;
+      const cl=bd+bi;
+      if(rCycleT>=cl)rCycleT-=Math.floor(rCycleT/cl)*cl;
+      shouldEmit=rCycleT<bd;
+    }
+    if(shouldEmit){
+      rAccum+=P.pps*dt;
+      const n=Math.min(Math.floor(rAccum),Math.max(200,P.pps|0));
+      rAccum-=n;
+      for(let i=0;i<n&&rPts.length<P.maxP;i++)rSpawn();
+    }else{rAccum=0;}
+
+    const sc=Math.max(1,P.tSc),ap=P.tAP*dt*0.22,oct=P.tOc|0;
+    const flrWY=rH*(P.flrY*.01-.5);
+    const dragV=Math.exp(-P.aRes*0.12*dt),dragR=P.aResR>0?Math.exp(-P.aResR*0.12*dt):1;
+    const wXd=P.wX*dt*4,wYd=P.wY*dt*4,wZd=P.wZ*dt*4,gd=P.grav*dt*0.0003*60;
+
+    for(let i=rPts.length-1;i>=0;i--){
+      const p=rPts[i];
+      p.vx*=dragV;p.vy*=dragV;p.vz*=dragV;
+      if(P.aResR>0)p.ss*=dragR;
+      p.vx+=wXd;p.vy+=wYd;p.vz+=wZd;
+      p.vy+=gd;
+      if(ap>0){
+        const tx=p.x/sc,ty=p.y/sc,tz=p.z/sc+rTime*P.tEv;
+        p.vx+=fbm(tx,ty,tz,oct,P.tOM)*ap;
+        p.vy+=fbm(tx+50,ty+50,tz,oct,P.tOM)*ap;
+        p.vz+=fbm(tx+100,ty+100,tz,oct,P.tOM)*ap;
+        if(P.tAR>0)p.rot+=fbm(tx+200,ty+200,tz,oct,P.tOM)*P.tAR*dt*2.5;
+      }
+      // Trail recording
+      if(P.motionBlur>0){
+        const maxLen=Math.ceil(P.motionBlur*0.8)+2;
+        p.trail.push(p.x,p.y,p.z);
+        if(p.trail.length>maxLen*3)p.trail.splice(0,3);
+      }else if(p.trail.length){p.trail.length=0;}
+      const ps=dt*60;
+      p.x+=p.vx*ps;p.y+=p.vy*ps;p.z+=p.vz*ps;
+      p.rot+=p.ss*dt*2;
+      if(P.flrOn&&p.y>flrWY){
+        p.y=flrWY;
+        const br=P.bnce*.01*(1+(Math.random()-.5)*P.bnceR*.02);
+        p.vy*=-br;p.vx*=1-P.frct*.01;p.vz*=1-P.frct*.01;
+      }
+      p.li-=dt;
+      if(p.li<=0)rPts.splice(i,1);
+    }
+    rTime+=dt;
+    rDispTime+=dt*P.dispSpd;
+  }
+
+  function rDraw(){
+    const FL=P.fl;
+    const isAlpha=bgType==='coloralpha';
+
+    // メインキャンバス（bgColor）
+    oc2.globalCompositeOperation='source-over';
+    oc2.clearRect(0,0,rW,rH);
+    oc2.fillStyle=P.bgColor;
+    oc2.fillRect(0,0,rW,rH);
+
+    // アルファ用キャンバス（透明）
+    if(isAlpha){
+      oc2a.globalCompositeOperation='source-over';
+      oc2a.clearRect(0,0,rW,rH);
+    }
+
+    if(P.flrOn){
+      const fy=rH/2+rH*(P.flrY*.01-.5);
+      oc2.strokeStyle='rgba(255,255,255,.06)';oc2.lineWidth=.5;
+      oc2.setLineDash([4,8]);
+      oc2.beginPath();oc2.moveTo(0,fy);oc2.lineTo(rW,fy);oc2.stroke();
+      oc2.setLineDash([]);
+    }
+
+    rPts.sort((a,b)=>b.z-a.z);
+    oc2.globalCompositeOperation=P.bld;
+    if(isAlpha) oc2a.globalCompositeOperation=P.bld;
+    const dof=P.dof*.01,fthR=P.fth*.01,opa=P.opa,ptType=P.ptType;
+    const mbOn2=P.motionBlur>0;
+
+    for(const p of rPts){
+      const t=1-(p.li/p.ml),szF=sol(t,P.szC);
+      if(szF<.005)continue;
+      const dz=FL+p.z; if(dz<8)continue;
+      const s=FL/dz;
+      let sx=rW/2+p.x*s,sy=rH/2+p.y*s;
+      if(sx<-400||sx>rW+400||sy<-400||sy>rH+400)continue;
+      const fs=p.sz*szF*s; if(fs<.04)continue;
+      const[r,g,b]=colOL(t);
+      if(P.dispAmt>0){
+        const sc=1/P.dispScale;
+        sx+=fbm(sx*sc,       sy*sc,       rDispTime,3,0.5)*P.dispAmt;
+        sy+=fbm(sx*sc+31.71, sy*sc+17.39, rDispTime,3,0.5)*P.dispAmt;
+      }
+      let renderSz=fs,renderA=opa;
+      if(dof>0){const blur=1+Math.abs(p.z)*dof*.003;renderSz*=blur;renderA/=blur;}
+      renderA=Math.min(1,renderA);
+
+      if(mbOn2 && p.trail.length>=6){
+        const trail=p.trail;
+        const n=trail.length/3|0;
+        const sp=[];
+        for(let i=0;i<n;i++){
+          const dzt=FL+trail[i*3+2]; if(dzt<8)continue;
+          const st=FL/dzt;
+          sp.push(rW/2+trail[i*3]*st, rH/2+trail[i*3+1]*st);
+        }
+        sp.push(sx,sy);
+        const m=sp.length>>1;
+        if(m>=2){
+          const contexts=isAlpha?[oc2,oc2a]:[oc2];
+          for(const cx of contexts){
+            cx.save();
+            cx.lineCap='round'; cx.lineJoin='round';
+            cx.lineWidth=Math.max(renderSz*1.8,1);
+            const grd=cx.createLinearGradient(sp[0],sp[1],sp[(m-1)*2],sp[(m-1)*2+1]);
+            grd.addColorStop(0,   `rgba(${r},${g},${b},0)`);
+            grd.addColorStop(0.3, `rgba(${r},${g},${b},${renderA*0.05})`);
+            grd.addColorStop(0.6, `rgba(${r},${g},${b},${renderA*0.4})`);
+            grd.addColorStop(0.85,`rgba(${r},${g},${b},${renderA*0.8})`);
+            grd.addColorStop(1,   `rgba(${r},${g},${b},${renderA*0.92})`);
+            cx.strokeStyle=grd;
+            cx.beginPath(); cx.moveTo(sp[0],sp[1]);
+            for(let i=0;i<m-1;i++){
+              const p0x=sp[Math.max(i-1,0)*2],   p0y=sp[Math.max(i-1,0)*2+1];
+              const p1x=sp[i*2],                  p1y=sp[i*2+1];
+              const p2x=sp[(i+1)*2],              p2y=sp[(i+1)*2+1];
+              const p3x=sp[Math.min(i+2,m-1)*2], p3y=sp[Math.min(i+2,m-1)*2+1];
+              cx.bezierCurveTo(p1x+(p2x-p0x)/6,p1y+(p2y-p0y)/6,p2x-(p3x-p1x)/6,p2y-(p3y-p1y)/6,p2x,p2y);
+            }
+            cx.stroke(); cx.restore();
+          }
+        }
+      }
+      if(p.isCutout){
+        oc2.globalCompositeOperation='destination-out';
+        drawParticleShape(oc2,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+        oc2.globalCompositeOperation=P.bld;
+        if(isAlpha){
+          oc2a.globalCompositeOperation='destination-out';
+          drawParticleShape(oc2a,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+          oc2a.globalCompositeOperation=P.bld;
+        }
+      }else{
+        drawParticleShape(oc2,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+        if(isAlpha) drawParticleShape(oc2a,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,rW,rH);
+      }
+    }
+    oc2.globalCompositeOperation='source-over';
+    oc2.globalAlpha=1;
+    if(isAlpha){ oc2a.globalCompositeOperation='source-over'; oc2a.globalAlpha=1; }
+  }
+
+  // Render loop — fixed dt, guaranteed frame ordering
+  const zip=new JSZip();
+  const folder=zip.folder('frames');
+  const startMs=Date.now();
+
+  for(let f=0;f<totalFrames&&!renderStop;f++){
+    rUpdate();
+    rDraw();
+    const ocFinal=document.createElement('canvas');
+    ocFinal.width=rW; ocFinal.height=rH;
+    const ctxF=ocFinal.getContext('2d');
+
+    if(bgType==='color'){
+      ctxF.drawImage(oc,0,0);
+    }else{
+      // RGB = oc（bgColor背景で正しいブレンド済み）
+      ctxF.drawImage(oc,0,0);
+      const rgbData=ctxF.getImageData(0,0,rW,rH);
+      // Alpha = ocAlpha（透明背景、パーティクルのAlphaだけ）
+      const ctxTmp=ocAlpha.getContext('2d');
+      const alphaData=ctxTmp.getImageData(0,0,rW,rH);
+      const d=rgbData.data;
+      const a=alphaData.data;
+      for(let i=0;i<d.length;i+=4){
+        d[i+3]=a[i+3]; // Alphaだけ差し替え、RGBは触らない
+      }
+      ctxF.putImageData(rgbData,0,0);
+    }
+
+    const blob=await new Promise(res=>ocFinal.toBlob(res,'image/png'));
+    folder.file(`frame_${String(f).padStart(5,'0')}.png`,blob);
+
+    const pct=((f+1)/totalFrames*100);
+    progFill.style.width=pct.toFixed(1)+'%';
+    const elapsed=(Date.now()-startMs)/1000;
+    const eta=elapsed/(f+1)*(totalFrames-f-1);
+    progLabel.textContent=`${f+1} / ${totalFrames}  (${pct.toFixed(1)}%)  残 ${eta.toFixed(0)}s`;
+
+    await new Promise(r=>setTimeout(r,0)); // yield to UI
+  }
+
+  if(!renderStop){
+    progLabel.textContent='ZIP 生成中...';
+    const zipBlob=await zip.generateAsync({type:'blob',compression:'STORE'},meta=>{
+      progLabel.textContent=`ZIP 生成中... ${meta.percent.toFixed(0)}%`;
+    });
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(zipBlob);
+    a.download=`particles_${rW}x${rH}_${fps}fps_${totalFrames}f.zip`;
+    a.click();
+    progLabel.textContent=`完了！ ${totalFrames}枚 → ZIP ダウンロード済み`;
+    toast('レンダリング完了！');
+  }else{
+    progLabel.textContent='停止しました';
+    toast('レンダリングを停止しました');
+  }
+
+  renderActive=false;
+  document.getElementById('btnRender').style.display='block';
+  document.getElementById('btnRenderStop').style.display='none';
+}
+
+document.getElementById('btnRender').addEventListener('click',startRender);
+document.getElementById('btnRenderStop').addEventListener('click',()=>{renderStop=true;});
+
+// init
+applyPreset('fire');
+</script>
+</body>
+</html>
