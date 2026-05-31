@@ -244,6 +244,68 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="r"><span class="lb">Bounce Rand %</span><input type="range" id="bnceR" min="0" max="100" value="20"><span class="vl" id="bnceRV">20</span></div>
     </div>
 
+    <div class="sh" data-s="sub">Sub Emitter<span id="sub_a">▸</span></div>
+    <div class="sb" id="sub">
+      <div class="r"><span class="lb">Enable</span><input type="checkbox" id="spEnable"></div>
+      <div class="dl">Trigger</div>
+      <div style="padding:2px 8px 4px;display:flex;flex-direction:column;gap:3px;font-size:10px;color:#aab">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigDeath"> On Death（消滅時）</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigBounce"> On Bounce（床衝突時）</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigBirth"> On Birth（発生時）</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigLife"> Over Life（生存中に連続放出）</label>
+      </div>
+      <div class="r"><span class="lb">Count</span><input type="range" id="spCount" min="1" max="100" value="8" step="1"><span class="vl" id="spCountV">8</span></div>
+      <div class="r" id="spRateRow"><span class="lb">Rate (pps)</span><input type="range" id="spRate" min="1" max="200" value="20" step="1"><span class="vl" id="spRateV">20</span></div>
+      <div class="dl">Physics</div>
+      <div class="r"><span class="lb">Direction</span><select id="spDir">
+        <option value="random">Random（全方向）</option>
+        <option value="up">Up（上向き）</option>
+        <option value="down">Down（下向き）</option>
+        <option value="parent">Parent Velocity（親の方向）</option>
+        <option value="outward">Outward（中心から外向き）</option>
+      </select></div>
+      <div class="r"><span class="lb">Velocity</span><input type="range" id="spVel" min="0" max="1000" value="150" step="1"><span class="vl" id="spVelV">150</span></div>
+      <div class="r"><span class="lb">Vel Random %</span><input type="range" id="spVelR" min="0" max="100" value="50"><span class="vl" id="spVelRV">50</span></div>
+      <div class="r"><span class="lb">Inherit Vel %</span><input type="range" id="spInhVel" min="0" max="100" value="20"><span class="vl" id="spInhVelV">20</span></div>
+      <div class="r"><span class="lb">Spread °</span><input type="range" id="spSprd" min="0" max="180" value="180"><span class="vl" id="spSprdV">180</span></div>
+      <div class="r"><span class="lb">Gravity</span><input type="range" id="spGrav" min="-200" max="200" value="0" step="1"><span class="vl" id="spGravV">0</span></div>
+      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="spARes" min="0" max="100" value="10" step="0.5"><span class="vl" id="spAResV">10.0</span></div>
+      <div class="dl">Particle</div>
+      <div class="r"><span class="lb">Shape</span><select id="spShape">
+        <option value="sphere">● Sphere</option>
+        <option value="star">✦ Star</option>
+        <option value="line">─ Line</option>
+      </select></div>
+      <div class="r"><span class="lb">Size</span><input type="range" id="spSz" min="0.1" max="50" value="3" step="0.1"><span class="vl" id="spSzV">3.0</span></div>
+      <div class="r"><span class="lb">Size Random %</span><input type="range" id="spSzR" min="0" max="100" value="50"><span class="vl" id="spSzRV">50</span></div>
+      <div class="r"><span class="lb">Size over Life</span><select id="spSzC">
+        <option value="ease-out">Ease Out（大→小）</option>
+        <option value="ease-in">Ease In（小→大）</option>
+        <option value="linear">Linear（一定）</option>
+        <option value="constant">Constant（変化なし）</option>
+      </select></div>
+      <div class="r"><span class="lb">Lifespan (s)</span><input type="range" id="spLife" min="0.1" max="10" value="1" step="0.1"><span class="vl" id="spLifeV">1.0</span></div>
+      <div class="r"><span class="lb">Life Random %</span><input type="range" id="spLifeR" min="0" max="100" value="30"><span class="vl" id="spLifeRV">30</span></div>
+      <div class="r"><span class="lb">Feather %</span><input type="range" id="spFth" min="0" max="100" value="60"><span class="vl" id="spFthV">60</span></div>
+      <div class="r"><span class="lb">Opacity</span><input type="range" id="spOpa" min="0.05" max="1" value="0.8" step="0.01"><span class="vl" id="spOpaV">0.80</span></div>
+      <div class="r"><span class="lb">Blend Mode</span><select id="spBld">
+        <option value="inherit">Inherit（メインと同じ）</option>
+        <option value="lighter">Additive (Add)</option>
+        <option value="source-over">Normal</option>
+        <option value="screen">Screen</option>
+        <option value="multiply">Multiply</option>
+        <option value="overlay">Overlay</option>
+        <option value="subtract">Subtract</option>
+        <option value="difference">Difference</option>
+      </select></div>
+      <div class="dl">Color</div>
+      <div class="r">
+        <span class="lb">Birth</span><input type="color" id="spC1" value="#ffffff">
+        <span class="lb" style="min-width:24px;text-align:center">Mid</span><input type="color" id="spCm" value="#ffaa00">
+        <span class="lb" style="min-width:24px;text-align:center">End</span><input type="color" id="spC2" value="#ff4400">
+      </div>
+    </div>
+
     <div class="sh" data-s="rnd">Rendering<span id="rnd_a">▸</span></div>
     <div class="sb" id="rnd">
       <div class="dl">Background</div>
@@ -341,13 +403,68 @@ const P={
   aRes:2,aResR:0,wX:0,wY:0,wZ:0,
   tAP:0,tSc:100,tEv:1,tOc:3,tOM:0.5,tAR:0,
   grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
-  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5,cutoutPct:0,bgColor:'#000000'
+  maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5,cutoutPct:0,bgColor:'#000000',
+  spEnable:false,spTrigDeath:true,spTrigBounce:false,spTrigBirth:false,spTrigLife:false,
+  spCount:8,spRate:20,spDir:'random',spVel:150,spVelR:50,spInhVel:20,spSprd:180,spGrav:0,spARes:10,
+  spShape:'sphere',spSz:3,spSzR:50,spSzC:'ease-out',spLife:1,spLifeR:30,spFth:60,spOpa:0.8,spBld:'inherit',
+  spC1:[255,255,255],spCm:[255,170,0],spC2:[255,68,0]
 };
 
 // Billboard image state
 let bbImg=null, gifImg=null, gifEmitImg=null;
 let dispTime=0;
 const _cutoutQueue=[];
+let subPts=[];
+
+// ── Sub-emitter spawn ─────────────────────────────────────────────────────────
+function spawnSub(x,y,z,pvx,pvy,pvz,count){
+  if(!P.spEnable)return;
+  const inh=P.spInhVel*0.01;
+  const sprdRad=P.spSprd*Math.PI/180;
+  // Direction axis
+  let ax=0,ay=-1,az=0; // default: up
+  if(P.spDir==='down'){ax=0;ay=1;az=0;}
+  else if(P.spDir==='parent'){
+    const pm=Math.sqrt(pvx*pvx+pvy*pvy+pvz*pvz)||1;
+    ax=pvx/pm;ay=pvy/pm;az=pvz/pm;
+  }else if(P.spDir==='outward'){
+    const pm=Math.sqrt(x*x+y*y+z*z)||1;
+    ax=x/pm;ay=y/pm;az=z/pm;
+  }else{ax=0;ay=0;az=0;} // random: no bias axis
+  for(let i=0;i<count;i++){
+    const phi=Math.random()*Math.PI*2;
+    const cosMax=Math.cos(sprdRad);
+    const cosT=1-Math.random()*(1-cosMax);
+    const sinT=Math.sqrt(1-cosT*cosT);
+    let dx,dy,dz;
+    if(P.spDir==='random'){
+      // 完全ランダム球面
+      dx=sinT*Math.cos(phi);
+      dy=cosT*(Math.random()<0.5?1:-1);
+      dz=sinT*Math.sin(phi);
+    }else{
+      // axis 周りのコーン
+      // axis に垂直な基底を作る
+      let bx=1,by=0,bz=0;
+      if(Math.abs(ax)>0.9){bx=0;by=1;bz=0;}
+      // cross(axis, b)
+      const tx=ay*bz-az*by,ty=az*bx-ax*bz,tz=ax*by-ay*bx;
+      const tl=Math.sqrt(tx*tx+ty*ty+tz*tz)||1;
+      const ex=tx/tl,ey=ty/tl,ez=tz/tl;
+      // cross(axis, e)
+      const fx=ay*ez-az*ey,fy=az*ex-ax*ez,fz=ax*ey-ay*ex;
+      const cp=Math.cos(phi),sp2=Math.sin(phi);
+      dx=sinT*(cp*ex+sp2*fx)+cosT*ax;
+      dy=sinT*(cp*ey+sp2*fy)+cosT*ay;
+      dz=sinT*(cp*ez+sp2*fz)+cosT*az;
+    }
+    const vMag=P.spVel*(1+(Math.random()*2-1)*P.spVelR*0.01);
+    const ls=Math.max(0.05,P.spLife*(1+(Math.random()*2-1)*P.spLifeR*0.01));
+    const sz=Math.max(0.1,P.spSz*(1+(Math.random()*2-1)*P.spSzR*0.01)*0.5);
+    subPts.push({x,y,z,vx:dx*vMag+pvx*inh,vy:dy*vMag+pvy*inh,vz:dz*vMag+pvz*inh,
+      ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,spAccum:0});
+  }
+}
 
 // ── Billboard Emitter ─────────────────────────────────────────────────────────
 let bbEmitPx=[];  // [{nx,ny}] normalised pixel coords of opaque pixels (−0.5…+0.5)
@@ -576,6 +693,8 @@ function spawn(){
   const ss=(P.spin*(1+(Math.random()-.5)*P.spinR*.02))*(Math.random()<.5?1:-1);
   const twirlPhase=Math.random()*Math.PI*2;
   pts.push({x:eX+ox,y:eY+oy,z:oz,vx:dx*v,vy:dy*v,vz:dz*v,ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss,rndV:Math.random(),twirlPhase,trail:[],flickerPhase:Math.random()*Math.PI*2,flickerFreq:0.5+Math.random(),flickTimer:Math.random(),flickVisible:true,isCutout:Math.random()*100<P.cutoutPct});
+  // On Birth
+  if(P.spEnable&&P.spTrigBirth) spawnSub(eX+ox,eY+oy,oz,dx*v,dy*v,dz*v,P.spCount|0);
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -690,13 +809,49 @@ function update(dt){
       p.y=flrWY;
       const br=P.bnce*.01*(1+(Math.random()-.5)*P.bnceR*.02);
       p.vy*=-br; p.vx*=1-P.frct*.01; p.vz*=1-P.frct*.01;
+      // On Bounce
+      if(P.spEnable&&P.spTrigBounce) spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,P.spCount|0);
+    }
+    // Over Life（生存中に連続放出）
+    if(P.spEnable&&P.spTrigLife){
+      p.spAccum=(p.spAccum||0)+dt*P.spRate;
+      while(p.spAccum>=1){spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,1);p.spAccum-=1;}
     }
     p.li-=dt;
-    if(p.li<=0)pts.splice(i,1);
+    if(p.li<=0){
+      // On Death
+      if(P.spEnable&&P.spTrigDeath) spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,P.spCount|0);
+      pts.splice(i,1);
+    }
   }
 }
 
-// Soft particle sprite (pre-rendered once, used for feathered particles)
+// ── Sub-particle update ───────────────────────────────────────────────────────
+function updateSub(dt){
+  if(!subPts.length)return;
+  const ps=dt*60;
+  const dragV=Math.pow(Math.max(0,1-P.spARes*0.01),ps);
+  const gd=(P.spGrav||0)*dt;
+  const ap=P.tAP*0.1,sc=P.tSc||1;
+  const wXd=P.wX*dt,wYd=P.wY*dt,wZd=P.wZ*dt;
+  const flrWY=P.flrOn?(H/2*(P.flrY*.02-1)):Infinity;
+  for(let i=subPts.length-1;i>=0;i--){
+    const p=subPts[i];
+    p.vx*=dragV; p.vy*=dragV; p.vz*=dragV;
+    p.vx+=wXd; p.vy+=wYd+gd; p.vz+=wZd;
+    if(ap>0){
+      const tx=p.x/sc,ty=p.y/sc,tz=p.z/sc+time*P.tEv;
+      p.vx+=fbm(tx,ty,tz,3,0.5)*ap;
+      p.vy+=fbm(tx+50,ty+50,tz,3,0.5)*ap;
+      p.vz+=fbm(tx+100,ty+100,tz,3,0.5)*ap;
+    }
+    p.x+=p.vx*ps; p.y+=p.vy*ps; p.z+=p.vz*ps;
+    p.rot+=dt;
+    if(P.flrOn&&p.y>flrWY){p.y=flrWY;p.vy*=-(P.bnce*.005);}
+    p.li-=dt;
+    if(p.li<=0)subPts.splice(i,1);
+  }
+}
 const SPR=document.createElement('canvas');
 SPR.width=SPR.height=64;
 (()=>{const s=SPR.getContext('2d'),g=s.createRadialGradient(32,32,0,32,32,32);
@@ -894,6 +1049,70 @@ function render(){
     ctx.globalCompositeOperation=P.bld;
   }
 
+  // ── Sub-particles render ──────────────────────────────────────────────────────
+  if(subPts.length>0){
+    const spBld=P.spBld==='inherit'?P.bld:P.spBld;
+    ctx.globalCompositeOperation=spBld;
+    const spFthR=P.spFth*0.01;
+    const c1=P.spC1,cm=P.spCm,c2=P.spC2;
+    for(const p of subPts){
+      const t=1-(p.li/p.ml);
+      const dz=FL+p.z; if(dz<8)continue;
+      const s=FL/dz;
+      const sx=W/2+p.x*s,sy=H/2+p.y*s;
+      if(sx<-400||sx>W+400||sy<-400||sy>H+400)continue;
+      const fs=p.sz*s; if(fs<0.04)continue;
+      // Color Birth→Mid→End
+      let r,g,b;
+      if(t<0.5){const f=t*2;r=Math.round(c1[0]+(cm[0]-c1[0])*f);g=Math.round(c1[1]+(cm[1]-c1[1])*f);b=Math.round(c1[2]+(cm[2]-c1[2])*f);}
+      else{const f=(t-0.5)*2;r=Math.round(cm[0]+(c2[0]-cm[0])*f);g=Math.round(cm[1]+(c2[1]-cm[1])*f);b=Math.round(cm[2]+(c2[2]-cm[2])*f);}
+      // Size over Life
+      let szF;
+      if(P.spSzC==='ease-out')szF=Math.pow(1-t,0.4);
+      else if(P.spSzC==='ease-in')szF=Math.pow(t,0.4);
+      else if(P.spSzC==='linear')szF=1-t;
+      else szF=1; // constant
+      const renderSz=fs*szF; if(renderSz<0.04)continue;
+      const renderA=Math.min(1,P.spOpa*(1-Math.pow(t,2)));
+      if(renderA<0.005)continue;
+      // Shape
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(p.rot);
+      if(P.spShape==='star'){
+        // 簡易星形
+        const pts2=5,inner=renderSz*0.4;
+        ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+        ctx.beginPath();
+        for(let k=0;k<pts2*2;k++){
+          const a=k*Math.PI/pts2-Math.PI/2;
+          const rr=k%2===0?renderSz:inner;
+          k===0?ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr):ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+        }
+        ctx.closePath();ctx.fill();
+      }else if(P.spShape==='line'){
+        const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy+p.vz*p.vz)||0.001;
+        const lx=-(p.vx/spd)*renderSz*1.5,ly=-(p.vy/spd)*renderSz*1.5;
+        ctx.strokeStyle=`rgba(${r},${g},${b},${renderA})`;
+        ctx.lineWidth=Math.max(0.5,renderSz*0.4);ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(0,0);ctx.stroke();
+      }else{
+        // sphere
+        if(spFthR>0.1&&renderSz>1.5){
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA*0.18})`;
+          ctx.beginPath();ctx.arc(0,0,renderSz,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA*0.5})`;
+          ctx.beginPath();ctx.arc(0,0,Math.max(0.1,renderSz*(1-spFthR*0.6)),0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+          ctx.beginPath();ctx.arc(0,0,Math.max(0.1,renderSz*(1-spFthR*0.88)),0,Math.PI*2);ctx.fill();
+        }else{
+          ctx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
+          ctx.beginPath();ctx.arc(0,0,renderSz,0,Math.PI*2);ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation=P.bld;
+  }
+
   // Emitter crosshair
   ctx.globalCompositeOperation='source-over';
   ctx.globalAlpha=1;
@@ -914,7 +1133,7 @@ function loop(now){
   if(!lastT)lastT=now;
   const dt=Math.min((now-lastT)/1000,.05);
   lastT=now; time+=dt;
-  update(dt); render();
+  update(dt); updateSub(dt); render();
   tryRecFrame();
   requestAnimationFrame(loop);
 }
@@ -997,6 +1216,17 @@ bindR('tAP','tAP');bindR('tSc','tSc');bindR('tEv','tEv',2);bindR('tOc','tOc');bi
 bindR('grav','grav');
 bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
 bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');bindR('dispAmt','dispAmt');bindR('dispScale','dispScale');bindR('dispSpd','dispSpd');bindR('cutoutPct','cutoutPct');
+bindR('spCount','spCount');bindR('spRate','spRate');bindR('spVel','spVel');bindR('spVelR','spVelR');bindR('spInhVel','spInhVel');bindR('spSprd','spSprd');
+bindR('spGrav','spGrav');bindR('spARes','spARes',1);
+bindR('spSz','spSz',1);bindR('spSzR','spSzR');bindR('spLife','spLife',1);bindR('spLifeR','spLifeR');bindR('spFth','spFth');bindR('spOpa','spOpa',2);
+bindC('spC1','spC1');bindC('spCm','spCm');bindC('spC2','spC2');
+bindS('spDir','spDir');bindS('spShape','spShape');bindS('spSzC','spSzC');bindS('spBld','spBld');
+
+// Sub-emitter checkboxes
+['spEnable','spTrigDeath','spTrigBounce','spTrigBirth','spTrigLife'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el){el.checked=P[id];el.addEventListener('change',e=>{P[id]=e.target.checked;});}
+});
 
 // ── Background color ──────────────────────────────────────────────────────────
 document.getElementById('bgColor').addEventListener('input',e=>{
