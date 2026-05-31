@@ -205,3 +205,4 @@ https://cgtc11.github.io/HTML_APPs/Game/mahjong.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/7narabe.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/poker.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/texas.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/F1Race.html<br>
