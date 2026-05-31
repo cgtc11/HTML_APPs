@@ -1,0 +1,791 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+#root{font-family:monospace;background:#111;color:#eee;width:100%;overflow:hidden;}
+#toolbar{display:flex;gap:5px;padding:5px 6px;background:#222;border-bottom:2px solid #444;flex-wrap:wrap;align-items:center;}
+#toolbar button{padding:4px 10px;font-size:13px;font-family:monospace;background:#333;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;white-space:nowrap;font-weight:bold;}
+#toolbar button:hover{background:#555;border-color:#aaa;}
+#toolbar button.active{background:#d70;color:#fff;border-color:#fa0;}
+#toolbar button.danger:hover{background:#933;color:#fff;border-color:#f66;}
+#toolbar button:disabled{opacity:0.35;cursor:default;}
+#toolbar .sep{width:1px;background:#555;align-self:stretch;margin:0 3px;}
+#toolbar label{font-size:12px;color:#eee;font-weight:bold;}
+#toolbar input[type=range]{width:70px;vertical-align:middle;}
+#toolbar span.val{font-size:12px;color:#fff;min-width:22px;}
+#canvaswrap{position:relative;background:#000;width:100%;}
+#gc{display:block;image-rendering:pixelated;width:100%;}
+#hud{position:absolute;top:0;left:0;width:100%;padding:4px 8px;background:rgba(0,0,0,0.78);color:#fff;font-size:13px;font-family:monospace;font-weight:bold;display:flex;justify-content:space-between;pointer-events:none;}
+#statusbar{padding:5px 8px;background:#1a1a1a;font-size:12px;color:#ddd;border-top:1px solid #444;font-family:monospace;}
+#saverow{padding:5px 6px;background:#1a1a1a;border-top:1px solid #333;display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+#saverow input[type=text]{padding:4px 8px;font-size:12px;background:#2a2a2a;color:#fff;border:1px solid #666;border-radius:4px;font-family:monospace;min-width:100px;flex:1;}
+#saverow button{padding:4px 10px;font-size:12px;font-family:monospace;background:#333;color:#fff;border:1px solid #666;border-radius:4px;cursor:pointer;white-space:nowrap;font-weight:bold;}
+#saverow button:hover{background:#555;border-color:#aaa;}
+#slotrow{padding:4px 6px;background:#161616;display:flex;gap:4px;flex-wrap:wrap;align-items:center;border-top:1px solid #333;}
+#slotrow .lbl{font-size:11px;color:#aaa;}
+.slot{padding:2px 7px;font-size:11px;background:#2a2a2a;border:1px solid #666;border-radius:3px;cursor:pointer;color:#eee;}
+.slot:hover{background:#444;border-color:#aaa;}
+.slot.empty{color:#666;cursor:default;}
+.del{opacity:0.5;color:#f88;margin-left:4px;}
+</style>
+<div id="root">
+<div id="toolbar">
+  <button id="btn-edit" class="active" onclick="setMode('edit')">&#9999; Edit</button>
+  <button id="btn-race" onclick="setMode('race')">&#127950; Race</button>
+  <div class="sep"></div>
+  <button onclick="undoPoint()">Undo</button>
+  <button onclick="clearTrack()" class="danger">Clear</button>
+  <button onclick="closeTrack()">Close</button>
+  <button onclick="newGroup()">+マスク</button>
+  <div class="sep"></div>
+  <button id="btn-layup" onclick="layerUp()" disabled>&#9650;上へ</button>
+  <button id="btn-laydn" onclick="layerDown()" disabled>&#9660;下へ</button>
+  <div class="sep"></div>
+  <label for="twSlider">幅:</label>
+  <input type="range" id="twSlider" min="1" max="100" value="20" step="1" oninput="trackWidth=+this.value;document.getElementById('twVal').textContent=this.value;redraw()">
+  <span class="val" id="twVal">20</span>
+  <div class="sep"></div>
+  <span style="font-size:12px;color:#ccc;" id="ptcount">点: 0</span>
+</div>
+<div id="canvaswrap">
+  <canvas id="gc"></canvas>
+  <div id="hud" style="display:none;">
+    <span>LAP <span id="lap" style="color:#ff0;">1/5</span></span>
+    <span>TIME <span id="tm" style="color:#0f0;">0:00.00</span></span>
+    <span>RANK <span id="rnk" style="color:#ff0;">1st</span></span>
+    <span>SPEED <span id="spd" style="color:#0f0;">0</span>km/h</span>
+  </div>
+</div>
+<div id="saverow">
+  <input type="text" id="slotname" placeholder="スロット名..." maxlength="20"/>
+  <button onclick="saveSlot()">保存</button>
+  <button onclick="exportJSON()">Export</button>
+  <button onclick="document.getElementById('importfile').click()">Import</button>
+  <input type="file" id="importfile" accept=".json" style="display:none;" onchange="importJSON(event)"/>
+</div>
+<div id="slotrow">
+  <span class="lbl">保存済み:</span>
+  <div id="slotlist"></div>
+</div>
+<div id="statusbar">Editモード: クリックで点追加。[+マスク]で立体交差用マスク線を追加。線クリックで選択→[▲▼]でレイヤー変更。</div>
+</div>
+<script>
+const canvas=document.getElementById('gc');
+const ctx=canvas.getContext('2d');
+const wrap=document.getElementById('canvaswrap');
+const hud=document.getElementById('hud');
+
+let mode='edit';
+// groups[0]: メインコース(layer=0)  groups[1以降]: マスク用(layer>0, 開いた線でも可)
+// layer値が大きいほど上
+let groups=[{pts:[],closed:false,layer:0}];
+let activeGroup=0;
+let selectedSeg=null; // {gIdx, segIdx}
+let draggingG=-1, draggingIdx=-1;
+let trackWidth=20;
+
+const EDIT_SCALE=0.5;
+const RACE_ZOOM=5/EDIT_SCALE;
+
+// Edit用ビュー（ズーム・パン）
+let editZoom=EDIT_SCALE;
+let editOffX=0, editOffY=0;
+function resetEditView(){ editZoom=EDIT_SCALE; editOffX=0; editOffY=0; }
+
+const CAR_IMG_URL='https://cdn.jsdelivr.net/gh/cgtc11/image@main/image_f1.png';
+let carImg=null, carImgLoaded=false;
+(function(){
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onload=()=>{carImg=img;carImgLoaded=true;};
+  img.onerror=()=>{carImgLoaded=false;};
+  img.src=CAR_IMG_URL;
+})();
+
+function setStatus(t){document.getElementById('statusbar').textContent=t;}
+function updateLayerBtns(){
+  const has=selectedSeg!==null;
+  document.getElementById('btn-layup').disabled=!has;
+  document.getElementById('btn-laydn').disabled=!has;
+}
+function updatePtCount(){
+  const total=groups.reduce((s,g)=>s+g.pts.length,0);
+  document.getElementById('ptcount').textContent='点:'+total+'(G'+activeGroup+')';
+}
+
+function resize(){
+  const w=wrap.clientWidth||600;
+  canvas.width=w;
+  canvas.height=Math.min(Math.round(w*0.62),780);
+  wrap.style.height=canvas.height+'px';
+  if(mode==='edit')redraw();
+}
+resize();
+window.addEventListener('resize',resize);
+
+function setMode(m){
+  if(m==='race'){
+    if(groups[0].pts.length<4){setStatus('グループ0に点を4つ以上追加してください。');return;}
+    // layer0は必ずclose
+    if(!groups[0].closed&&groups[0].pts.length>=3)groups[0].closed=true;
+    // マスク用は閉じなくてよい（開いた線のまま使える）
+  }
+  mode=m;
+  document.getElementById('btn-edit').classList.toggle('active',m==='edit');
+  document.getElementById('btn-race').classList.toggle('active',m==='race');
+  hud.style.display=m==='race'?'flex':'none';
+  canvas.style.cursor=m==='edit'?'crosshair':'default';
+  selectedSeg=null;updateLayerBtns();
+  if(m==='race'){startRace();setStatus('← → ステアリング  ↑ アクセル  ↓ ブレーキ  [SPACE] スタート');}
+  else{stopRace();redraw();setStatus('Editモード: クリックで点追加。[+マスク]で立体交差用マスク線を追加。線クリックで選択→[▲▼]でレイヤー変更。');}
+}
+
+function distSeg(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+  if(l2===0)return Math.sqrt((px-ax)**2+(py-ay)**2);
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/l2));
+  return Math.sqrt((px-ax-t*dx)**2+(py-ay-t*dy)**2);
+}
+// セグメント上の最近傍t値（0〜1）を返す
+function segT(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+  if(l2===0)return 0;
+  return Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/l2));
+}
+
+function canvasXY(e){
+  const r=canvas.getBoundingClientRect();
+  const cx=(e.clientX-r.left)*canvas.width/r.width;
+  const cy=(e.clientY-r.top)*canvas.height/r.height;
+  const w=canvas.width, h=canvas.height;
+  return [(cx - w/2 - editOffX)/editZoom,
+          (cy - h/2 - editOffY)/editZoom];
+}
+function nearPoint(wx,wy){
+  const hitR=12/editZoom;
+  for(let gi=0;gi<groups.length;gi++){
+    for(let i=0;i<groups[gi].pts.length;i++){
+      const dx=groups[gi].pts[i][0]-wx,dy=groups[gi].pts[i][1]-wy;
+      if(dx*dx+dy*dy<hitR*hitR)return{gIdx:gi,ptIdx:i};
+    }
+  }
+  return null;
+}
+function nearSegmentEdit(wx,wy){
+  const hitR=trackWidth*1.5;
+  const sorted=[...groups.map((g,i)=>({g,i}))].sort((a,b)=>b.g.layer-a.g.layer);
+  for(const{g,i:gi}of sorted){
+    const pts=g.pts;
+    const end=g.closed?pts.length:pts.length-1;
+    for(let s=0;s<end;s++){
+      const p2=pts[(s+1)%pts.length];
+      if(distSeg(wx,wy,pts[s][0],pts[s][1],p2[0],p2[1])<hitR)return{gIdx:gi,segIdx:s};
+    }
+  }
+  return null;
+}
+
+function onMouseDown(e){
+  if(mode!=='edit')return;
+  const[wx,wy]=canvasXY(e);
+  const np=nearPoint(wx,wy);
+  if(np){draggingG=np.gIdx;draggingIdx=np.ptIdx;selectedSeg=null;updateLayerBtns();return;}
+  const ns=nearSegmentEdit(wx,wy);
+  if(ns){
+    selectedSeg=ns;activeGroup=ns.gIdx;updateLayerBtns();
+    setStatus('G'+ns.gIdx+' Seg'+ns.segIdx+' (layer='+groups[ns.gIdx].layer+') 選択。[▲▼]でレイヤー変更。');
+    redraw();return;
+  }
+  selectedSeg=null;updateLayerBtns();
+  if(groups[activeGroup].closed)return;
+  groups[activeGroup].pts.push([wx,wy]);
+  updatePtCount();redraw();
+}
+function onMouseMove(e){
+  if(mode!=='edit'||draggingIdx<0)return;
+  const[wx,wy]=canvasXY(e);
+  groups[draggingG].pts[draggingIdx]=[wx,wy];
+  redraw();
+}
+function onMouseUp(){draggingIdx=-1;draggingG=-1;}
+
+canvas.addEventListener('mousedown',onMouseDown);
+canvas.addEventListener('mousemove',onMouseMove);
+canvas.addEventListener('mouseup',onMouseUp);
+canvas.addEventListener('touchstart',e=>{e.preventDefault();onMouseDown(e.touches[0]);},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();onMouseMove(e.touches[0]);},{passive:false});
+canvas.addEventListener('touchend',e=>{e.preventDefault();onMouseUp();},{passive:false});
+
+// ホイールでズーム（カーソル位置中心）
+canvas.addEventListener('wheel',e=>{
+  if(mode!=='edit')return;
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  const cx=(e.clientX-r.left)*canvas.width/r.width;
+  const cy=(e.clientY-r.top)*canvas.height/r.height;
+  const w=canvas.width,h=canvas.height;
+  const factor=e.deltaY<0?1.15:1/1.15;
+  const newZoom=Math.max(0.05,Math.min(8,editZoom*factor));
+  // カーソル位置を固定したままズーム
+  editOffX=(editOffX-(cx-w/2))*(newZoom/editZoom)+(cx-w/2);
+  editOffY=(editOffY-(cy-h/2))*(newZoom/editZoom)+(cy-h/2);
+  editZoom=newZoom;
+  redraw();
+},{passive:false});
+
+function undoPoint(){
+  const g=groups[activeGroup];
+  if(g.closed){g.closed=false;}else if(g.pts.length>0){g.pts.pop();}
+  updatePtCount();redraw();
+}
+function clearTrack(){
+  groups=[{pts:[],closed:false,layer:0}];
+  activeGroup=0;selectedSeg=null;updateLayerBtns();
+  document.getElementById('ptcount').textContent='点: 0';
+  setStatus('クリアしました。');redraw();
+}
+function closeTrack(){
+  const g=groups[activeGroup];
+  if(g.pts.length<3){setStatus('3点以上必要です。');return;}
+  g.closed=true;setStatus('G'+activeGroup+'を閉じました。');redraw();
+}
+function newGroup(){
+  const maxLayer=Math.max(...groups.map(g=>g.layer));
+  groups.push({pts:[],closed:false,layer:maxLayer+1});
+  activeGroup=groups.length-1;
+  selectedSeg=null;updateLayerBtns();updatePtCount();
+  setStatus('マスク線を開始 (G'+activeGroup+', layer='+(maxLayer+1)+')。橋の上面になるラインを描いてください。Closeは任意。');
+  redraw();
+}
+function layerUp(){
+  if(!selectedSeg)return;
+  groups[selectedSeg.gIdx].layer=Math.max(1,groups[selectedSeg.gIdx].layer+1);
+  setStatus('G'+selectedSeg.gIdx+' layer='+groups[selectedSeg.gIdx].layer);redraw();
+}
+function layerDown(){
+  if(!selectedSeg)return;
+  // layer0はメインコース専用なので1以上を維持（マスク用は1以上）
+  const g=groups[selectedSeg.gIdx];
+  if(selectedSeg.gIdx===0){g.layer=0;}
+  else{g.layer=Math.max(1,g.layer-1);}
+  setStatus('G'+selectedSeg.gIdx+' layer='+g.layer);redraw();
+}
+
+function drawGrid(ox,oy,zoom){
+  const w=canvas.width,h=canvas.height;
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=0.5/zoom;
+  const step=40;
+  // 現在のビューに映るワールド範囲を計算
+  const left=ox-w/2/zoom, right=ox+w/2/zoom;
+  const top=oy-h/2/zoom, bottom=oy+h/2/zoom;
+  const x0=Math.floor(left/step)*step;
+  const y0=Math.floor(top/step)*step;
+  for(let x=x0;x<=right+step;x+=step){ctx.beginPath();ctx.moveTo(x,top-step);ctx.lineTo(x,bottom+step);ctx.stroke();}
+  for(let y=y0;y<=bottom+step;y+=step){ctx.beginPath();ctx.moveTo(left-step,y);ctx.lineTo(right+step,y);ctx.stroke();}
+}
+
+// layer0: 影あり・通常描画
+function drawLayer0Road(g){
+  const pts=g.pts;if(pts.length<2)return;
+  const ep=g.closed?[...pts,pts[0]]:pts;
+  const tw=trackWidth;
+  ctx.strokeStyle='rgba(0,0,0,0.6)';ctx.lineWidth=tw*2+10;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.strokeStyle='#555';ctx.lineWidth=tw*2;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.strokeStyle='#999';ctx.lineWidth=tw*2-5;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+}
+
+// マスク用(layer>0): 路面色のみ・影なし・端処理なし
+// lineCap=buttで端を平らにし、はみ出しを防ぐ
+function drawMaskRoad(g){
+  const pts=g.pts;if(pts.length<2)return;
+  const ep=g.closed?[...pts,pts[0]]:pts;
+  const tw=trackWidth;
+  ctx.lineCap='butt';ctx.lineJoin='round';
+  // 外縁色
+  ctx.strokeStyle='#555';ctx.lineWidth=tw*2;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  // 路面
+  ctx.strokeStyle='#999';ctx.lineWidth=tw*2-5;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.lineCap='round'; // 戻す
+}
+
+function drawStartLine(){
+  const g=groups[0];if(g.pts.length<2)return;
+  const sp=g.pts[0],sp2=g.pts[1];
+  const ang=Math.atan2(sp2[1]-sp[1],sp2[0]-sp[0]);
+  const tw=trackWidth;
+  ctx.save();ctx.translate(sp[0],sp[1]);ctx.rotate(ang+Math.PI/2);
+  for(let i=0;i<4;i++){
+    ctx.fillStyle=i%2===0?'#fff':'#000';ctx.fillRect(-tw,i*(tw/2)-tw,tw,tw/2);
+    ctx.fillStyle=i%2===0?'#000':'#fff';ctx.fillRect(0,i*(tw/2)-tw,tw,tw/2);
+  }
+  ctx.restore();
+}
+
+function redraw(){
+  if(mode==='race')return;
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#1e3d1e';ctx.fillRect(0,0,w,h);
+  ctx.save();
+  ctx.translate(w/2+editOffX, h/2+editOffY);
+  ctx.scale(editZoom,editZoom);
+  // グリッド：現在のビュー中心ワールド座標を渡す
+  const viewCX=-editOffX/editZoom, viewCY=-editOffY/editZoom;
+  drawGrid(viewCX,viewCY,editZoom);
+
+  // layer昇順で描画
+  const sorted=[...groups].sort((a,b)=>a.layer-b.layer);
+  for(const g of sorted){
+    if(g.pts.length<2)continue;
+    if(g.layer===0)drawLayer0Road(g);
+    else drawMaskRoad(g);
+    // Edit選択ハイライト
+    const gi=groups.indexOf(g);
+    if(selectedSeg&&selectedSeg.gIdx===gi){
+      const s=selectedSeg.segIdx;
+      const p1=g.pts[s],p2=g.pts[(s+1)%g.pts.length];
+      if(p1&&p2){
+        ctx.strokeStyle='rgba(255,220,0,0.9)';ctx.lineWidth=trackWidth*2+8;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(p1[0],p1[1]);ctx.lineTo(p2[0],p2[1]);ctx.stroke();
+      }
+    }
+  }
+
+  // 点マーカー
+  groups.forEach((g,gi)=>{
+    const isAct=gi===activeGroup;
+    g.pts.forEach(([x,y],i)=>{
+      const r=(i===0?9:6)/editZoom;
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle=i===0?(isAct?'#ff0':'#cc0'):(isAct?'#39f':'#26a');
+      ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2/editZoom;ctx.stroke();
+      if(isAct){
+        ctx.fillStyle='#fff';ctx.font='bold '+(11/editZoom)+'px monospace';
+        ctx.fillText(i,x+10/editZoom,y-5/editZoom);
+      }
+    });
+    if(g.pts.length>0){
+      const[x,y]=g.pts[0];
+      ctx.fillStyle=g.layer===0?'#4af':'#fa0';
+      ctx.font='bold '+(10/editZoom)+'px monospace';
+      ctx.fillText('L'+g.layer,x-30/editZoom,y-20/editZoom);
+    }
+  });
+  ctx.restore();
+}
+
+// SAVE/LOAD
+const STORAGE_KEY='fc_courses_v5';
+function getSlots(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return{}}}
+function setSlots(s){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s))}catch(e){}}
+function saveSlot(){
+  if(groups[0].pts.length<3){setStatus('グループ0に3点以上必要です。');return;}
+  const name=document.getElementById('slotname').value.trim()||('course_'+Date.now());
+  const slots=getSlots();
+  slots[name]={groups:groups.map(g=>({pts:g.pts,closed:g.closed,layer:g.layer})),tw:trackWidth,ts:Date.now()};
+  setSlots(slots);setStatus('保存: '+name);renderSlotList();
+}
+function loadSlot(name){
+  const slots=getSlots();if(!slots[name])return;
+  if(mode==='race')stopRace();
+  mode='edit';
+  document.getElementById('btn-edit').classList.add('active');
+  document.getElementById('btn-race').classList.remove('active');
+  hud.style.display='none';canvas.style.cursor='crosshair';
+  const d=slots[name];
+  if(d.groups){
+    groups=d.groups.map(g=>({pts:g.pts.map(p=>[+p[0],+p[1]]),closed:!!g.closed,layer:g.layer||0}));
+  }else if(d.pts){
+    groups=[{pts:d.pts.map(p=>[+p[0],+p[1]]),closed:!!d.closed,layer:0}];
+  }
+  activeGroup=0;
+  if(d.tw){trackWidth=d.tw;document.getElementById('twSlider').value=trackWidth;document.getElementById('twVal').textContent=trackWidth;}
+  selectedSeg=null;updateLayerBtns();updatePtCount();
+  document.getElementById('slotname').value=name;
+  setStatus('読み込み: '+name);redraw();
+}
+function deleteSlot(name){const s=getSlots();delete s[name];setSlots(s);renderSlotList();setStatus('削除: '+name);}
+function renderSlotList(){
+  const slots=getSlots();const list=document.getElementById('slotlist');list.innerHTML='';
+  const keys=Object.keys(slots);
+  if(!keys.length){list.innerHTML='<span class="slot empty">なし</span>';return;}
+  keys.sort((a,b)=>slots[b].ts-slots[a].ts).forEach(name=>{
+    const el=document.createElement('span');el.className='slot';
+    el.innerHTML=name+'<span class="del" onclick="event.stopPropagation();deleteSlot(\''+name.replace(/'/g,"\\'")+'\')">x</span>';
+    el.onclick=()=>loadSlot(name);list.appendChild(el);
+  });
+}
+renderSlotList();
+function exportJSON(){
+  if(groups[0].pts.length<2){setStatus('エクスポートするコースがありません。');return;}
+  const blob=new Blob([JSON.stringify({groups:groups.map(g=>({pts:g.pts,closed:g.closed,layer:g.layer})),tw:trackWidth},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='fc_course.json';a.click();URL.revokeObjectURL(url);
+}
+function importJSON(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.groups){groups=d.groups.map(g=>({pts:g.pts.map(p=>[+p[0],+p[1]]),closed:!!g.closed,layer:g.layer||0}));}
+      else if(d.pts&&Array.isArray(d.pts)){groups=[{pts:d.pts.map(p=>[+p[0],+p[1]]),closed:!!d.closed,layer:0}];}
+      else throw 0;
+      activeGroup=0;
+      if(d.tw){trackWidth=d.tw;document.getElementById('twSlider').value=trackWidth;document.getElementById('twVal').textContent=trackWidth;}
+      selectedSeg=null;updateLayerBtns();updatePtCount();
+      setStatus('インポート完了');redraw();
+    }catch(err){setStatus('インポートエラー: 不正なファイルです。');}
+  };
+  r.readAsText(file);e.target.value='';
+}
+
+// ======== RACE ========
+let raceRAF=null,raceRunning=false;
+let gameState='wait',lapNum=1,totalLaps=5,raceTime=0,lapTime=0,startTS=0;
+const player={x:0,y:0,angle:0,speed:0,lap:1,cpIdx:0,rank:1,onTrack:true,aboveMask:false};
+const CPU_COLORS=['#f44','#ffcc00','#ff8800'];
+const cpus=[
+  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.03,rate:0.022,color:CPU_COLORS[0],aboveMask:false},
+  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.06,rate:0.018,color:CPU_COLORS[1],aboveMask:false},
+  {x:0,y:0,angle:0,cpIdx:0,lap:1,progress:0.09,rate:0.020,color:CPU_COLORS[2],aboveMask:false},
+];
+const keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Space'&&mode==='race'){if(gameState==='wait'||gameState==='finish')beginRace();e.preventDefault();}
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+});
+document.addEventListener('keyup',e=>{keys[e.code]=false;});
+
+function getRacePts(){const g=groups[0];return[...g.pts,g.pts[0]];}
+
+function initRacePositions(){
+  const pts=getRacePts();
+  const sp=pts[0],sp2=pts[1];
+  const ang=Math.atan2(sp2[1]-sp[1],sp2[0]-sp[0]);
+  const nx=-Math.sin(ang),ny=Math.cos(ang);
+  player.x=sp[0]+nx*10;player.y=sp[1]+ny*10;
+  player.angle=ang;player.speed=0;player.lap=1;player.cpIdx=0;player.aboveMask=false;
+  cpus.forEach((c,i)=>{
+    c.x=sp[0]-nx*10*(i%2===0?1:-1)-Math.cos(ang)*(i+1)*28;
+    c.y=sp[1]-ny*10*(i%2===0?1:-1)-Math.sin(ang)*(i+1)*28;
+    c.angle=ang;c.speed=0;c.cpIdx=0;c.lap=1;c.progress=(i+1)*0.03;c.aboveMask=false;
+  });
+}
+function startRace(){
+  if(raceRAF)cancelAnimationFrame(raceRAF);
+  raceRunning=true;gameState='wait';lapNum=1;raceTime=0;lapTime=0;
+  initRacePositions();
+  let last=0;
+  function loop(ts){
+    if(!raceRunning)return;
+    const dt=Math.min((ts-last)/1000,0.05);last=ts;
+    if(gameState==='run'){raceTime=(ts-startTS)/1000;lapTime+=dt;}
+    updatePlayer(dt);updateCPUs(dt);calcRank();
+    drawRace();updateHUD();
+    raceRAF=requestAnimationFrame(loop);
+  }
+  raceRAF=requestAnimationFrame(ts=>{last=ts;requestAnimationFrame(loop);});
+}
+function beginRace(){gameState='run';startTS=performance.now();lapTime=0;lapNum=1;initRacePositions();}
+function stopRace(){raceRunning=false;if(raceRAF){cancelAnimationFrame(raceRAF);raceRAF=null;}gameState='wait';}
+
+function onRaceTrack(x,y){
+  const tw=trackWidth;
+  for(const g of groups){
+    const pts=g.pts;if(pts.length<2)continue;
+    const ep=g.closed?[...pts,pts[0]]:pts;
+    for(let i=0;i<ep.length-1;i++){if(distSeg(x,y,ep[i][0],ep[i][1],ep[i+1][0],ep[i+1][1])<tw)return true;}
+  }
+  return false;
+}
+function nearestSegG0(x,y){
+  const pts=getRacePts();let best=Infinity,bi=0;
+  for(let i=0;i<pts.length-1;i++){
+    const d=distSeg(x,y,pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1]);
+    if(d<best){best=d;bi=i;}
+  }
+  return bi;
+}
+
+// 車のaboveMask状態を更新する
+// マスク線の始点付近に来たら上(true)
+// 終点を完全に通過してマスク領域外に出たら下(false)
+const MASK_TRIGGER_R = ()=> trackWidth * 1.5;
+
+function updateCarMaskState(car){
+  const maskGs = groups.filter(g=>g.layer>0 && g.pts.length>=2);
+  const r=MASK_TRIGGER_R();
+  for(const g of maskGs){
+    const pts=g.pts;
+    const startPt=pts[0];
+    const endPt=pts[pts.length-1];
+
+    // 始点 or 終点どちらに近づいても上に上がる（双方向対応）
+    const dStart=Math.sqrt((car.x-startPt[0])**2+(car.y-startPt[1])**2);
+    const dEnd  =Math.sqrt((car.x-endPt[0]  )**2+(car.y-endPt[1]  )**2);
+    if(dStart<r || dEnd<r){
+      car.aboveMask=true;
+      return;
+    }
+  }
+  // aboveMask=true の車が、全マスク線の幅から完全に外れたら下に戻す
+  if(car.aboveMask){
+    if(!isOnAnyMask(car.x,car.y)) car.aboveMask=false;
+  }
+}
+
+// 車がマスク線の幅内（t問わず全体）にいるか
+function isOnAnyMask(cx,cy){
+  const tw=trackWidth;
+  for(const g of groups){
+    if(g.layer===0)continue;
+    const pts=g.pts;if(pts.length<2)continue;
+    const ep=g.closed?[...pts,pts[0]]:pts;
+    for(let i=0;i<ep.length-1;i++){
+      if(distSeg(cx,cy,ep[i][0],ep[i][1],ep[i+1][0],ep[i+1][1])<tw)return true;
+    }
+  }
+  return false;
+}
+
+// aboveMask=false の車がマスク線の幅内（端除く）にいるか（隠す対象かどうか）
+function isUnderMask(car){
+  if(car.aboveMask)return false;
+  const tw=trackWidth;
+  for(const g of groups){
+    if(g.layer===0)continue;
+    const pts=g.pts;if(pts.length<2)continue;
+    const ep=g.closed?[...pts,pts[0]]:pts;
+    for(let i=0;i<ep.length-1;i++){
+      const ax=ep[i][0],ay=ep[i][1],bx=ep[i+1][0],by=ep[i+1][1];
+      if(distSeg(car.x,car.y,ax,ay,bx,by)<tw){
+        const t=segT(car.x,car.y,ax,ay,bx,by);
+        if(t>0.01&&t<0.99)return true;
+      }
+    }
+  }
+  return false;
+}
+
+const PLAYER_MAXSPD=112,PLAYER_ACCEL=128,PLAYER_BRAKE=72,PLAYER_DRAG=2.2,PLAYER_STEER=2.6;
+function updatePlayer(dt){
+  if(gameState!=='run')return;
+  const maxSpd=player.onTrack?PLAYER_MAXSPD:PLAYER_MAXSPD*0.35;
+  let accel=0;
+  if(keys['ArrowUp'])accel=PLAYER_ACCEL;
+  if(keys['ArrowDown'])accel=-PLAYER_BRAKE;
+  player.speed+=accel*dt;
+  if(!keys['ArrowUp']&&!keys['ArrowDown'])player.speed*=(1-PLAYER_DRAG*dt);
+  player.speed=Math.max(-60,Math.min(maxSpd,player.speed));
+  const steer=PLAYER_STEER*Math.min(1,Math.abs(player.speed)/80);
+  if(keys['ArrowLeft'])player.angle-=steer*dt;
+  if(keys['ArrowRight'])player.angle+=steer*dt;
+  player.x+=Math.cos(player.angle)*player.speed*dt;
+  player.y+=Math.sin(player.angle)*player.speed*dt;
+  player.onTrack=onRaceTrack(player.x,player.y);
+  const pts=getRacePts(),N=pts.length-1;
+  const ci=nearestSegG0(player.x,player.y);
+  if(ci!==player.cpIdx){
+    if(player.cpIdx>N*0.7&&ci<N*0.1){
+      player.lap++;lapTime=0;
+      if(player.lap>totalLaps){gameState='finish';return;}
+      lapNum=player.lap;
+    }
+    player.cpIdx=ci;
+  }
+  updateCarMaskState(player);
+}
+const CPU_SPD=16;
+function updateCPUs(dt){
+  if(gameState!=='run')return;
+  const pts=getRacePts(),N=pts.length-1;
+  cpus.forEach(c=>{
+    c.progress+=c.rate*dt*CPU_SPD;
+    const seg=Math.floor(c.progress)%N,frac=c.progress-Math.floor(c.progress);
+    const p1=pts[seg],p2=pts[(seg+1)%pts.length];
+    const tx=p1[0]+(p2[0]-p1[0])*frac,ty=p1[1]+(p2[1]-p1[1])*frac;
+    const len=Math.sqrt((p2[0]-p1[0])**2+(p2[1]-p1[1])**2)||1;
+    const nx=-(p2[1]-p1[1])/len,ny=(p2[0]-p1[0])/len;
+    const wob=(Math.sin(c.progress*7)*4+Math.cos(c.progress*11)*2);
+    c.x=tx+nx*wob;c.y=ty+ny*wob;
+    c.angle=Math.atan2(p2[1]-p1[1],p2[0]-p1[0]);
+    if(seg<c.cpIdx&&c.cpIdx>N*0.7)c.lap++;
+    c.cpIdx=seg;
+    updateCarMaskState(c);
+  });
+}
+function calcRank(){
+  const pts=getRacePts(),N=pts.length-1;
+  const pg=o=>(o.lap-1)*N+o.cpIdx;
+  const all=[{...player,isP:true},...cpus];
+  all.sort((a,b)=>pg(b)-pg(a));
+  player.rank=all.findIndex(a=>a.isP)+1;
+}
+
+const cpuCanvasCache={};
+function getTintedCanvas(color){
+  if(cpuCanvasCache[color]&&carImgLoaded)return cpuCanvasCache[color];
+  const oc=document.createElement('canvas');oc.width=55;oc.height=55;
+  const oc2=oc.getContext('2d');
+  if(carImgLoaded&&carImg){
+    oc2.drawImage(carImg,0,0,55,55);
+    oc2.globalCompositeOperation='source-atop';
+    oc2.fillStyle=color;oc2.globalAlpha=0.60;
+    oc2.fillRect(0,0,55,55);
+    oc2.globalAlpha=1;oc2.globalCompositeOperation='source-over';
+    cpuCanvasCache[color]=oc;
+  }
+  return oc;
+}
+function drawCarAt(wx,wy,angle,tintColor,isPlayer,zoom){
+  const screenSz=38;
+  ctx.save();
+  ctx.translate(wx,wy);ctx.rotate(angle+Math.PI/2);ctx.scale(1/zoom,1/zoom);
+  if(carImgLoaded&&carImg){
+    const half=screenSz/2;
+    if(isPlayer){ctx.drawImage(carImg,-half,-half,screenSz,screenSz);}
+    else{ctx.drawImage(getTintedCanvas(tintColor),-half,-half,screenSz,screenSz);}
+  }else{
+    ctx.rotate(-Math.PI/2);
+    const cw=7,ch=14;
+    ctx.fillStyle=isPlayer?'#3af':tintColor;ctx.fillRect(-cw/2,-ch/2,cw,ch);
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(-cw/4,-ch/4,cw/2,ch/2);
+    ctx.fillStyle=isPlayer?'#3af':tintColor;
+    ctx.fillRect(-cw*0.75,-ch/2-2,cw*1.5,3);ctx.fillRect(-cw*0.7,ch/2-1,cw*1.4,3);
+  }
+  ctx.restore();
+}
+
+// Race描画（立体交差・マスク方式）
+// 描画順：
+//   1. layer0コース（影あり通常描画）
+//   2. マスク用コース（影なし路面のみ）layer昇順
+//   3. 各車を描画
+//   4. 車ごとに「その車がマスク下にいるか」判定→マスク下の車の上にマスク用を再描画
+function drawRaceLayer0(){
+  const g=groups[0];if(g.pts.length<2)return;
+  const ep=[...g.pts,g.pts[0]];
+  const tw=trackWidth;
+  ctx.strokeStyle='rgba(0,0,0,0.6)';ctx.lineWidth=tw*2+10;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.strokeStyle='#555';ctx.lineWidth=tw*2;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.strokeStyle='#999';ctx.lineWidth=tw*2-5;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+}
+function drawRaceMask(g){
+  const pts=g.pts;if(pts.length<2)return;
+  const ep=g.closed?[...pts,pts[0]]:pts;
+  const tw=trackWidth-2;
+  ctx.lineCap='butt';ctx.lineJoin='round';
+  ctx.strokeStyle='#555';ctx.lineWidth=tw*2;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.strokeStyle='#999';ctx.lineWidth=tw*2-5;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.lineCap='round';
+}
+// 半透明用：1パスで路面色のみ（多重描画しないのでglobalAlphaが正しく効く）
+function drawRaceMaskFlat(g){
+  const pts=g.pts;if(pts.length<2)return;
+  const ep=g.closed?[...pts,pts[0]]:pts;
+  const tw=trackWidth-1;
+  ctx.lineCap='butt';ctx.lineJoin='round';
+  ctx.strokeStyle='#999';ctx.lineWidth=tw*2;
+  ctx.beginPath();ctx.moveTo(ep[0][0],ep[0][1]);
+  for(let i=1;i<ep.length;i++)ctx.lineTo(ep[i][0],ep[i][1]);
+  ctx.stroke();
+  ctx.lineCap='round';
+}
+
+function drawRace(){
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#1e3d1e';ctx.fillRect(0,0,w,h);
+  const zoom=RACE_ZOOM;
+  const camX=player.x,camY=player.y;
+  ctx.save();
+  ctx.translate(w/2,h/2);
+  ctx.scale(zoom,zoom);
+  ctx.translate(-camX,-camY);
+  drawGrid(camX,camY,zoom);
+
+  // 1. layer0コース
+  drawRaceLayer0();
+  drawStartLine();
+
+  // 2. マスク用コース（layer昇順）
+  const maskGroups=[...groups.filter(g=>g.layer>0)].sort((a,b)=>a.layer-b.layer);
+  for(const g of maskGroups)drawRaceMask(g);
+
+  // 3. 全車を描画（まず全員）
+  const allCars=[
+    {obj:player,isPlayer:true,color:'#3af'},
+    ...cpus.map(c=>({obj:c,isPlayer:false,color:c.color}))
+  ];
+  for(const car of allCars){
+    drawCarAt(car.obj.x,car.obj.y,car.obj.angle,car.color,car.isPlayer,zoom);
+  }
+
+  // 4. マスク下にいる車の上にマスクを再描画
+  const anyUnder=allCars.some(car=>isUnderMask(car.obj));
+  if(anyUnder){
+    for(const g of maskGroups)drawRaceMask(g);
+  }
+
+  ctx.restore();
+
+  const fs=Math.round(Math.max(13,w/42));
+  ctx.textAlign='center';
+  if(gameState==='wait'){
+    ctx.fillStyle='rgba(0,0,0,0.62)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#ff0';ctx.font='bold '+fs+'px monospace';
+    ctx.fillText('FAMILY CIRCUIT',w/2,h/2-fs*1.2);
+    ctx.fillStyle='#fff';ctx.font=(fs-1)+'px monospace';
+    ctx.fillText('PRESS SPACE TO START',w/2,h/2+fs*0.7);
+  }
+  if(gameState==='finish'){
+    ctx.fillStyle='rgba(0,0,0,0.65)';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#ff0';ctx.font='bold '+fs+'px monospace';
+    const rs=['1st','2nd','3rd','4th'][player.rank-1]||player.rank+'th';
+    ctx.fillText('FINISH!  '+rs+' PLACE',w/2,h/2-fs);
+    ctx.fillStyle='#fff';ctx.font=(fs-1)+'px monospace';
+    ctx.fillText('TOTAL: '+fmtTime(raceTime),w/2,h/2+fs*0.6);
+    ctx.fillText('SPACE: RETRY',w/2,h/2+fs*2.2);
+  }
+  ctx.textAlign='left';
+}
+
+function fmtTime(sec){const m=Math.floor(sec/60),s=sec%60;return m+':'+(s<10?'0':'')+s.toFixed(2);}
+function updateHUD(){
+  document.getElementById('lap').textContent=lapNum+'/'+totalLaps;
+  document.getElementById('tm').textContent=fmtTime(gameState==='run'?raceTime:0);
+  document.getElementById('rnk').textContent=['1st','2nd','3rd','4th'][player.rank-1]||player.rank+'th';
+  document.getElementById('spd').textContent=Math.round(Math.abs(player.speed)*0.5);
+}
+
+redraw();
+</script>
