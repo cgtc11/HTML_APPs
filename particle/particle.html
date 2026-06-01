@@ -858,7 +858,7 @@ function update(dt){
       // On Bounce
       if(P.spEnable&&P.spTrigBounce) spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,P.spCount|0);
     }
-    // Over Life（生存中に連続放出） - Interval/Duration cycling を適用
+    // Over Life（生存中に連続放出）
     if(P.spEnable&&P.spTrigLife&&subLifeActive){
       p.spAccum=(p.spAccum||0)+dt*P.spPps;
       while(p.spAccum>=1){spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,1);p.spAccum-=1;}
@@ -874,34 +874,33 @@ function update(dt){
 
 // ── Sub-particle update ───────────────────────────────────────────────────────
 function updateSub(dt){
-  // Over Life burst cycling（サブパーティクルがなくても時計は進める）
-  if(P.spEnable&&P.spTrigLife){
-    if(P.spBurstInt>0){
-      subLifeCycleT+=dt;
-      const cl=P.spBurstDur+P.spBurstInt;
-      if(subLifeCycleT>=cl)subLifeCycleT-=Math.floor(subLifeCycleT/cl)*cl;
-      subLifeActive=subLifeCycleT<P.spBurstDur;
-      // バー更新
-      const bar=document.getElementById('spCycleBar');
-      const fill=document.getElementById('spCycleBarFill');
-      if(bar){
-        bar.style.display='block';
-        if(subLifeActive){
-          fill.style.background='#4466ee';
-          fill.style.width=(subLifeCycleT/P.spBurstDur*100).toFixed(1)+'%';
-          bar.title='発射中 '+subLifeCycleT.toFixed(2)+'s / '+P.spBurstDur+'s';
-        }else{
-          fill.style.background='#332244';
-          fill.style.width=((subLifeCycleT-P.spBurstDur)/P.spBurstInt*100).toFixed(1)+'%';
-          bar.title='待機中 '+(subLifeCycleT-P.spBurstDur).toFixed(2)+'s / '+P.spBurstInt+'s';
-        }
+  // Burst/Cycle タイマー（Over Lifeと独立して常時動作）
+  if(P.spBurstInt>0){
+    subLifeCycleT+=dt;
+    const cl=P.spBurstDur+P.spBurstInt;
+    if(subLifeCycleT>=cl)subLifeCycleT-=Math.floor(subLifeCycleT/cl)*cl;
+    subLifeActive=subLifeCycleT<P.spBurstDur;
+    const bar=document.getElementById('spCycleBar');
+    const fill=document.getElementById('spCycleBarFill');
+    if(bar){
+      bar.style.display='block';
+      if(subLifeActive){
+        fill.style.background='#4466ee';
+        fill.style.width=(subLifeCycleT/P.spBurstDur*100).toFixed(1)+'%';
+        bar.title='発射中 '+subLifeCycleT.toFixed(2)+'s / '+P.spBurstDur+'s';
+      }else{
+        fill.style.background='#332244';
+        fill.style.width=((subLifeCycleT-P.spBurstDur)/P.spBurstInt*100).toFixed(1)+'%';
+        bar.title='待機中 '+(subLifeCycleT-P.spBurstDur).toFixed(2)+'s / '+P.spBurstInt+'s';
       }
-    }else{
-      subLifeActive=true;
-      const bar=document.getElementById('spCycleBar');
-      if(bar)bar.style.display='none';
     }
+  }else{
+    subLifeCycleT=0;
+    subLifeActive=true;
+    const bar=document.getElementById('spCycleBar');
+    if(bar)bar.style.display='none';
   }
+
   if(!subPts.length)return;
   const ps=dt*60;
   const dragV=Math.pow(Math.max(0,1-P.spARes*0.01),ps);
