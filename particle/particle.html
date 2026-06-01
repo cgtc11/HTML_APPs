@@ -179,6 +179,8 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="dl">Particle Shape</div>
       <div class="r"><span class="lb">Type</span><select id="ptType">
         <option value="sphere">● Sphere</option>
+        <option value="ring">○ Ring（輪）</option>
+        <option value="bubble">◉ Bubble（気泡）</option>
         <option value="line">─ Line / Streak</option>
         <option value="star">✦ Star</option>
         <option value="dustblob">☁ Dust Blob</option>
@@ -288,6 +290,8 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
       <div class="dl">Particle</div>
       <div class="r"><span class="lb">Shape</span><select id="spShape">
         <option value="sphere">● Sphere</option>
+        <option value="ring">○ Ring（輪）</option>
+        <option value="bubble">◉ Bubble（気泡）</option>
         <option value="dustblob">☁ Dust Blob</option>
         <option value="star">✦ Star</option>
         <option value="line">─ Line / Streak</option>
@@ -954,6 +958,46 @@ function drawParticleShape(cx,ptType,p,sx,sy,renderSz,renderA,r,g,b,fthR,FL,CW,C
       cx.fillStyle=`rgba(${r},${g},${b},${renderA})`;
       cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
     }
+    cx.restore();
+
+  }else if(ptType==='ring'){
+    // 輪（ドーナツ）— feather で線幅とエッジぼかし
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);
+    const thk=Math.max(0.5, renderSz*(0.06+fthR*0.25));
+    if(fthR>0.05){
+      // 外側ぼかし
+      cx.strokeStyle=`rgba(${r},${g},${b},${renderA*0.15})`;
+      cx.lineWidth=thk*3.2;cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.stroke();
+      cx.strokeStyle=`rgba(${r},${g},${b},${renderA*0.5})`;
+      cx.lineWidth=thk*1.8;cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.stroke();
+    }
+    cx.strokeStyle=`rgba(${r},${g},${b},${renderA})`;
+    cx.lineWidth=thk;cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.stroke();
+    cx.restore();
+
+  }else if(ptType==='bubble'){
+    // 気泡 — 逆グラデ（エッジが明るく、中心が暗い）
+    cx.save();cx.translate(sx,sy);cx.rotate(p.rot);
+    // ハイライト位置（左上）
+    const hlX=-renderSz*0.3,hlY=-renderSz*0.35;
+    // リムグロー（外周が光る）
+    const rim=cx.createRadialGradient(0,0,renderSz*0.65,0,0,renderSz);
+    rim.addColorStop(0,`rgba(${r},${g},${b},0)`);
+    rim.addColorStop(0.7,`rgba(${r},${g},${b},${renderA*0.3})`);
+    rim.addColorStop(1,`rgba(${r},${g},${b},${renderA*0.85})`);
+    cx.fillStyle=rim;
+    cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
+    // ハイライト（小さな光の反射）
+    const hl=cx.createRadialGradient(hlX,hlY,0,hlX,hlY,renderSz*0.45);
+    hl.addColorStop(0,`rgba(${r},${g},${b},${renderA*0.9})`);
+    hl.addColorStop(0.5,`rgba(${r},${g},${b},${renderA*0.25})`);
+    hl.addColorStop(1,`rgba(${r},${g},${b},0)`);
+    cx.fillStyle=hl;
+    cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.fill();
+    // 輪郭線（薄め）
+    cx.strokeStyle=`rgba(${r},${g},${b},${renderA*0.4})`;
+    cx.lineWidth=Math.max(0.4,renderSz*0.04);
+    cx.beginPath();cx.arc(0,0,renderSz,0,Math.PI*2);cx.stroke();
     cx.restore();
   }else if(ptType==='line'){
     const dz=FL+p.z;if(dz<8)return;
