@@ -247,6 +247,14 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
     <div class="sh" data-s="sub">Sub Emitter<span id="sub_a">▸</span></div>
     <div class="sb" id="sub">
       <div class="r"><span class="lb">Enable</span><input type="checkbox" id="spEnable"></div>
+      <div class="dl">Load from Slot</div>
+      <div class="r" style="gap:4px">
+        <select id="spSlotSel" style="flex:1;background:#161622;border:1px solid #252535;border-radius:2px;color:#aab;font-size:9.5px;padding:1px 3px">
+          <option value="">-- スロットを選択 --</option>
+        </select>
+        <button id="spSlotLoad" style="background:#252535;border:1px solid #353545;color:#aab;font-size:9px;padding:2px 7px;border-radius:2px;cursor:pointer">読込</button>
+      </div>
+      <div class="r"><span class="lb">Max Depth</span><input type="range" id="spMaxDepth" min="1" max="5" value="1" step="1"><span class="vl" id="spMaxDepthV">1</span></div>
       <div class="dl">Trigger</div>
       <div style="padding:2px 8px 4px;display:flex;flex-direction:column;gap:3px;font-size:10px;color:#aab">
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigDeath"> On Death（消滅時）</label>
@@ -254,37 +262,48 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigBirth"> On Birth（発生時）</label>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="spTrigLife"> Over Life（生存中に連続放出）</label>
       </div>
-      <div class="r"><span class="lb">Count</span><input type="range" id="spCount" min="1" max="100" value="8" step="1"><span class="vl" id="spCountV">8</span></div>
-      <div class="r" id="spRateRow"><span class="lb">Rate (pps)</span><input type="range" id="spRate" min="1" max="200" value="20" step="1"><span class="vl" id="spRateV">20</span></div>
-      <div class="dl">Physics</div>
+      <div class="dl">Burst / Cycle</div>
+      <div class="r"><span class="lb">Interval (s)</span><input type="range" id="spBurstInt" min="0" max="10" value="0" step="0.1"><span class="vl" id="spBurstIntV">0.0</span></div>
+      <div class="r"><span class="lb">Duration (s)</span><input type="range" id="spBurstDur" min="0.1" max="10" value="1" step="0.1"><span class="vl" id="spBurstDurV">1.0</span></div>
+      <div id="spCycleBar" style="display:none;margin:2px 8px 4px;height:4px;background:#1a1a28;border-radius:2px;overflow:hidden;position:relative">
+        <div id="spCycleBarFill" style="position:absolute;left:0;top:0;height:100%;background:#4466ee;transition:width .05s linear;border-radius:2px"></div>
+      </div>
+      <div class="dl">Emission</div>
+      <div class="r"><span class="lb">Particles / sec</span><input type="range" id="spPps" min="1" max="1000" value="30" step="1"><span class="vl" id="spPpsV">30</span></div>
+      <div class="r"><span class="lb">Count</span><input type="range" id="spCount" min="1" max="200" value="8" step="1"><span class="vl" id="spCountV">8</span></div>
+      <div class="r"><span class="lb">Velocity</span><input type="range" id="spVel" min="0" max="20" value="4" step="0.1"><span class="vl" id="spVelV">4.0</span></div>
+      <div class="r"><span class="lb">Vel Random %</span><input type="range" id="spVelR" min="0" max="100" value="50"><span class="vl" id="spVelRV">50</span></div>
+      <div class="r"><span class="lb">Inherit Vel %</span><input type="range" id="spInhVel" min="0" max="100" value="20"><span class="vl" id="spInhVelV">20</span></div>
       <div class="r"><span class="lb">Direction</span><select id="spDir">
         <option value="random">Random（全方向）</option>
         <option value="up">Up（上向き）</option>
         <option value="down">Down（下向き）</option>
+        <option value="outward">Outward（外向き）</option>
+        <option value="inward">Inward（内向き）</option>
         <option value="parent">Parent Velocity（親の方向）</option>
-        <option value="outward">Outward（中心から外向き）</option>
       </select></div>
-      <div class="r"><span class="lb">Velocity</span><input type="range" id="spVel" min="0" max="1000" value="150" step="1"><span class="vl" id="spVelV">150</span></div>
-      <div class="r"><span class="lb">Vel Random %</span><input type="range" id="spVelR" min="0" max="100" value="50"><span class="vl" id="spVelRV">50</span></div>
-      <div class="r"><span class="lb">Inherit Vel %</span><input type="range" id="spInhVel" min="0" max="100" value="20"><span class="vl" id="spInhVelV">20</span></div>
       <div class="r"><span class="lb">Spread °</span><input type="range" id="spSprd" min="0" max="180" value="180"><span class="vl" id="spSprdV">180</span></div>
-      <div class="r"><span class="lb">Gravity</span><input type="range" id="spGrav" min="-200" max="200" value="0" step="1"><span class="vl" id="spGravV">0</span></div>
-      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="spARes" min="0" max="100" value="10" step="0.5"><span class="vl" id="spAResV">10.0</span></div>
+      <div class="r"><span class="lb">Pitch °</span><input type="range" id="spPitch" min="-180" max="180" value="0"><span class="vl" id="spPitchV">0</span></div>
+      <div class="r"><span class="lb">Yaw °</span><input type="range" id="spYaw" min="-180" max="180" value="0"><span class="vl" id="spYawV">0</span></div>
       <div class="dl">Particle</div>
       <div class="r"><span class="lb">Shape</span><select id="spShape">
         <option value="sphere">● Sphere</option>
+        <option value="dustblob">☁ Dust Blob</option>
         <option value="star">✦ Star</option>
-        <option value="line">─ Line</option>
+        <option value="line">─ Line / Streak</option>
+        <option value="billboard">▣ Billboard (PNG)</option>
+        <option value="gifanim">🎞 GIF Anim</option>
       </select></div>
-      <div class="r"><span class="lb">Size</span><input type="range" id="spSz" min="0.1" max="50" value="3" step="0.1"><span class="vl" id="spSzV">3.0</span></div>
+      <div class="r"><span class="lb">Size</span><input type="range" id="spSz" min="0.1" max="200" value="3" step="0.1"><span class="vl" id="spSzV">3.0</span></div>
       <div class="r"><span class="lb">Size Random %</span><input type="range" id="spSzR" min="0" max="100" value="50"><span class="vl" id="spSzRV">50</span></div>
       <div class="r"><span class="lb">Size over Life</span><select id="spSzC">
-        <option value="ease-out">Ease Out（大→小）</option>
-        <option value="ease-in">Ease In（小→大）</option>
-        <option value="linear">Linear（一定）</option>
-        <option value="constant">Constant（変化なし）</option>
+        <option value="ease-out">Ease Out</option>
+        <option value="ease-in">Ease In</option>
+        <option value="linear">Linear</option>
+        <option value="constant">Constant</option>
+        <option value="ease-in-out">Ease In Out</option>
       </select></div>
-      <div class="r"><span class="lb">Lifespan (s)</span><input type="range" id="spLife" min="0.1" max="10" value="1" step="0.1"><span class="vl" id="spLifeV">1.0</span></div>
+      <div class="r"><span class="lb">Lifespan (s)</span><input type="range" id="spLife" min="0.1" max="30" value="1" step="0.1"><span class="vl" id="spLifeV">1.0</span></div>
       <div class="r"><span class="lb">Life Random %</span><input type="range" id="spLifeR" min="0" max="100" value="30"><span class="vl" id="spLifeRV">30</span></div>
       <div class="r"><span class="lb">Feather %</span><input type="range" id="spFth" min="0" max="100" value="60"><span class="vl" id="spFthV">60</span></div>
       <div class="r"><span class="lb">Opacity</span><input type="range" id="spOpa" min="0.05" max="1" value="0.8" step="0.01"><span class="vl" id="spOpaV">0.80</span></div>
@@ -298,13 +317,35 @@ body{background:#0a0a0f;font-family:system-ui,sans-serif;overflow:hidden;height:
         <option value="subtract">Subtract</option>
         <option value="difference">Difference</option>
       </select></div>
-      <div class="dl">Color</div>
+      <div class="dl">Color over Life</div>
       <div class="r">
         <span class="lb">Birth</span><input type="color" id="spC1" value="#ffffff">
         <span class="lb" style="min-width:24px;text-align:center">Mid</span><input type="color" id="spCm" value="#ffaa00">
         <span class="lb" style="min-width:24px;text-align:center">End</span><input type="color" id="spC2" value="#ff4400">
       </div>
+      <div class="dl">Physics / Air</div>
+      <div class="r"><span class="lb">Air Resistance</span><input type="range" id="spARes" min="0" max="100" value="10" step="0.5"><span class="vl" id="spAResV">10.0</span></div>
+      <div class="r"><span class="lb">Air Res Rotation</span><input type="range" id="spAResR" min="0" max="100" value="0" step="0.5"><span class="vl" id="spAResRV">0.0</span></div>
+      <div class="r"><span class="lb">Wind X</span><input type="range" id="spWX" min="-50" max="50" value="0" step="0.1"><span class="vl" id="spWXV">0.0</span></div>
+      <div class="r"><span class="lb">Wind Y</span><input type="range" id="spWY" min="-50" max="50" value="0" step="0.1"><span class="vl" id="spWYV">0.0</span></div>
+      <div class="r"><span class="lb">Wind Z</span><input type="range" id="spWZ" min="-50" max="50" value="0" step="0.1"><span class="vl" id="spWZV">0.0</span></div>
+      <div class="dl">Turbulence Field</div>
+      <div class="r"><span class="lb">Affect Position</span><input type="range" id="spTAP" min="0" max="500" value="0" step="1"><span class="vl" id="spTAPV">0</span></div>
+      <div class="r"><span class="lb">Scale</span><input type="range" id="spTSc" min="1" max="2000" value="100" step="1"><span class="vl" id="spTScV">100</span></div>
+      <div class="r"><span class="lb">Evolution</span><input type="range" id="spTEv" min="0" max="5" value="1" step="0.05"><span class="vl" id="spTEvV">1.00</span></div>
+      <div class="r"><span class="lb">Octaves</span><input type="range" id="spTOc" min="1" max="8" value="3" step="1"><span class="vl" id="spTOcV">3</span></div>
+      <div class="r"><span class="lb">Oct Multiplier</span><input type="range" id="spTOM" min="0" max="1" value="0.5" step="0.01"><span class="vl" id="spTOMV">0.50</span></div>
+      <div class="r"><span class="lb">Affect Rotation</span><input type="range" id="spTAR" min="0" max="10" value="0" step="0.1"><span class="vl" id="spTARV">0.0</span></div>
+      <div class="dl">Physics / Gravity</div>
+      <div class="r"><span class="lb">Gravity</span><input type="range" id="spGrav" min="-500" max="500" value="0" step="1"><span class="vl" id="spGravV">0</span></div>
+      <div class="dl">Physics / Bounce</div>
+      <div class="r"><span class="lb">Floor</span><select id="spFlrOn"><option value="0">Off</option><option value="1">On</option></select></div>
+      <div class="r"><span class="lb">Floor Position %</span><input type="range" id="spFlrY" min="0" max="100" value="85"><span class="vl" id="spFlrYV">85</span></div>
+      <div class="r"><span class="lb">Bounciness %</span><input type="range" id="spBnce" min="0" max="200" value="40"><span class="vl" id="spBnceV">40</span></div>
+      <div class="r"><span class="lb">Friction %</span><input type="range" id="spFrct" min="0" max="100" value="30"><span class="vl" id="spFrctV">30</span></div>
+      <div class="r"><span class="lb">Bounce Rand %</span><input type="range" id="spBnceR" min="0" max="100" value="20"><span class="vl" id="spBnceRV">20</span></div>
     </div>
+
 
     <div class="sh" data-s="rnd">Rendering<span id="rnd_a">▸</span></div>
     <div class="sb" id="rnd">
@@ -405,9 +446,16 @@ const P={
   grav:0,flrOn:false,flrY:85,bnce:50,frct:20,bnceR:20,
   maxP:2000,dof:0,fl:450,motionBlur:0,flickerSpd:0,flickerRand:5,dispAmt:0,dispScale:200,dispSpd:0.5,cutoutPct:0,bgColor:'#000000',
   spEnable:false,spTrigDeath:true,spTrigBounce:false,spTrigBirth:false,spTrigLife:false,
-  spCount:8,spRate:20,spDir:'random',spVel:150,spVelR:50,spInhVel:20,spSprd:180,spGrav:0,spARes:10,
-  spShape:'sphere',spSz:3,spSzR:50,spSzC:'ease-out',spLife:1,spLifeR:30,spFth:60,spOpa:0.8,spBld:'inherit',
-  spC1:[255,255,255],spCm:[255,170,0],spC2:[255,68,0]
+  spMaxDepth:1,
+  spBurstInt:0,spBurstDur:1,spPps:30,
+  spCount:8,spVel:4,spVelR:50,spInhVel:20,
+  spDir:'random',spSprd:180,spPitch:0,spYaw:0,
+  spShape:'sphere',spSz:3,spSzR:50,spSzC:'ease-out',
+  spLife:1,spLifeR:30,spFth:60,spOpa:0.8,spBld:'inherit',
+  spC1:[255,255,255],spCm:[255,170,0],spC2:[255,68,0],
+  spARes:10,spAResR:0,spWX:0,spWY:0,spWZ:0,
+  spTAP:0,spTSc:100,spTEv:1,spTOc:3,spTOM:0.5,spTAR:0,
+  spGrav:0,spFlrOn:0,spFlrY:85,spBnce:40,spFrct:30,spBnceR:20
 };
 
 // Billboard image state
@@ -415,54 +463,52 @@ let bbImg=null, gifImg=null, gifEmitImg=null;
 let dispTime=0;
 const _cutoutQueue=[];
 let subPts=[];
+let subLifeCycleT=0,subLifeActive=true;
+let recActive=false,recFrames=[];
 
 // ── Sub-emitter spawn ─────────────────────────────────────────────────────────
 function spawnSub(x,y,z,pvx,pvy,pvz,count){
   if(!P.spEnable)return;
   const inh=P.spInhVel*0.01;
   const sprdRad=P.spSprd*Math.PI/180;
-  // Direction axis
-  let ax=0,ay=-1,az=0; // default: up
-  if(P.spDir==='down'){ax=0;ay=1;az=0;}
-  else if(P.spDir==='parent'){
-    const pm=Math.sqrt(pvx*pvx+pvy*pvy+pvz*pvz)||1;
-    ax=pvx/pm;ay=pvy/pm;az=pvz/pm;
-  }else if(P.spDir==='outward'){
-    const pm=Math.sqrt(x*x+y*y+z*z)||1;
-    ax=x/pm;ay=y/pm;az=z/pm;
-  }else{ax=0;ay=0;az=0;} // random: no bias axis
+  const pitchR=(P.spPitch||0)*Math.PI/180;
+  const yawR=(P.spYaw||0)*Math.PI/180;
+  const useRandom=P.spDir==='random';
+  let bx=0,by=-1,bz=0;
+  if(!useRandom){
+    if(P.spDir==='down'){bx=0;by=1;bz=0;}
+    else if(P.spDir==='parent'){const pm=Math.sqrt(pvx*pvx+pvy*pvy+pvz*pvz)||1;bx=pvx/pm;by=pvy/pm;bz=pvz/pm;}
+    else if(P.spDir==='outward'){const pm=Math.sqrt(x*x+y*y+z*z)||1;bx=x/pm;by=y/pm;bz=z/pm;}
+    else if(P.spDir==='inward'){const pm=Math.sqrt(x*x+y*y+z*z)||1;bx=-x/pm;by=-y/pm;bz=-z/pm;}
+    const cp2=Math.cos(pitchR),sp2=Math.sin(pitchR);
+    const nby=by*cp2-bz*sp2,nbz=by*sp2+bz*cp2; by=nby;bz=nbz;
+    const cy=Math.cos(yawR),sy2=Math.sin(yawR);
+    const nbx=bx*cy+bz*sy2,nbz2=-bx*sy2+bz*cy; bx=nbx;bz=nbz2;
+  }
   for(let i=0;i<count;i++){
     const phi=Math.random()*Math.PI*2;
-    const cosMax=Math.cos(sprdRad);
-    const cosT=1-Math.random()*(1-cosMax);
-    const sinT=Math.sqrt(1-cosT*cosT);
     let dx,dy,dz;
-    if(P.spDir==='random'){
-      // 完全ランダム球面
-      dx=sinT*Math.cos(phi);
-      dy=cosT*(Math.random()<0.5?1:-1);
-      dz=sinT*Math.sin(phi);
+    if(useRandom){
+      const u=Math.random(),v=Math.random();
+      const th=2*Math.PI*u,ph=Math.acos(2*v-1);
+      dx=Math.sin(ph)*Math.cos(th);dy=Math.cos(ph);dz=Math.sin(ph)*Math.sin(th);
     }else{
-      // axis 周りのコーン
-      // axis に垂直な基底を作る
-      let bx=1,by=0,bz=0;
-      if(Math.abs(ax)>0.9){bx=0;by=1;bz=0;}
-      // cross(axis, b)
-      const tx=ay*bz-az*by,ty=az*bx-ax*bz,tz=ax*by-ay*bx;
-      const tl=Math.sqrt(tx*tx+ty*ty+tz*tz)||1;
-      const ex=tx/tl,ey=ty/tl,ez=tz/tl;
-      // cross(axis, e)
-      const fx=ay*ez-az*ey,fy=az*ex-ax*ez,fz=ax*ey-ay*ex;
-      const cp=Math.cos(phi),sp2=Math.sin(phi);
-      dx=sinT*(cp*ex+sp2*fx)+cosT*ax;
-      dy=sinT*(cp*ey+sp2*fy)+cosT*ay;
-      dz=sinT*(cp*ez+sp2*fz)+cosT*az;
+      const cosMax=Math.cos(sprdRad);
+      const cosT=1-Math.random()*(1-cosMax),sinT=Math.sqrt(1-cosT*cosT);
+      let ex=1,ey=0,ez=0;
+      if(Math.abs(bx)>0.9){ex=0;ey=1;ez=0;}
+      let tx=by*ez-bz*ey,ty=bz*ex-bx*ez,tz=bx*ey-by*ex;
+      const tl=Math.sqrt(tx*tx+ty*ty+tz*tz)||1;tx/=tl;ty/=tl;tz/=tl;
+      const fx=by*tz-bz*ty,fy=bz*tx-bx*tz,fz=bx*ty-by*tx;
+      dx=sinT*(Math.cos(phi)*tx+Math.sin(phi)*fx)+cosT*bx;
+      dy=sinT*(Math.cos(phi)*ty+Math.sin(phi)*fy)+cosT*by;
+      dz=sinT*(Math.cos(phi)*tz+Math.sin(phi)*fz)+cosT*bz;
     }
     const vMag=P.spVel*(1+(Math.random()*2-1)*P.spVelR*0.01);
     const ls=Math.max(0.05,P.spLife*(1+(Math.random()*2-1)*P.spLifeR*0.01));
     const sz=Math.max(0.1,P.spSz*(1+(Math.random()*2-1)*P.spSzR*0.01)*0.5);
     subPts.push({x,y,z,vx:dx*vMag+pvx*inh,vy:dy*vMag+pvy*inh,vz:dz*vMag+pvz*inh,
-      ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,spAccum:0});
+      ml:ls,li:ls,sz,rot:Math.random()*Math.PI*2,ss:(Math.random()-0.5)*4,rndV:Math.random(),spAccum:0});
   }
 }
 
@@ -812,9 +858,9 @@ function update(dt){
       // On Bounce
       if(P.spEnable&&P.spTrigBounce) spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,P.spCount|0);
     }
-    // Over Life（生存中に連続放出）
-    if(P.spEnable&&P.spTrigLife){
-      p.spAccum=(p.spAccum||0)+dt*P.spRate;
+    // Over Life（生存中に連続放出） - Interval/Duration cycling を適用
+    if(P.spEnable&&P.spTrigLife&&subLifeActive){
+      p.spAccum=(p.spAccum||0)+dt*P.spPps;
       while(p.spAccum>=1){spawnSub(p.x,p.y,p.z,p.vx,p.vy,p.vz,1);p.spAccum-=1;}
     }
     p.li-=dt;
@@ -828,26 +874,62 @@ function update(dt){
 
 // ── Sub-particle update ───────────────────────────────────────────────────────
 function updateSub(dt){
+  // Over Life burst cycling（サブパーティクルがなくても時計は進める）
+  if(P.spEnable&&P.spTrigLife){
+    if(P.spBurstInt>0){
+      subLifeCycleT+=dt;
+      const cl=P.spBurstDur+P.spBurstInt;
+      if(subLifeCycleT>=cl)subLifeCycleT-=Math.floor(subLifeCycleT/cl)*cl;
+      subLifeActive=subLifeCycleT<P.spBurstDur;
+      // バー更新
+      const bar=document.getElementById('spCycleBar');
+      const fill=document.getElementById('spCycleBarFill');
+      if(bar){
+        bar.style.display='block';
+        if(subLifeActive){
+          fill.style.background='#4466ee';
+          fill.style.width=(subLifeCycleT/P.spBurstDur*100).toFixed(1)+'%';
+          bar.title='発射中 '+subLifeCycleT.toFixed(2)+'s / '+P.spBurstDur+'s';
+        }else{
+          fill.style.background='#332244';
+          fill.style.width=((subLifeCycleT-P.spBurstDur)/P.spBurstInt*100).toFixed(1)+'%';
+          bar.title='待機中 '+(subLifeCycleT-P.spBurstDur).toFixed(2)+'s / '+P.spBurstInt+'s';
+        }
+      }
+    }else{
+      subLifeActive=true;
+      const bar=document.getElementById('spCycleBar');
+      if(bar)bar.style.display='none';
+    }
+  }
   if(!subPts.length)return;
   const ps=dt*60;
   const dragV=Math.pow(Math.max(0,1-P.spARes*0.01),ps);
-  const gd=(P.spGrav||0)*dt;
-  const ap=P.tAP*0.1,sc=P.tSc||1;
-  const wXd=P.wX*dt,wYd=P.wY*dt,wZd=P.wZ*dt;
-  const flrWY=P.flrOn?(H/2*(P.flrY*.02-1)):Infinity;
+  const dragR=P.spAResR>0?Math.pow(Math.max(0,1-P.spAResR*0.01),ps):1;
+  const gd=(P.spGrav||0)*dt*0.0003*60;
+  const ap=(P.spTAP||0)*0.1,sc=P.spTSc||100;
+  const tOc=P.spTOc||3,tOM=P.spTOM||0.5,tAR=P.spTAR||0,tEv=P.spTEv||1;
+  const wXd=(P.spWX||0)*dt*4,wYd=(P.spWY||0)*dt*4,wZd=(P.spWZ||0)*dt*4;
+  const flrWY=P.spFlrOn?(H/2*(P.spFlrY*.02-1)):Infinity;
   for(let i=subPts.length-1;i>=0;i--){
     const p=subPts[i];
     p.vx*=dragV; p.vy*=dragV; p.vz*=dragV;
+    if(p.ss!==undefined&&dragR<1)p.ss*=dragR;
     p.vx+=wXd; p.vy+=wYd+gd; p.vz+=wZd;
     if(ap>0){
-      const tx=p.x/sc,ty=p.y/sc,tz=p.z/sc+time*P.tEv;
-      p.vx+=fbm(tx,ty,tz,3,0.5)*ap;
-      p.vy+=fbm(tx+50,ty+50,tz,3,0.5)*ap;
-      p.vz+=fbm(tx+100,ty+100,tz,3,0.5)*ap;
+      const tx=p.x/sc,ty=p.y/sc,tz=p.z/sc+time*tEv;
+      p.vx+=fbm(tx,ty,tz,tOc,tOM)*ap;
+      p.vy+=fbm(tx+50,ty+50,tz,tOc,tOM)*ap;
+      p.vz+=fbm(tx+100,ty+100,tz,tOc,tOM)*ap;
+      if(tAR>0)p.rot+=fbm(tx+200,ty+200,tz,tOc,tOM)*tAR*dt*2.5;
     }
     p.x+=p.vx*ps; p.y+=p.vy*ps; p.z+=p.vz*ps;
-    p.rot+=dt;
-    if(P.flrOn&&p.y>flrWY){p.y=flrWY;p.vy*=-(P.bnce*.005);}
+    p.rot+=(p.ss||1)*dt*2;
+    if(P.spFlrOn&&p.y>flrWY){
+      p.y=flrWY;
+      const br=P.spBnce*0.01*(1+(Math.random()-0.5)*P.spBnceR*0.02);
+      p.vy*=-br; p.vx*=1-P.spFrct*0.01; p.vz*=1-P.spFrct*0.01;
+    }
     p.li-=dt;
     if(p.li<=0)subPts.splice(i,1);
   }
@@ -1191,15 +1273,18 @@ document.querySelectorAll('.sh').forEach(h=>{
 // ── Binding helpers ───────────────────────────────────────────────────────────
 function bindR(id,key,dec){
   const el=document.getElementById(id);
+  if(!el)return;
   function up(){const v=parseFloat(el.value);P[key]=v;const vo=document.getElementById(id+'V');if(vo)vo.textContent=v.toFixed(dec??0);}
   el.addEventListener('input',up);up();
 }
 function bindS(id,key){
   const el=document.getElementById(id);
+  if(!el)return;
   el.addEventListener('change',()=>P[key]=el.value);P[key]=el.value;
 }
 function bindC(id,key){
   const el=document.getElementById(id);
+  if(!el)return;
   function up(){P[key]=hexRGB(el.value);}
   el.addEventListener('input',up);up();
 }
@@ -1217,10 +1302,82 @@ bindR('grav','grav');
 bindR('flrY','flrY');bindR('bnce','bnce');bindR('frct','frct');bindR('bnceR','bnceR');
 bindR('maxP','maxP');bindR('dof','dof');bindR('fl','fl');bindR('motionBlur','motionBlur');bindR('flickerSpd','flickerSpd');bindR('flickerRand','flickerRand');bindR('dispAmt','dispAmt');bindR('dispScale','dispScale');bindR('dispSpd','dispSpd');bindR('cutoutPct','cutoutPct');
 bindR('spCount','spCount');bindR('spRate','spRate');bindR('spVel','spVel');bindR('spVelR','spVelR');bindR('spInhVel','spInhVel');bindR('spSprd','spSprd');
-bindR('spGrav','spGrav');bindR('spARes','spARes',1);
+bindR('spGrav','spGrav');bindR('spARes','spARes',1);bindR('spAResR','spAResR',1);
+bindR('spWX','spWX',1);bindR('spWY','spWY',1);bindR('spWZ','spWZ',1);
+bindR('spTAP','spTAP');bindR('spTSc','spTSc');bindR('spTEv','spTEv',2);bindR('spTOc','spTOc');bindR('spTOM','spTOM',2);bindR('spTAR','spTAR',1);
 bindR('spSz','spSz',1);bindR('spSzR','spSzR');bindR('spLife','spLife',1);bindR('spLifeR','spLifeR');bindR('spFth','spFth');bindR('spOpa','spOpa',2);
+bindR('spFlrY','spFlrY');bindR('spBnce','spBnce');bindR('spFrct','spFrct');bindR('spBnceR','spBnceR');
+bindR('spPps','spPps');bindR('spBurstInt','spBurstInt',1);bindR('spBurstDur','spBurstDur',1);
+bindR('spPitch','spPitch');bindR('spYaw','spYaw');
+bindR('spMaxDepth','spMaxDepth');
 bindC('spC1','spC1');bindC('spCm','spCm');bindC('spC2','spC2');
 bindS('spDir','spDir');bindS('spShape','spShape');bindS('spSzC','spSzC');bindS('spBld','spBld');
+const _spFlrOnEl=document.getElementById('spFlrOn');
+if(_spFlrOnEl)_spFlrOnEl.addEventListener('change',e=>{P.spFlrOn=parseInt(e.target.value);});
+
+// ── Sub Emitter: スロット選択 ──────────────────────────────────────────────────
+function refreshSpSlots(){
+  const sel=document.getElementById('spSlotSel');
+  if(!sel)return;
+  const cur=sel.value;
+  while(sel.options.length>1)sel.remove(1);
+  loadSlots().forEach((s,i)=>{
+    const opt=document.createElement('option');
+    opt.value=i; opt.textContent=s.name;
+    sel.appendChild(opt);
+  });
+  if(cur)sel.value=cur;
+}
+
+// スロット読み込み → サブエミッターパラメーターにマッピング
+document.getElementById('spSlotLoad').addEventListener('click',()=>{
+  const sel=document.getElementById('spSlotSel');
+  if(sel.value==='')return toast('スロットを選択してください');
+  const slots=loadSlots();
+  const snap=slots[parseInt(sel.value)]?.data;
+  if(!snap)return;
+  // マッピングテーブル: snap key → sp* key
+  const map={
+    vel:'spVel',velR:'spVelR',sprd:'spSprd',
+    sz:'spSz',szR:'spSzR',szC:'spSzC',
+    life:'spLife',lifeR:'spLifeR',
+    fth:'spFth',opa:'spOpa',
+    bld:'spBld',ptType:'spShape',
+    aRes:'spARes',aResR:'spAResR',
+    wX:'spWX',wY:'spWY',wZ:'spWZ',
+    tAP:'spTAP',tSc:'spTSc',tEv:'spTEv',tOc:'spTOc',tOM:'spTOM',tAR:'spTAR',
+    grav:'spGrav',
+    flrY:'spFlrY',bnce:'spBnce',frct:'spFrct',bnceR:'spBnceR',
+    pps:'spPps',
+  };
+  // 数値パラメーター
+  for(const[sk,dk] of Object.entries(map)){
+    if(snap[sk]===undefined)continue;
+    P[dk]=snap[sk];
+    const el=document.getElementById(dk);
+    if(el){
+      el.value=snap[sk];
+      el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input'));
+    }
+  }
+  // Floor on/off
+  if(snap.flrOn!==undefined){
+    P.spFlrOn=snap.flrOn?1:0;
+    const el=document.getElementById('spFlrOn');
+    if(el){el.value=P.spFlrOn;el.dispatchEvent(new Event('change'));}
+  }
+  // Color（c1/c2/c3 → spC1/spCm/spC2）
+  const cmap=[['c1','spC1'],['c2','spCm'],['c3','spC2']];
+  cmap.forEach(([sk,dk])=>{
+    if(!snap[sk])return;
+    const rgb=snap[sk];
+    P[dk]=Array.isArray(rgb)?rgb:rgb;
+    const hex='#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('');
+    const el=document.getElementById(dk);
+    if(el){el.value=hex;el.dispatchEvent(new Event('input'));}
+  });
+  toast(`"${slots[parseInt(sel.value)].name}" をサブエミッターに読み込みました`);
+});
 
 // Sub-emitter checkboxes
 ['spEnable','spTrigDeath','spTrigBounce','spTrigBirth','spTrigLife'].forEach(id=>{
@@ -1544,6 +1701,11 @@ function applySnap(snap){
 const LS_KEY='psim_slots';
 function loadSlots(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch{return[];}}
 function saveSlots(s){localStorage.setItem(LS_KEY,JSON.stringify(s));}
+// Sub Emitterスロット一覧を saveSlots の都度同期
+const _origSaveSlots=saveSlots;
+window.saveSlots=function(s){_origSaveSlots(s);refreshSpSlots();};
+// 初回スロット一覧を反映（saveSlots宣言後に実行）
+setTimeout(refreshSpSlots,0);
 
 function renderSlotList(){
   const sl=document.getElementById('slotList');
@@ -1666,7 +1828,6 @@ document.getElementById('importFile').addEventListener('change',e=>{
 });
 
 // ── Realtime REC ─────────────────────────────────────────────────────────────
-let recActive=false,recFrames=[];
 const recCheck=document.getElementById('recCheck');
 const recCounter=document.getElementById('recCounter');
 const btnRecStop=document.getElementById('btnRecStop');
