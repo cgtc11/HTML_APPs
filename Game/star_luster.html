@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>STAR LUSTER</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Courier New',monospace}
+canvas{position:absolute;top:0;left:0}
+#overlay{position:absolute;inset:0;pointer-events:none}
+#msg{position:absolute;top:12%;left:50%;transform:translateX(-50%);color:#fff;font-size:clamp(12px,1.7vw,18px);text-align:center;line-height:1.9;white-space:pre-line;font-family:'Courier New',monospace;font-weight:bold;max-width:70%;pointer-events:none}
+#tutorial{position:absolute;bottom:47%;left:50%;transform:translateX(-50%);background:rgba(0,0,40,0.93);border:2px solid #08f;padding:16px 26px;color:#cef;font-size:clamp(11px,1.3vw,14px);text-align:center;line-height:1.8;white-space:pre-line;font-family:'Courier New',monospace;min-width:380px;max-width:62%;pointer-events:none}
+#tutorial h2{color:#ff0;font-size:clamp(13px,1.7vw,18px);margin-bottom:6px;letter-spacing:3px}
+#tutorial .hint{color:#0ff;margin-top:8px;animation:bk 1s step-end infinite;font-size:clamp(10px,1.1vw,12px)}
+#ss{position:absolute;inset:0;background:rgba(0,0,10,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;cursor:pointer;padding:20px}
+#ss h1{color:#ff0;font-size:clamp(22px,3.8vw,46px);letter-spacing:10px;margin-bottom:8px;text-shadow:0 0 20px #ff0}
+#ss .sub{color:#0ff;font-size:clamp(11px,1.4vw,15px);letter-spacing:4px;margin-bottom:20px}
+#ss .sec{color:#cef;font-size:clamp(10px,1.2vw,13px);margin:2px 0;text-align:left;max-width:520px}
+#ss .sec b{color:#ff0}
+#ss .sec span{color:#0f0}
+#ss .cfg{color:#ff8;font-size:clamp(10px,1.1vw,12px);margin-top:10px;border:1px solid #448;padding:6px 14px;text-align:center}
+.bl{color:#fff;font-size:clamp(12px,1.4vw,16px);margin-top:20px;letter-spacing:5px;animation:bk 0.8s step-end infinite}
+@keyframes bk{50%{opacity:0}}
+</style></head><body>
+<canvas id="cv"></canvas>
+<div id="overlay">
+  <div id="msg"></div>
+  <div id="tutorial" style="display:none"></div>
+</div>
+<div id="ss">
+  <h1>★ STAR LUSTER ★</h1>
+  <div class="sub">DEFEND THE UNIVERSE</div>
+  <div class="sec"><b>【目的】</b> 銀河の敵エリアを指定数クリアし、<span>ボス惑星</span>を破壊せよ！</div>
+  <br>
+  <div class="sec"><b>【操作】</b></div>
+  <div class="sec">　← → ↑ ↓ ： 照準</div>
+  <div class="sec">　<span>Z</span> ： レーザー発射</div>
+  <div class="sec">　<span>X を押しながら 方向キー</span> ： ワープ（X単独では動かない）</div>
+  <br>
+  <div class="sec"><b>【凡例】</b>　▲=自機　E=敵戦闘機　B=敵大型艦　H=補給基地　★=ボス</div>
+  <div class="sec"><b>【マップ】</b>　赤=敵あり　緑=補給　青=クリア　?=未探索(敵あり)</div>
+  <br>
+  <div class="cfg" id="cfg-display">ボス出現条件: <b id="cfg-num">1</b> エリア撃滅　← Q/W で変更</div>
+  <div class="bl">PRESS Z TO START</div>
+</div>
+<script>
+const cv=document.getElementById('cv');
+const ct=cv.getContext('2d');
+let W,H;
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+
+// ボス出現条件（タイトル画面で変更可能）
+let BOSS_REQUIRE=1;
+document.addEventListener('keydown',e=>{
+  if(!started){
+    if(e.code==='KeyQ'){BOSS_REQUIRE=Math.max(1,BOSS_REQUIRE-1);document.getElementById('cfg-num').textContent=BOSS_REQUIRE;}
+    if(e.code==='KeyW'){BOSS_REQUIRE=Math.min(8,BOSS_REQUIRE+1);document.getElementById('cfg-num').textContent=BOSS_REQUIRE;}
+  }
+});
+
+const K={};
+const KD={}; // keydown edge
+document.addEventListener('keydown',e=>{if(!K[e.code])KD[e.code]=true;K[e.code]=true;e.preventDefault();});
+document.addEventListener('keyup',e=>{K[e.code]=false;});
+function consumeKD(c){const v=KD[c];delete KD[c];return v;}
+
+let started=false,gameOver=false,score=0,shield=5,energy=100;
+let timeLeft=999,timeTick=0,frame=0,msgTimer=0;
+let shootCD=0,warpCD=0,invTimer=0,warpFlash=0;
+let yaw=0,pitch=0;
+let phase='tutorial'; // tutorial, game, boss, clear, over
+let tutStep=0;
+let sectorsCleared=0;
+let bossActive=false;
+let boss=null;
+
+// チュートリアル（3ステップ）
+const TUT=[
+  {title:'★ STAR LUSTER チュートリアル 1/3 ★',
+   text:'ようこそ！ここは安全な練習エリアです。\n\n【目的】 銀河の敵エリアをクリアし\n　　　　最後にボス惑星を破壊せよ！\n\n← → ↑ ↓ で照準を動かしてみてください。\n向きを変えると星の流れが変わります。',
+   hint:'Zキーで次へ'},
+  {title:'★ チュートリアル 2/3 ★',
+   text:'Z キーでレーザー発射！\n3方向同時に出ます。左下のENERGYを消費します。\n（エネルギーは自動回復）\n\nX を押しながら 方向キー でワープ移動。\n例：X押しながら → で右のセクターへ\n　　X単独では何も起きません。\n\nワープするたびに敵も1マス移動してきます！',
+   hint:'Zキーで次へ'},
+  {title:'★ チュートリアル 3/3 ★',
+   text:'銀河マップ（右上）を見ながら作戦を立てよう。\n\n赤エリア = 敵あり（数字=残敵数）\n? = 未探索（敵がいる可能性あり）\nH = 補給基地（ワープで到達するとシールド全回復）\n★ = ボス出現予定地\n\n指定数の敵エリアをクリアすると\nボス惑星が出現します！ボスを倒せばクリア！',
+   hint:'Zキーでゲーム開始！'},
+];
+
+document.getElementById('ss').addEventListener('click',go);
+document.addEventListener('keydown',e=>{if(!started&&e.code==='KeyZ')go();});
+function go(){started=true;document.getElementById('ss').style.display='none';showTutorial(0);requestAnimationFrame(loop);}
+
+// マップ生成
+const MW=8,MH=8;
+const sec=[];
+const startR=Math.floor(Math.random()*MH);
+const startC=Math.floor(Math.random()*MW);
+let pSec={r:startR,c:startC};
+const bossR=((startR+4)%MH);
+const bossC=((startC+4)%MW);
+
+for(let r=0;r<MH;r++){
+  sec[r]=[];
+  for(let c=0;c<MW;c++){
+    const isStart=(r===startR&&c===startC);
+    const isNear=(Math.abs(r-startR)<=1&&Math.abs(c-startC)<=1);
+    const isBoss=(r===bossR&&c===bossC);
+    sec[r][c]={
+      visited:isStart,
+      enemies:isStart||isNear||isBoss?0:Math.random()<0.55?Math.floor(Math.random()*4)+1:0,
+      isHome:false,isBoss:isBoss,cleared:false
+    };
+  }
+}
+// 補給基地3か所
+let hp=0;
+while(hp<3){
+  const r=Math.floor(Math.random()*MH),c=Math.floor(Math.random()*MW);
+  if(!(r===startR&&c===startC)&&!(r===bossR&&c===bossC)&&!sec[r][c].isHome&&sec[r][c].enemies===0){
+    sec[r][c].isHome=true;hp++;
+  }
+}
+sec[bossR][bossC].enemies=0;
+
+let enemies=[],bullets=[],eBullets=[],parts=[];
+
+function spawnEnemies(){
+  enemies=[];bullets=[];eBullets=[];
+  if(bossActive&&sec[pSec.r][pSec.c].isBoss){
+    if(!boss)spawnBoss();
+    return;
+  }
+  const n=sec[pSec.r][pSec.c].enemies;
+  for(let i=0;i<n;i++){
+    const spread=(i-(n-1)/2)*200;
+    enemies.push({
+      x:spread,y:0,z:500+Math.random()*200,
+      vx:0,vy:0,vz:0,
+      hp:Math.random()<0.3?2:1,
+      type:Math.random()<0.3?'B':'E',
+      shootCD:120+Math.floor(Math.random()*80),
+      wobble:Math.random()*Math.PI*2,
+      speed:0.5+Math.random()*0.3
+    });
+  }
+}
+spawnEnemies();
+
+// 敵マップ移動（ワープごとに敵エリアが1マスプレイヤーに近づく）
+function advanceEnemies(){
+  // 敵のいる各セクターが1マスプレイヤーに近づくか待機（50%）
+  const newSec=[];
+  for(let r=0;r<MH;r++){newSec[r]=[];for(let c=0;c<MW;c++)newSec[r][c]={...sec[r][c],enemies:0};}
+  for(let r=0;r<MH;r++){
+    for(let c=0;c<MW;c++){
+      const s=sec[r][c];
+      if(s.enemies<=0||s.isHome||s.isBoss||s.cleared)continue;
+      if(Math.random()<0.5){newSec[r][c].enemies+=s.enemies;continue;} // 待機
+      // プレイヤー方向に1マス移動
+      const dr=pSec.r>r?1:pSec.r<r?-1:0;
+      const dc=pSec.c>c?1:pSec.c<c?-1:0;
+      // どちら方向に動くかランダムに選択
+      let mr=r,mc=c;
+      if(dr!==0&&dc!==0){if(Math.random()<0.5)mr+=dr;else mc+=dc;}
+      else{mr+=dr;mc+=dc;}
+      mr=Math.max(0,Math.min(MH-1,mr));mc=Math.max(0,Math.min(MW-1,mc));
+      // 移動先がホームやボスや現在地なら待機
+      if(newSec[mr][mc].isHome||newSec[mr][mc].isBoss||(mr===pSec.r&&mc===pSec.c)){
+        newSec[r][c].enemies+=s.enemies;
+      } else {
+        newSec[mr][mc].enemies+=s.enemies;
+      }
+    }
+  }
+  // 元のクリア済み・ホーム・ボス・visited状態を保持
+  for(let r=0;r<MH;r++){
+    for(let c=0;c<MW;c++){
+      sec[r][c].enemies=newSec[r][c].enemies;
+    }
+  }
+}
+
+function spawnBoss(){
+  boss={x:0,y:0,z:600,vx:0,vy:0,vz:0,hp:30,maxHp:30,shootCD:60,wobble:0,size:120};
+}
+
+function showMsg(t,d=120){document.getElementById('msg').textContent=t;msgTimer=d;}
+
+function showTutorial(step){
+  tutStep=step;
+  const el=document.getElementById('tutorial');
+  if(step>=TUT.length){el.style.display='none';phase='game';return;}
+  const t=TUT[step];
+  el.style.display='block';
+  el.innerHTML=`<h2>${t.title}</h2>${t.text.replace(/\n/g,'<br>')}<div class="hint">${t.hint}</div>`;
+}
+
+const FOV=320;
+const VH=()=>H*0.54;
+
+function proj(wx,wy,wz){
+  const cy=Math.cos(-yaw),sy=Math.sin(-yaw);
+  const rx1=wx*cy+wz*sy,rz1=-wx*sy+wz*cy;
+  const cp=Math.cos(-pitch),sp=Math.sin(-pitch);
+  const ry2=wy*cp-rz1*sp,rz2=wy*sp+rz1*cp;
+  if(rz2<5)return null;
+  const sc=FOV/rz2;
+  return{sx:W/2+rx1*sc,sy:VH()*0.45+ry2*sc,depth:rz2,scale:sc};
+}
+
+function w2r(wx,wz){
+  const cos=Math.cos(yaw),sin=Math.sin(yaw);
+  return{rx:wx*cos-wz*sin,ry:wx*sin+wz*cos};
+}
+
+const stars=[];
+for(let i=0;i<300;i++){
+  const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=800+Math.random()*2000;
+  stars.push({x:r*Math.sin(ph)*Math.cos(th),y:r*Math.sin(ph)*Math.sin(th),z:r*Math.cos(ph),br:0.5+Math.random()*0.5,sz:Math.random()});
+}
+
+// チュートリアル用Zキーエッジ検出
+let tutZprev=false;
+
+function update(){
+  if(!started||gameOver)return;
+  frame++;
+
+  // チュートリアル進行
+  if(phase==='tutorial'){
+    const zNow=K['KeyZ'];
+    if(zNow&&!tutZprev){tutStep++;if(tutStep>=TUT.length){document.getElementById('tutorial').style.display='none';phase='game';}else showTutorial(tutStep);}
+    tutZprev=zNow;
+    // チュートリアル中も照準は動かせる
+    const ts=0.026;
+    if(K['ArrowLeft'])yaw-=ts;if(K['ArrowRight'])yaw+=ts;
+    if(K['ArrowUp'])pitch=Math.min(1.0,pitch+ts);if(K['ArrowDown'])pitch=Math.max(-1.0,pitch-ts);
+    return;
+  }
+  tutZprev=false;
+
+  timeTick++;
+  if(timeTick>=60){timeTick=0;timeLeft--;if(timeLeft<=0){endGame(false,'TIME UP!\nGAME OVER');return;}}
+  if(msgTimer>0){msgTimer--;if(msgTimer===0)document.getElementById('msg').textContent='';}
+  if(invTimer>0)invTimer--;if(shootCD>0)shootCD--;if(warpCD>0)warpCD--;if(warpFlash>0)warpFlash--;
+  if(energy<100&&frame%60===0)energy=Math.min(100,energy+2);
+
+  const ts=0.026;
+  if(K['ArrowLeft'])yaw-=ts;if(K['ArrowRight'])yaw+=ts;
+  if(K['ArrowUp'])pitch=Math.min(1.0,pitch+ts);if(K['ArrowDown'])pitch=Math.max(-1.0,pitch-ts);
+
+  // 射撃
+  if(K['KeyZ']&&shootCD<=0&&energy>3){
+    shootCD=12;energy-=3;
+    const fwdX=Math.sin(yaw)*Math.cos(pitch),fwdY=-Math.sin(pitch),fwdZ=Math.cos(yaw)*Math.cos(pitch);
+    const rX=Math.cos(yaw),rZ=-Math.sin(yaw);
+    [[-16,5],[0,0],[16,5]].forEach(([ox,oy])=>{
+      bullets.push({x:ox*rX,y:oy,z:ox*rZ,vx:fwdX*32,vy:fwdY*32,vz:fwdZ*32,life:55});
+    });
+  }
+
+  // ワープ：X を押しながら方向キー（X単独では動かない）
+  if(K['KeyX']&&warpCD<=0){
+    let dr=0,dc=0;
+    if(K['ArrowLeft'])dc=-1;
+    else if(K['ArrowRight'])dc=1;
+    else if(K['ArrowUp'])dr=-1;
+    else if(K['ArrowDown'])dr=1;
+    // 方向キーが押されている場合のみワープ
+    if(dr!==0||dc!==0){
+      const nr=pSec.r+dr,nc=pSec.c+dc;
+      if(nr>=0&&nr<MH&&nc>=0&&nc<MW){
+        // 敵マップを1ステップ進める
+        advanceEnemies();
+        pSec={r:nr,c:nc};
+        sec[nr][nc].visited=true;
+        warpFlash=50;warpCD=130;
+        // ボスセクターに入った場合
+        if(sec[nr][nc].isBoss&&bossActive){
+          bullets=[];eBullets=[];enemies=[];
+          if(!boss)spawnBoss();
+          showMsg('★ BOSS SECTOR ★\nボスを倒せ！',100);
+        } else {
+          spawnEnemies();
+          const lbl=String.fromCharCode(65+nc)+'-'+(nr+1);
+          if(sec[nr][nc].isHome){
+            shield=5;energy=100;
+            showMsg('★ HOMEBASE ★\nシールド＆エネルギー全回復！',120);
+          } else if(sec[nr][nc].enemies>0){
+            showMsg('SECTOR '+lbl+'\n敵 '+sec[nr][nc].enemies+'機 接近中！',80);
+          } else {
+            showMsg('SECTOR '+lbl,50);
+          }
+        }
+      }
+    }
+    // X単独（方向なし）は何もしない
+  }
+
+  // 自弾
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.z+=b.vz;b.life--;
+    if(b.life<=0){bullets.splice(i,1);continue;}
+    let hit=false;
+    if(boss){
+      const dx=b.x-boss.x,dy=b.y-boss.y,dz=b.z-boss.z;
+      if(Math.sqrt(dx*dx+dy*dy+dz*dz)<boss.size){
+        boss.hp--;hit=true;addParts(boss.x,boss.y,boss.z,5,'#f80');
+        if(boss.hp<=0){
+          for(let k=0;k<60;k++)addParts(boss.x+(Math.random()-0.5)*200,boss.y+(Math.random()-0.5)*200,boss.z,3,'#ff0');
+          score+=10000;boss=null;
+          endGame(true,'★★★ BOSS DESTROYED! ★★★\nMISSION COMPLETE!\nSCORE: '+score);return;
+        }
+      }
+    }
+    if(!hit){
+      for(let j=enemies.length-1;j>=0;j--){
+        const e=enemies[j],dx=b.x-e.x,dy=b.y-e.y,dz=b.z-e.z;
+        if(Math.sqrt(dx*dx+dy*dy+dz*dz)<(e.type==='B'?60:46)){
+          e.hp--;hit=true;addParts(e.x,e.y,e.z,8,'#f80');
+          if(e.hp<=0){
+            addParts(e.x,e.y,e.z,24,e.type==='B'?'#f80':'#ff0');
+            score+=e.type==='B'?500:200;
+            enemies.splice(j,1);
+            sec[pSec.r][pSec.c].enemies=Math.max(0,sec[pSec.r][pSec.c].enemies-1);
+            if(sec[pSec.r][pSec.c].enemies===0&&!sec[pSec.r][pSec.c].cleared&&!sec[pSec.r][pSec.c].isHome&&!sec[pSec.r][pSec.c].isBoss){
+              sec[pSec.r][pSec.c].cleared=true;
+              sectorsCleared++;
+              showMsg('エリアクリア！ ('+sectorsCleared+'/'+BOSS_REQUIRE+')',100);
+              if(sectorsCleared>=BOSS_REQUIRE&&!bossActive){
+                bossActive=true;
+                setTimeout(()=>showMsg('★★★ 全条件達成！ ★★★\nボス惑星が出現した！\nマップの★へワープせよ！',240),1500);
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+    if(hit)bullets.splice(i,1);
+  }
+
+  // 敵弾
+  for(let i=eBullets.length-1;i>=0;i--){
+    const b=eBullets[i];b.x+=b.vx;b.y+=b.vy;b.z+=b.vz;b.life--;
+    if(b.life<=0){eBullets.splice(i,1);continue;}
+    if(Math.sqrt(b.x*b.x+b.y*b.y+b.z*b.z)<60&&invTimer<=0){
+      shield--;invTimer=90;addParts(0,0,80,15,'#f44');eBullets.splice(i,1);
+      if(shield<=0){endGame(false,'SHIP DESTROYED\nGAME OVER');return;}
+    }
+  }
+
+  // ボスAI
+  if(boss){
+    boss.wobble+=0.01;
+    const dx=-boss.x,dy=-boss.y,dz=-boss.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+    if(d>300){boss.vx+=dx/d*0.05;boss.vz+=dz/d*0.05;}
+    boss.vx*=0.98;boss.vz*=0.98;
+    boss.x+=boss.vx+Math.sin(boss.wobble*0.7)*0.8;boss.y+=Math.sin(boss.wobble)*0.4;boss.z+=boss.vz;
+    boss.shootCD--;
+    if(boss.shootCD<=0){
+      boss.shootCD=25+Math.floor(Math.random()*20);
+      const nd=d||1,spd=8;
+      for(let k=0;k<3;k++){
+        const sp=(Math.random()-0.5)*0.4;
+        eBullets.push({x:boss.x,y:boss.y,z:boss.z,vx:(dx/nd+sp)*spd,vy:(dy/nd+sp)*spd,vz:dz/nd*spd,life:120});
+      }
+    }
+  }
+
+  // 敵AI
+  enemies.forEach(e=>{
+    e.wobble+=0.015;
+    const dx=-e.x,dy=-e.y,dz=-e.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+    if(d>150){e.vx+=dx/d*0.12*e.speed;e.vy+=dy/d*0.05*e.speed;e.vz+=dz/d*0.12*e.speed;}
+    else{e.vx+=(-dz/d)*0.08;e.vz+=(dx/d)*0.08;}
+    e.vx*=0.95;e.vy*=0.95;e.vz*=0.95;
+    e.x+=e.vx+Math.sin(e.wobble)*0.3;e.y+=e.vy;e.z+=e.vz;
+    e.shootCD--;
+    if(e.shootCD<=0&&d<800){
+      e.shootCD=90+Math.floor(Math.random()*80);
+      const nd=d||1,spd=e.type==='B'?10:7;
+      eBullets.push({x:e.x,y:e.y,z:e.z,vx:dx/nd*spd,vy:dy/nd*spd,vz:dz/nd*spd,life:100});
+    }
+  });
+
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];p.x+=p.vx;p.y+=p.vy;p.z+=p.vz;p.vx*=0.92;p.vy*=0.92;p.vz*=0.92;p.life--;if(p.life<=0)parts.splice(i,1);
+  }
+}
+
+function addParts(x,y,z,n,col){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,el=(Math.random()-0.5)*Math.PI,s=1+Math.random()*5;
+    parts.push({x,y,z,col,life:14+Math.floor(Math.random()*14),maxLife:28,
+      vx:Math.cos(a)*Math.cos(el)*s,vy:Math.sin(el)*s,vz:Math.sin(a)*Math.cos(el)*s});
+  }
+}
+
+function endGame(win,msg){
+  gameOver=true;
+  document.getElementById('tutorial').style.display='none';
+  const el=document.getElementById('msg');
+  el.style.color=win?'#0f0':'#f44';
+  el.style.fontSize='clamp(14px,2vw,22px)';
+  el.textContent=msg+'\n\nF5でリスタート';
+}
+
+// ===== 描画 =====
+function render(){
+  ct.fillStyle='#000018';ct.fillRect(0,0,W,H);
+  const vh=VH();
+
+  // 星（大きめ）
+  stars.forEach(s=>{
+    const p=proj(s.x,s.y,s.z);
+    if(!p||p.sx<-2||p.sx>W+2||p.sy<-2||p.sy>vh+2)return;
+    const sz=Math.max(1,(1-p.depth/3000)*4+s.sz*2);
+    const br=Math.min(1,1200/p.depth)*s.br;
+    ct.fillStyle=`rgba(255,255,255,${br})`;
+    if(sz>1.5){ct.beginPath();ct.arc(p.sx,p.sy,sz,0,Math.PI*2);ct.fill();}
+    else ct.fillRect(p.sx,p.sy,sz>1?2:1,sz>1?2:1);
+  });
+
+  // ワープフラッシュ
+  if(warpFlash>0){
+    const a=warpFlash/50;
+    ct.fillStyle=`rgba(80,140,255,${a*0.75})`;ct.fillRect(0,0,W,H);
+    ct.strokeStyle=`rgba(200,220,255,${a})`;ct.lineWidth=1;
+    for(let i=0;i<16;i++){
+      const ang=(i/16)*Math.PI*2;
+      ct.beginPath();ct.moveTo(W/2+Math.cos(ang)*10,vh*0.45+Math.sin(ang)*10);
+      ct.lineTo(W/2+Math.cos(ang)*(10+warpFlash*12),vh*0.45+Math.sin(ang)*(10+warpFlash*6));ct.stroke();
+    }
+  }
+
+  // ボス
+  if(boss){
+    const p=proj(boss.x,boss.y,boss.z);
+    if(p&&p.sy<vh+100){
+      const sz=Math.max(30,p.scale*boss.size);
+      const grad=ct.createRadialGradient(p.sx-sz*0.3,p.sy-sz*0.3,sz*0.1,p.sx,p.sy,sz);
+      grad.addColorStop(0,'#ff8800');grad.addColorStop(0.5,'#cc4400');grad.addColorStop(1,'#440000');
+      ct.fillStyle=grad;ct.beginPath();ct.arc(p.sx,p.sy,sz,0,Math.PI*2);ct.fill();
+      ct.strokeStyle='rgba(255,180,0,0.6)';ct.lineWidth=3;
+      ct.beginPath();ct.ellipse(p.sx,p.sy,sz*1.5,sz*0.3,0.3,0,Math.PI*2);ct.stroke();
+      ct.fillStyle='#ff0';ct.font=`bold ${Math.max(14,sz*0.28)}px Courier New`;
+      ct.textAlign='center';ct.textBaseline='middle';ct.fillText('BOSS',p.sx,p.sy);
+      const bw=sz*3,bx2=p.sx-bw/2,by2=p.sy-sz-20;
+      ct.fillStyle='#400';ct.fillRect(bx2,by2,bw,10);
+      ct.fillStyle='#f40';ct.fillRect(bx2,by2,bw*(boss.hp/boss.maxHp),10);
+      ct.strokeStyle='#f80';ct.lineWidth=1;ct.strokeRect(bx2,by2,bw,10);
+      ct.fillStyle='#ff0';ct.font=`bold ${Math.max(9,sz*0.18)}px Courier New`;ct.fillText('BOSS HP',p.sx,by2-8);
+    }
+  }
+
+  // 敵・弾・パーツ
+  const objs=[...enemies.map(e=>({...e,_t:'e'})),...bullets.map(b=>({...b,_t:'b'})),...eBullets.map(b=>({...b,_t:'eb'})),...parts.map(p=>({...p,_t:'p'}))];
+  objs.map(o=>({o,p:proj(o.x,o.y,o.z)})).filter(x=>x.p&&x.p.sy>-80&&x.p.sy<vh+40).sort((a,b)=>b.p.depth-a.p.depth).forEach(({o,p})=>{
+    if(p.sx<-200||p.sx>W+200)return;
+    if(o._t==='e'){
+      const sz=Math.max(6,p.scale*(o.type==='B'?62:46));
+      ct.save();ct.translate(p.sx,p.sy);
+      ct.fillStyle=o.type==='B'?'#daa':'#ccc';
+      if(o.type==='B'){ct.beginPath();ct.moveTo(0,-sz);ct.lineTo(sz*0.85,sz*0.35);ct.lineTo(sz*0.45,sz);ct.lineTo(-sz*0.45,sz);ct.lineTo(-sz*0.85,sz*0.35);ct.closePath();ct.fill();ct.strokeStyle='#faa';ct.lineWidth=1.5;ct.stroke();}
+      else{ct.beginPath();ct.moveTo(0,-sz);ct.lineTo(sz*0.7,sz*0.55);ct.lineTo(0,sz*0.18);ct.lineTo(-sz*0.7,sz*0.55);ct.closePath();ct.fill();ct.strokeStyle='#eee';ct.lineWidth=1;ct.stroke();}
+      ct.fillStyle='#fff';ct.font=`bold ${Math.max(10,sz*0.5)}px Courier New`;ct.textAlign='center';ct.textBaseline='middle';ct.fillText(o.type,0,0);
+      const d=Math.sqrt(o.x*o.x+o.y*o.y+o.z*o.z);
+      if(d<450){const al=(1-d/450)*0.9;ct.strokeStyle=`rgba(255,255,0,${al})`;ct.lineWidth=1.5;ct.beginPath();ct.arc(0,0,sz*2.2,0,Math.PI*2);ct.stroke();}
+      ct.restore();
+    } else if(o._t==='b'){
+      ct.fillStyle='#8ff';ct.fillRect(p.sx-1,p.sy-9,3,18);
+    } else if(o._t==='eb'){
+      ct.fillStyle='#f84';ct.beginPath();ct.arc(p.sx,p.sy,Math.max(3,p.scale*12),0,Math.PI*2);ct.fill();
+    } else if(o._t==='p'){
+      ct.globalAlpha=o.life/o.maxLife;ct.fillStyle=o.col;const s=Math.max(2,p.scale*6);ct.fillRect(p.sx-s/2,p.sy-s/2,s,s);ct.globalAlpha=1;
+    }
+  });
+
+  drawCockpit();
+}
+
+function drawCockpit(){
+  const G='#a8a8a8',LG='#c0c0c0',DG='#585858',T='#006858';
+  const panY=H*0.52;
+  ct.fillStyle=G;ct.beginPath();ct.moveTo(0,H);ct.lineTo(0,panY*0.72);ct.lineTo(W*0.135,panY*0.72);ct.lineTo(W*0.155,panY*0.88);ct.lineTo(W*0.28,panY);ct.lineTo(W*0.41,panY);ct.lineTo(W*0.41,H);ct.closePath();ct.fill();
+  ct.fillStyle=DG;ct.beginPath();ct.moveTo(W*0.02,H);ct.lineTo(W*0.02,panY*0.74);ct.lineTo(W*0.135,panY*0.74);ct.lineTo(W*0.155,panY*0.9);ct.lineTo(W*0.28,panY+4);ct.lineTo(W*0.40,panY+4);ct.lineTo(W*0.40,H);ct.closePath();ct.fill();
+  ct.fillStyle=G;ct.beginPath();ct.moveTo(W,H);ct.lineTo(W,panY*0.72);ct.lineTo(W*0.865,panY*0.72);ct.lineTo(W*0.845,panY*0.88);ct.lineTo(W*0.72,panY);ct.lineTo(W*0.59,panY);ct.lineTo(W*0.59,H);ct.closePath();ct.fill();
+  ct.fillStyle=DG;ct.beginPath();ct.moveTo(W*0.98,H);ct.lineTo(W*0.98,panY*0.74);ct.lineTo(W*0.865,panY*0.74);ct.lineTo(W*0.845,panY*0.9);ct.lineTo(W*0.72,panY+4);ct.lineTo(W*0.60,panY+4);ct.lineTo(W*0.60,H);ct.closePath();ct.fill();
+  ct.fillStyle=T;
+  ct.beginPath();ct.moveTo(W*0.02,panY*0.72-2);ct.lineTo(W*0.135,panY*0.72-2);ct.lineTo(W*0.155,panY*0.88-2);ct.lineTo(W*0.28,panY-2);ct.lineTo(W*0.28,panY+7);ct.lineTo(W*0.155,panY*0.88+7);ct.lineTo(W*0.135,panY*0.72+7);ct.lineTo(W*0.02,panY*0.72+7);ct.closePath();ct.fill();
+  ct.beginPath();ct.moveTo(W*0.98,panY*0.72-2);ct.lineTo(W*0.865,panY*0.72-2);ct.lineTo(W*0.845,panY*0.88-2);ct.lineTo(W*0.72,panY-2);ct.lineTo(W*0.72,panY+7);ct.lineTo(W*0.845,panY*0.88+7);ct.lineTo(W*0.865,panY*0.72+7);ct.lineTo(W*0.98,panY*0.72+7);ct.closePath();ct.fill();
+  ct.fillStyle=G;ct.beginPath();ct.moveTo(0,0);ct.lineTo(W*0.12,0);ct.lineTo(W*0.28,panY);ct.lineTo(0,panY*0.72);ct.closePath();ct.fill();
+  ct.fillStyle=T;ct.beginPath();ct.moveTo(W*0.115,0);ct.lineTo(W*0.13,0);ct.lineTo(W*0.295,panY);ct.lineTo(W*0.278,panY);ct.closePath();ct.fill();
+  ct.fillStyle=G;ct.beginPath();ct.moveTo(W,0);ct.lineTo(W*0.88,0);ct.lineTo(W*0.72,panY);ct.lineTo(W,panY*0.72);ct.closePath();ct.fill();
+  ct.fillStyle=T;ct.beginPath();ct.moveTo(W*0.885,0);ct.lineTo(W*0.87,0);ct.lineTo(W*0.705,panY);ct.lineTo(W*0.722,panY);ct.closePath();ct.fill();
+  const sq=Math.max(12,W*0.015);
+  [W*0.305,W*0.68].forEach(sx=>{for(let i=0;i<5;i++){const sy=panY+sq*0.5+i*sq*1.5;ct.fillStyle=LG;ct.fillRect(sx,sy,sq,sq);ct.strokeStyle=DG;ct.lineWidth=1;ct.strokeRect(sx,sy,sq,sq);}});
+
+  // レーダー
+  const rdW=W*0.30,rdH=H*0.40,rdX=W/2-rdW/2,rdY=panY-rdH*0.06;
+  ct.fillStyle='#8abcdc';ct.beginPath();ct.roundRect(rdX-8,rdY-8,rdW+16,rdH+16,8);ct.fill();
+  ct.fillStyle='#3a7aac';ct.beginPath();ct.roundRect(rdX-5,rdY-5,rdW+10,rdH+10,5);ct.fill();
+  ct.fillStyle='#1428a0';ct.fillRect(rdX,rdY,rdW,rdH);
+  const cW=Math.max(8,rdW*0.055);
+  for(let s=0;s<2;s++){const bx=s===0?rdX-5-cW:rdX+rdW+5;for(let i=0;i<7;i++){ct.fillStyle=i%2===0?'#3a7aac':'#1e5898';ct.fillRect(bx,rdY+i*(rdH/7),cW,rdH/7-1);}}
+  for(let i=0;i<22;i++){ct.fillStyle=i%2===0?'#4a7acc':'#1428a0';ct.fillRect(rdX+i*(rdW/22),rdY+rdH,rdW/22,Math.max(7,rdH*0.05));}
+  drawRadar(rdX,rdY,rdW,rdH);
+
+  // 凡例
+  const lgY=rdY+rdH+Math.max(11,rdH*0.07);
+  const fs2=Math.max(9,W*0.011);
+  ct.font=`${fs2}px Courier New`;ct.textAlign='left';ct.textBaseline='top';
+  [['▲','#0ff','自機'],['E','#fff','戦闘機'],['B','#faa','大型艦'],['H','#0f0','補給'],['★','#ff0','ボス']].forEach(([sym,col,lbl],i)=>{
+    const lx=rdX+(i*(rdW/5));ct.fillStyle=col;ct.fillText(sym,lx+1,lgY);ct.fillStyle='#999';ct.fillText('='+lbl,lx+fs2*1.1,lgY);
+  });
+
+  // ENERGY/SHIELD
+  const lX=W*0.04,lY=panY+H*0.065,bW=W*0.15,bH=Math.max(12,H*0.025);
+  ct.font=`bold ${Math.max(11,W*0.017)}px Courier New`;ct.textAlign='left';ct.textBaseline='alphabetic';ct.fillStyle=LG;
+  ct.fillText('ENERGY',lX,lY);ct.fillStyle='#050';ct.fillRect(lX,lY+3,bW,bH);ct.fillStyle='#0d0';ct.fillRect(lX,lY+3,bW*(energy/100),bH);
+  ct.fillStyle=LG;ct.fillText('SHIELD',lX,lY+bH+H*0.048);ct.fillStyle='#500';ct.fillRect(lX,lY+bH+H*0.048+3,bW,bH);ct.fillStyle='#d00';ct.fillRect(lX,lY+bH+H*0.048+3,bW*(shield/5),bH);
+
+  // RAD/COM/ENG
+  const sX=W*0.755,sY=panY+H*0.075,fs=Math.max(10,W*0.015);
+  ct.font=`bold ${fs}px Courier New`;ct.fillStyle=LG;
+  ['RAD','COM','ENG'].forEach((t,i)=>{ct.fillText(t,sX,sY+i*fs*1.7);ct.fillText('OK',sX+fs*3.4,sY+i*fs*1.7);});
+
+  drawGalaxyMap();
+
+  // 操作説明
+  ct.font=`${Math.max(9,W*0.011)}px Courier New`;ct.textAlign='left';ct.fillStyle='#68a';ct.textBaseline='alphabetic';
+  ct.fillText('← →↑↓:照準　Z:射撃　X+方向キー:ワープ',8,H-6);
+
+  // HUD上部
+  ct.fillStyle='#fff';ct.font=`bold ${Math.max(12,W*0.015)}px Courier New`;
+  ct.textAlign='left';ct.fillText('SCORE '+score,8,22);
+  ct.textAlign='right';ct.fillText('TIME '+timeLeft,W-8,22);
+  ct.textAlign='center';
+  ct.fillText('SECTOR '+String.fromCharCode(65+pSec.c)+'-'+(pSec.r+1)+'  ENEMIES '+(enemies.length+(boss?1:0)),W/2,22);
+  // ボス出現条件進捗
+  const progText=bossActive?'★ ボスセクターへ！ ★':'CLEAR: '+sectorsCleared+'/'+BOSS_REQUIRE;
+  ct.fillStyle=bossActive?'#ff0':'#adf';
+  ct.font=`bold ${Math.max(10,W*0.013)}px Courier New`;
+  ct.fillText(progText,W/2,40);
+
+  if(invTimer>0&&Math.floor(invTimer/8)%2===0){ct.fillStyle='rgba(255,0,0,0.18)';ct.fillRect(0,0,W,H);}
+}
+
+function drawRadar(rdX,rdY,rdW,rdH){
+  const CX=rdX+rdW/2,CY=rdY+rdH/2,fnt=Math.max(14,rdW*0.08),scale=(rdW*0.42)/1500;
+  ct.save();ct.beginPath();ct.rect(rdX+2,rdY+2,rdW-4,rdH-4);ct.clip();
+  ct.fillStyle='#243060';
+  for(let i=0;i<stars.length;i+=6){const s=stars[i],r=w2r(s.x,s.z);const sx=CX+r.rx*scale*0.04,sy=CY-r.ry*scale*0.04;if(sx>rdX&&sx<rdX+rdW&&sy>rdY&&sy<rdY+rdH)ct.fillRect(sx,sy,2,2);}
+  if(boss){const r=w2r(boss.x,boss.z);const sx=CX+r.rx*scale,sy=CY-r.ry*scale;const mg=fnt;const cx2=Math.max(rdX+mg,Math.min(rdX+rdW-mg,sx)),cy2=Math.max(rdY+mg,Math.min(rdY+rdH-mg,sy));ct.fillStyle='#ff0';ct.font=`bold ${fnt*1.1}px Courier New`;ct.textAlign='center';ct.textBaseline='middle';ct.fillText('★',cx2,cy2);}
+  ct.fillStyle='#f84';ct.font=`${fnt*0.5}px Courier New`;ct.textAlign='center';ct.textBaseline='middle';
+  eBullets.forEach(b=>{const r=w2r(b.x,b.z),sx=CX+r.rx*scale,sy=CY-r.ry*scale;if(sx>rdX+2&&sx<rdX+rdW-2&&sy>rdY+2&&sy<rdY+rdH-2)ct.fillText('·',sx,sy);});
+  ct.font=`bold ${fnt}px Courier New`;
+  enemies.forEach(e=>{const r=w2r(e.x,e.z),sx=CX+r.rx*scale,sy=CY-r.ry*scale;const mg=fnt*0.7;const cx2=Math.max(rdX+mg,Math.min(rdX+rdW-mg,sx)),cy2=Math.max(rdY+mg,Math.min(rdY+rdH-mg,sy));const cl=(Math.abs(cx2-sx)>0.5||Math.abs(cy2-sy)>0.5);ct.fillStyle=cl?'#f66':(e.type==='B'?'#faa':'#fff');ct.textAlign='center';ct.textBaseline='middle';ct.fillText(e.type,cx2,cy2);});
+  const triS=fnt*0.95;ct.fillStyle='#0ff';ct.beginPath();ct.moveTo(CX,CY-triS);ct.lineTo(CX+triS*0.7,CY+triS*0.5);ct.lineTo(CX-triS*0.7,CY+triS*0.5);ct.closePath();ct.fill();
+  ct.restore();
+}
+
+function drawGalaxyMap(){
+  const gmW=W*0.19,gmH=W*0.19,gmX=W-gmW-8,gmY=8;
+  ct.fillStyle='rgba(0,0,15,0.93)';ct.fillRect(gmX,gmY,gmW,gmH);ct.strokeStyle='#48c';ct.lineWidth=2;ct.strokeRect(gmX,gmY,gmW,gmH);
+  const tfs=Math.max(9,gmW*0.07);
+  ct.fillStyle='#6af';ct.font=`bold ${tfs}px Courier New`;ct.textAlign='center';ct.textBaseline='top';
+  ct.fillText('GALAXY MAP',gmX+gmW/2,gmY+2);
+  const mapY=gmY+tfs+6,mapH=gmH-(tfs+8),cw=gmW/MW,ch=mapH/MH;
+  for(let r=0;r<MH;r++){
+    for(let c=0;c<MW;c++){
+      const s=sec[r][c],x=gmX+c*cw,y=mapY+r*ch;
+      const isBoss=(r===bossR&&c===bossC);
+      if(isBoss&&bossActive)ct.fillStyle='rgba(180,120,0,0.85)';
+      else if(s.cleared)ct.fillStyle='rgba(0,0,120,0.8)';
+      else if(s.isHome)ct.fillStyle='rgba(0,90,0,0.8)';
+      else if(s.visited)ct.fillStyle=s.enemies>0?'rgba(130,0,0,0.8)':'rgba(0,20,90,0.8)';
+      else ct.fillStyle='rgba(15,15,35,0.7)';
+      ct.fillRect(x+0.5,y+0.5,cw-1,ch-1);
+      const lfs=Math.max(6,cw*0.65);
+      ct.font=`bold ${lfs}px Courier New`;ct.textAlign='center';ct.textBaseline='middle';
+      if(isBoss){ct.fillStyle=bossActive?'#ff0':'#554';ct.fillText('★',x+cw/2,y+ch/2);}
+      else if(s.isHome){ct.fillStyle='#0f0';ct.fillText('H',x+cw/2,y+ch/2);}
+      else if(s.cleared){ct.fillStyle='#48f';ct.fillText('✓',x+cw/2,y+ch/2);}
+      else if(s.visited&&s.enemies>0){ct.fillStyle='#f44';ct.fillText(s.enemies,x+cw/2,y+ch/2);}
+      else if(!s.visited&&s.enemies>0){ct.fillStyle='rgba(200,60,60,0.5)';ct.fillText('?',x+cw/2,y+ch/2);}
+      ct.strokeStyle='rgba(0,50,130,0.5)';ct.lineWidth=0.5;ct.strokeRect(x,y,cw,ch);
+    }
+  }
+  const px=gmX+pSec.c*cw+cw/2,py=mapY+pSec.r*ch+ch/2;
+  if(Math.floor(frame/15)%2===0){ct.fillStyle='#0ff';ct.beginPath();ct.arc(px,py,Math.max(3,cw*0.42),0,Math.PI*2);ct.fill();}
+  const lgfs=Math.max(7,gmW*0.058);
+  ct.font=`${lgfs}px Courier New`;ct.textAlign='left';ct.textBaseline='top';
+  const lgY=gmY+gmH+4;
+  ct.fillStyle='#0ff';ct.fillText('●現在地',gmX,lgY);
+  ct.fillStyle='#f44';ct.fillText(' 赤=敵',gmX+gmW*0.4,lgY);
+  ct.fillStyle='#0f0';ct.fillText(' H=補給',gmX+gmW*0.68,lgY);
+  const lgY2=lgY+lgfs+2;
+  ct.fillStyle='#ff0';ct.fillText('★ボス',gmX,lgY2);
+  ct.fillStyle='#48f';ct.fillText(' ✓クリア',gmX+gmW*0.32,lgY2);
+  ct.fillStyle='#555';ct.fillText(' ?未探索',gmX+gmW*0.66,lgY2);
+}
+
+function loop(){update();render();requestAnimationFrame(loop);}
+</script>
+</body></html>
