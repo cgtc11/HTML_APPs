@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>迷路ゲーム</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0d0d1a;
+  font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+  color: #e0e0e0;
+  touch-action: none;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh; /* dynamic viewport height: スマホのアドレスバーを除いた高さ */
+  height: 100vh;  /* fallback */
+}
+#hud {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  gap: 8px;
+  min-height: 44px;
+}
+#stage-label { font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap; }
+#msg { font-size: 12px; color: #888; text-align: center; flex: 1; }
+#btn-row { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+#cursor-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+}
+#cursor-btn:hover { background: rgba(255,255,255,0.14); }
+#cursor-btn.active {
+  background: rgba(55,138,221,0.25);
+  border-color: #378ADD;
+  color: #7bbfff;
+}
+#reset-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+}
+#reset-btn:hover { background: rgba(255,255,255,0.14); }
+#next-btn {
+  display: none;
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #378ADD;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#next-btn:hover { opacity: 0.85; }
+#canvas-area {
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
+  cursor: none;
+}
+#c {
+  display: block;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+}
+#cursor-canvas {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <span id="stage-label">ステージ 1</span>
+    <span id="msg">S の駒をドラッグしてゴールへ</span>
+    <div id="btn-row">
+      <button id="cursor-btn">👆 カーソルOFF</button>
+      <button id="reset-btn">やり直す</button>
+      <button id="next-btn">次のステージ →</button>
+    </div>
+  </div>
+  <div id="canvas-area">
+    <canvas id="c"></canvas>
+    <canvas id="cursor-canvas"></canvas>
+  </div>
+</div>
+
+<script>
+const canvas      = document.getElementById('c');
+const ctx         = canvas.getContext('2d');
+const cursorCv    = document.getElementById('cursor-canvas');
+const cursorCtx   = cursorCv.getContext('2d');
+const canvasArea  = document.getElementById('canvas-area');
+const msgEl       = document.getElementById('msg');
+const stageLabelEl= document.getElementById('stage-label');
+const cursorBtn   = document.getElementById('cursor-btn');
+const nextBtn     = document.getElementById('next-btn');
+const resetBtn    = document.getElementById('reset-btn');
+
+let stage = 1;
+let cols, rows, cellSize;
+let maze, trail, piecePx, pieceCell;
+let dragging    = false;
+let cleared     = false;
+let cursorPx    = null;
+let showCursor  = true;  /* カーソル表示フラグ */
+
+const PAL = {
+  bg:          '#0d0d1a',
+  wallInner:   '#3a4255',
+  wallOuter:   '#5a6480',
+  trail:       '#378ADD',
+  piece:       '#E24B4A',
+  pieceStroke: '#ff9090',
+  startFill:   '#0d4a38',
+  startRing:   '#1D9E75',
+  goalFill:    '#5a3600',
+  goalRing:    '#EF9F27',
+  text:        '#ffffff',
+};
+
+/* ---- ステージ→グリッドサイズ ----
+   画面に収まるセルサイズを基準に、ステージで変化させる。
+   奇数グリッドにすると迷路の対称性がきれいになる。         */
+function computeLayout() {
+  const areaW = canvasArea.clientWidth;
+  const areaH = canvasArea.clientHeight;
+
+  /* ステージごとの目標セルサイズ（px）: 大きい→少ないマス→簡単 */
+  const targetCell = stageTargetCellSize(stage);
+
+  /* 画面いっぱいに収まる奇数グリッド数を算出 */
+  let c = Math.floor(areaW / targetCell);
+  let r = Math.floor(areaH / targetCell);
+  if (c < 3) c = 3;
+  if (r < 3) r = 3;
+  if (c % 2 === 0) c--;  /* 奇数に */
+  if (r % 2 === 0) r--;
+
+  cols = c; rows = r;
+
+  /* 実際のセルサイズ：縦横ともぴったり埋まるよう再計算 */
+  cellSize = Math.min(Math.floor(areaW / cols), Math.floor(areaH / rows));
+
+  const W = cols * cellSize;
+  const H = rows * cellSize;
+  canvas.width  = W;
+  canvas.height = H;
+
+  cursorCv.width  = W;
+  cursorCv.height = H;
+}
+
+/* セルサイズはステージ5相当で固定（難易度はループ数で制御） */
+function stageTargetCellSize(s) {
+  const sizes = [
+    60,  /* st1: 大きいセル＝簡単 */
+    46,  /* st2 */
+    36,  /* st3 */
+    28,  /* st4: ここからループが効いてくる */
+    22,  /* st5 */
+    20,  /* st6 */
+    18,  /* st7 */
+    16,  /* st8 */
+    14,  /* st9以降 */
+  ];
+  return sizes[Math.min(s - 1, sizes.length - 1)];
+}
+
+/* ---- 迷路生成 ----
+   1) 再帰バックトラックで完全木（一本道）を作る
+   2) ステージに応じた数だけランダムに壁を追加で壊してループ（分岐・罠）を作る
+   ループが多いほど行き止まりや迷い込みが増えて難しくなる               */
+function generateMaze() {
+  maze = Array.from({length: rows}, () =>
+    Array.from({length: cols}, () => ({
+      visited: false,
+      walls: {N:true, S:true, E:true, W:true}
+    }))
+  );
+  const DIRS = [
+    {dr:-1,dc:0,wall:'N',opp:'S'},
+    {dr: 1,dc:0,wall:'S',opp:'N'},
+    {dr: 0,dc:1,wall:'E',opp:'W'},
+    {dr: 0,dc:-1,wall:'W',opp:'E'},
+  ];
+
+  /* Step1: 再帰バックトラックで spanning tree を生成 */
+  const stack = [{r:0, c:0}];
+  maze[0][0].visited = true;
+  while (stack.length) {
+    const cur = stack[stack.length - 1];
+    const nb = DIRS
+      .map(d => ({r:cur.r+d.dr, c:cur.c+d.dc, wall:d.wall, opp:d.opp}))
+      .filter(n => n.r>=0 && n.r<rows && n.c>=0 && n.c<cols && !maze[n.r][n.c].visited);
+    if (!nb.length) { stack.pop(); continue; }
+    const n = nb[Math.floor(Math.random() * nb.length)];
+    maze[cur.r][cur.c].walls[n.wall] = false;
+    maze[n.r][n.c].walls[n.opp]      = false;
+    maze[n.r][n.c].visited = true;
+    stack.push({r:n.r, c:n.c});
+  }
+
+  /* Step2: ループ追加（壁をランダムに壊す）
+     ステージ1=ループなし、ステージ2以降は総セル数に対する割合で増加 */
+  const totalCells = rows * cols;
+  const loopRatio  = stageLoopRatio(stage);
+  const loopCount  = Math.floor(totalCells * loopRatio);
+
+  /* 全内部壁のリストを作って shuffle、上位 loopCount 本を壊す */
+  const walls = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      /* 南と東だけ収集（各壁を1回だけリストに入れるため） */
+      if (r < rows-1) walls.push({r, c, wall:'S', nr:r+1, nc:c,  opp:'N'});
+      if (c < cols-1) walls.push({r, c, wall:'E', nr:r,   nc:c+1, opp:'W'});
+    }
+  }
+  /* Fisher-Yates shuffle */
+  for (let i = walls.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [walls[i], walls[j]] = [walls[j], walls[i]];
+  }
+  /* 既に通路になっている壁はスキップして loopCount 本壊す */
+  let broken = 0;
+  for (const w of walls) {
+    if (broken >= loopCount) break;
+    if (!maze[w.r][w.c].walls[w.wall]) continue; /* 既に開いている */
+    maze[w.r][w.c].walls[w.wall]    = false;
+    maze[w.nr][w.nc].walls[w.opp]   = false;
+    broken++;
+  }
+}
+
+/* ステージ別ループ率（総セル数に対する追加開通壁の比率）
+   0=完全木（一本道）、0.5=かなり複雑 */
+function stageLoopRatio(s) {
+  const ratios = [
+    0.00,  /* st1: 一本道、超簡単 */
+    0.04,  /* st2: ループ少し */
+    0.10,  /* st3 */
+    0.18,  /* st4 */
+    0.28,  /* st5 */
+    0.38,  /* st6 */
+    0.48,  /* st7: かなり複雑 */
+    0.55,  /* st8 */
+    0.62,  /* st9: 迷路というより網目 */
+  ];
+  return ratios[Math.min(s - 1, ratios.length - 1)];
+}
+
+function cellCenter(r, c) {
+  return {x: c * cellSize + cellSize / 2, y: r * cellSize + cellSize / 2};
+}
+
+/* ---- 描画 ---- */
+function drawMaze() {
+  ctx.fillStyle = PAL.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const wallW     = Math.max(1, cellSize * 0.08);
+  const wallWOuter= Math.max(2, cellSize * 0.12);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = c * cellSize, y = r * cellSize, s = cellSize;
+      const w = maze[r][c].walls;
+      const dw = (exists, edge, x1,y1,x2,y2) => {
+        if (!exists) return;
+        ctx.strokeStyle = edge ? PAL.wallOuter : PAL.wallInner;
+        ctx.lineWidth   = edge ? wallWOuter : wallW;
+        ctx.lineCap = 'square';
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      };
+      dw(w.N, r===0,        x,   y,   x+s, y  );
+      dw(w.S, r===rows-1,   x,   y+s, x+s, y+s);
+      dw(w.W, c===0,        x,   y,   x,   y+s);
+      dw(w.E, c===cols-1,   x+s, y,   x+s, y+s);
+    }
+  }
+
+  /* S / G ラベル */
+  const drawLabel = (r, c, letter, fc, rc) => {
+    const cen = cellCenter(r, c);
+    const rad = cellSize * 0.34;
+    const fs  = Math.max(8, Math.floor(cellSize * 0.28));
+    ctx.fillStyle = fc;
+    ctx.beginPath(); ctx.arc(cen.x, cen.y, rad, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = rc; ctx.lineWidth = Math.max(1, cellSize * 0.06);
+    ctx.beginPath(); ctx.arc(cen.x, cen.y, rad, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = PAL.text;
+    ctx.font = `bold ${fs}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(letter, cen.x, cen.y);
+  };
+  drawLabel(0,       0,       'S', PAL.startFill, PAL.startRing);
+  drawLabel(rows-1, cols-1,   'G', PAL.goalFill,  PAL.goalRing);
+}
+
+function drawTrail() {
+  if (trail.length < 2) return;
+  ctx.save();
+  ctx.globalAlpha = 0.82;
+  ctx.strokeStyle = PAL.trail;
+  ctx.lineWidth   = Math.max(2, cellSize * 0.2);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = PAL.trail; ctx.shadowBlur = Math.max(4, cellSize * 0.3);
+  ctx.beginPath();
+  ctx.moveTo(trail[0].x, trail[0].y);
+  for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPiece() {
+  if (!piecePx) return;
+  const rad = Math.max(4, cellSize * 0.26);
+  ctx.save();
+  ctx.shadowColor = PAL.piece; ctx.shadowBlur = Math.max(6, cellSize * 0.4);
+  ctx.fillStyle = PAL.piece;
+  ctx.beginPath(); ctx.arc(piecePx.x, piecePx.y, rad, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = PAL.pieceStroke; ctx.lineWidth = Math.max(1, cellSize * 0.05);
+  ctx.beginPath(); ctx.arc(piecePx.x, piecePx.y, rad, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+function render() {
+  drawMaze();
+  drawTrail();
+  drawPiece();
+}
+
+/* ---- カスタムカーソル（指型）---- */
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
+  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
+  c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
+  c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r);
+  c.closePath();
+}
+
+function drawCursor() {
+  cursorCtx.clearRect(0, 0, cursorCv.width, cursorCv.height);
+  if (!cursorPx || !showCursor) return;
+
+  /* cursorPxはcanvas座標（mazecanvasと同一座標系） */
+  const cx = cursorPx.x, cy = cursorPx.y;
+  const sc = Math.max(0.5, Math.min(1.4, cellSize / 24));
+
+  cursorCtx.save();
+  cursorCtx.translate(cx, cy);
+  cursorCtx.scale(sc, sc);
+
+  const skin   = dragging ? '#ffcc88' : '#ffe0b0';
+  const stroke = '#a06020';
+  cursorCtx.fillStyle   = skin;
+  cursorCtx.strokeStyle = stroke;
+  cursorCtx.lineWidth   = 1.5 / sc;
+
+  const fingers = [
+    {x:-10, y: dragging?-20:-28, w:6, h: dragging?14:20, r:3},
+    {x: -3, y: dragging?-22:-32, w:6, h: dragging?16:24, r:3},
+    {x:  4, y: dragging?-22:-32, w:6, h: dragging?16:24, r:3},
+    {x: 11, y: dragging?-20:-30, w:6, h: dragging?14:20, r:3},
+  ];
+  fingers.forEach(f => {
+    roundRect(cursorCtx, f.x, f.y, f.w, f.h, f.r);
+    cursorCtx.fill(); cursorCtx.stroke();
+  });
+  roundRect(cursorCtx, -12, -14, 30, 22, 7);
+  cursorCtx.fill(); cursorCtx.stroke();
+  roundRect(cursorCtx, -20, -10, 9, 14, 4);
+  cursorCtx.fill(); cursorCtx.stroke();
+
+  cursorCtx.restore();
+}
+
+/* ---- 座標変換 ---- */
+function eventToCanvasPos(e) {
+  const src   = e.touches ? e.touches[0] : e;
+  const rect  = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY,
+  };
+}
+
+function pixelToCell(px) {
+  return {
+    r: Math.max(0, Math.min(rows-1, Math.floor(px.y / cellSize))),
+    c: Math.max(0, Math.min(cols-1, Math.floor(px.x / cellSize))),
+  };
+}
+
+function canMove(r1, c1, r2, c2) {
+  const dr = r2-r1, dc = c2-c1;
+  if (Math.abs(dr) + Math.abs(dc) !== 1) return false;
+  if (dr===-1) return !maze[r1][c1].walls.N;
+  if (dr=== 1) return !maze[r1][c1].walls.S;
+  if (dc=== 1) return !maze[r1][c1].walls.E;
+  if (dc===-1) return !maze[r1][c1].walls.W;
+  return false;
+}
+
+/* trailCells: 通過済みセルの集合（キー = "r,c"）*/
+let trailCells = new Set();
+
+function addToTrail(r, c) {
+  const cen = cellCenter(r, c);
+  const last = trail[trail.length - 1];
+  if (!last || last.x !== cen.x || last.y !== cen.y) {
+    trail.push({x: cen.x, y: cen.y});
+  }
+  trailCells.add(r + ',' + c);
+}
+
+function inTrail(r, c) {
+  return trailCells.has(r + ',' + c);
+}
+
+function tryMove(targetR, targetC) {
+  const cr = pieceCell.r, cc = pieceCell.c;
+  if (targetR === cr && targetC === cc) return;
+
+  /* 通過済みセルへのワープ：trailに含まれていれば壁チェックなしで直接移動 */
+  if (inTrail(targetR, targetC)) {
+    pieceCell = {r: targetR, c: targetC};
+    piecePx   = cellCenter(targetR, targetC);
+    /* trailには追加しない（既に記録済み） */
+    checkGoal(targetR, targetC);
+    return;
+  }
+
+  /* 通常移動：隣接1マス＋壁なし */
+  if (!canMove(cr, cc, targetR, targetC)) return;
+  pieceCell = {r: targetR, c: targetC};
+  piecePx   = cellCenter(targetR, targetC);
+  addToTrail(targetR, targetC);
+  checkGoal(targetR, targetC);
+}
+
+function checkGoal(r, c) {
+  if (r === rows-1 && c === cols-1) {
+    cleared  = true;
+    dragging = false;
+    render(); drawCursor();
+    msgEl.textContent = '🎉 クリア！';
+    nextBtn.style.display = 'inline-block';
+  }
+}
+
+/* ---- イベント ---- */
+function onStart(e) {
+  e.preventDefault();
+  if (cleared) return;
+  const cpos = eventToCanvasPos(e);
+  const cell = pixelToCell(cpos);
+  cursorPx   = cpos;
+
+  if (!piecePx && cell.r === 0 && cell.c === 0) {
+    pieceCell  = {r:0, c:0};
+    trail      = [];
+    trailCells = new Set();
+    addToTrail(0, 0);
+    piecePx    = cellCenter(0, 0);
+    dragging   = true;
+  } else if (piecePx && pieceCell && cell.r === pieceCell.r && cell.c === pieceCell.c) {
+    dragging = true;
+  } else if (piecePx && inTrail(cell.r, cell.c)) {
+    /* 通過済みセルをタッチ→そこに駒をワープして掴む */
+    pieceCell = {r: cell.r, c: cell.c};
+    piecePx   = cellCenter(cell.r, cell.c);
+    dragging  = true;
+  }
+  render(); drawCursor();
+}
+
+function onMove(e) {
+  e.preventDefault();
+  const cpos = eventToCanvasPos(e);
+  cursorPx   = cpos;
+
+  if (dragging && !cleared) {
+    const cell = pixelToCell(cpos);
+    tryMove(cell.r, cell.c);
+  }
+  render();
+  drawCursor();
+}
+
+function onEnd(e) {
+  e.preventDefault();
+  dragging = false;
+  drawCursor();
+}
+
+function onLeave(e) {
+  cursorPx = null;
+  dragging = false;
+  drawCursor();
+}
+
+canvasArea.addEventListener('mousedown',  onStart);
+canvasArea.addEventListener('mousemove',  onMove);
+canvasArea.addEventListener('mouseup',    onEnd);
+canvasArea.addEventListener('mouseleave', onLeave);
+canvasArea.addEventListener('touchstart', onStart, {passive:false});
+canvasArea.addEventListener('touchmove',  onMove,  {passive:false});
+canvasArea.addEventListener('touchend',   onEnd,   {passive:false});
+
+cursorBtn.addEventListener('click', () => {
+  showCursor = !showCursor;
+  cursorBtn.textContent = showCursor ? '👆 カーソルOFF' : '👆 カーソルON';
+  cursorBtn.classList.toggle('active', !showCursor);
+  /* canvas-areaのcursor: noneも切り替え */
+  canvasArea.style.cursor = showCursor ? 'none' : 'default';
+  drawCursor();
+});
+
+
+nextBtn.addEventListener('click', () => {
+  stage++;
+  stageLabelEl.textContent = `ステージ ${stage}`;
+  nextBtn.style.display = 'none';
+  msgEl.textContent = 'S の駒をドラッグしてゴールへ';
+  startGame();
+});
+
+resetBtn.addEventListener('click', () => {
+  nextBtn.style.display = 'none';
+  msgEl.textContent = 'S の駒をドラッグしてゴールへ';
+  startGame();
+});
+
+/* リサイズ対応 */
+window.addEventListener('resize', () => {
+  startGame();
+});
+
+function startGame() {
+  cleared   = false;
+  dragging  = false;
+  piecePx   = null;
+  pieceCell = null;
+  trail      = [];
+  trailCells = new Set();
+  computeLayout();
+  generateMaze();
+  render();
+  drawCursor();
+}
+
+startGame();
+</script>
+</body>
+</html>
