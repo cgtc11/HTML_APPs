@@ -1182,15 +1182,53 @@ let feCurrentDungeon=0; // 編集中のダンジョンindex
 let feData=null;
 
 function getDefaultFeData(){
-  return DUNGEONS.map(d=>({
-    id:d.id,
-    floors:d.floors,
-    table: d.floorTable
-      ? d.floorTable.map(ft=>ft.map(entry=>({name:entry.e.name,weight:entry.w,enabled:true})))
-      : Array.from({length:d.floors},()=>
-          (d.enemies||[]).map(e=>({name:e.name,weight:25,enabled:true}))
-        )
-  }));
+  return [
+    {id:'forest', floors:5, table:[
+      [{name:'スライム緑',weight:60,enabled:true},{name:'コウモリ',weight:40,enabled:true}],
+      [{name:'スライム緑',weight:40,enabled:true},{name:'スライム青',weight:30,enabled:true},{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:5,enabled:true}],
+      [{name:'スライム青',weight:30,enabled:true},{name:'スライム赤',weight:20,enabled:true},{name:'コウモリ',weight:20,enabled:true},{name:'毒キノコ',weight:15,enabled:true},{name:'ゴブリン',weight:5,enabled:true}],
+      [{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:20,enabled:true},{name:'スライム赤',weight:30,enabled:true}],
+      [{name:'毒キノコ',weight:20,enabled:true},{name:'ゴブリン',weight:80,enabled:true}],
+    ]},
+    {id:'caves', floors:7, table:[
+      [{name:'スライム青',weight:40,enabled:true},{name:'スライム赤',weight:30,enabled:true},{name:'ゴブリン',weight:20,enabled:true}],
+      [{name:'スライム赤',weight:40,enabled:true},{name:'ゴブリン',weight:30,enabled:true},{name:'コボルト',weight:20,enabled:true}],
+      [{name:'スライム赤',weight:40,enabled:true},{name:'毒キノコ',weight:30,enabled:true},{name:'ゴブリン',weight:20,enabled:true},{name:'オーク',weight:10,enabled:true}],
+      [{name:'コウモリ',weight:40,enabled:true},{name:'ゴブリン',weight:30,enabled:true},{name:'コボルト',weight:20,enabled:true},{name:'岩石ゴーレム',weight:10,enabled:true}],
+      [{name:'ゴブリン',weight:40,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:10,enabled:true}],
+      [{name:'コボルト',weight:40,enabled:true},{name:'岩石ゴーレム',weight:30,enabled:true},{name:'毒蜘蛛',weight:20,enabled:true},{name:'オーク',weight:10,enabled:true}],
+      [{name:'岩石ゴーレム',weight:30,enabled:true},{name:'毒蜘蛛',weight:30,enabled:true},{name:'オーク',weight:40,enabled:true}],
+    ]},
+    {id:'castle', floors:10, table:[
+      [{name:'スライム赤',weight:30,enabled:true},{name:'コウモリ',weight:40,enabled:true},{name:'毒キノコ',weight:30,enabled:true}],
+      [{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true}],
+      [{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true}],
+      [{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true}],
+      [{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true}],
+      [{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true}],
+      [{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true}],
+      [{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true}],
+      [{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
+      [{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
+    ]},
+    {id:'abyss', floors:15, table:[
+      [{name:'スライム赤',weight:30,enabled:true},{name:'コウモリ',weight:30,enabled:true},{name:'ゴブリン',weight:40,enabled:true}],
+      [{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true}],
+      [{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true}],
+      [{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true}],
+      [{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true}],
+      [{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true}],
+      [{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true}],
+      [{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true}],
+      [{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
+      [{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true},{name:'デーモン',weight:25,enabled:true}],
+      [{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true},{name:'デーモン',weight:25,enabled:true},{name:'地獄の炎',weight:25,enabled:true}],
+      [{name:'ヴァンパイア',weight:25,enabled:true},{name:'デーモン',weight:25,enabled:true},{name:'地獄の炎',weight:25,enabled:true},{name:'暗黒騎士',weight:25,enabled:true}],
+      [{name:'デーモン',weight:25,enabled:true},{name:'地獄の炎',weight:25,enabled:true},{name:'暗黒騎士',weight:25,enabled:true},{name:'リッチ',weight:25,enabled:true}],
+      [{name:'地獄の炎',weight:25,enabled:true},{name:'暗黒騎士',weight:25,enabled:true},{name:'リッチ',weight:25,enabled:true}],
+      [{name:'暗黒騎士',weight:25,enabled:true},{name:'リッチ',weight:25,enabled:true}],
+    ]},
+  ];
 }
 
 function loadFeData(){
