@@ -907,15 +907,34 @@ function addLayer(name, isBg){
 }
 
 function delLayer(){
-  if(layers.length<=1) return;
   if(maskEditMode) maskEditMode=false;
+
+  // アクティブがフォルダの場合はフォルダを削除
+  if(activeFolderId!==null){
+    const folder=folders.find(f=>f.id===activeFolderId);
+    if(folder&&!folder.system){
+      const childIds=new Set(folder.children);
+      layers=layers.filter(l=>!childIds.has(l.id));
+      folders=folders.filter(f=>f.id!==activeFolderId);
+      activeFolderId=null;
+      if(!layers.find(x=>x.id===activeLayerId)) activeLayerId=layers[0]?.id||null;
+      // レイヤーが0になったら1枚追加
+      if(layers.length===0){ addLayer('レイヤー1'); return; }
+      renderLL(); comp(); return;
+    }
+    return;
+  }
+
   const idx=layers.findIndex(x=>x.id===activeLayerId);
   if(idx<0) return;
   const l=layers[idx];
-  // フォルダからも除去
   folders.forEach(f=>{ f.children=f.children.filter(x=>x!==l.id); });
   layers.splice(idx,1);
-  // 次のアクティブ
+
+  // レイヤーが0になったら1枚追加
+  if(layers.length===0){
+    addLayer('レイヤー1'); return;
+  }
   const next=layers[Math.min(idx,layers.length-1)];
   activeLayerId=next?next.id:null;
   renderLL(); comp();
@@ -1059,6 +1078,25 @@ function renderLL(){
     }
   });
 
+  // 空のフォルダ（レイヤーなし）も表示
+  folders.forEach(folder=>{
+    if(!shownFolders.has(folder.id)){
+      shownFolders.add(folder.id);
+      ll.appendChild(makeFolderRow(folder));
+      const childDiv=document.createElement('div');
+      childDiv.className='lf-children'+(folder.open?'':' collapsed');
+      childDiv.id='fc-'+folder.id;
+      childDiv.appendChild(makeDropZone(()=>{
+        if(_dragLayerId!==null){
+          removeFromFolder(_dragLayerId);
+          folder.children.push(_dragLayerId);
+          renderLL(); comp();
+        }
+      },'small'));
+      ll.appendChild(childDiv);
+    }
+  });
+
   // 最下部ドロップゾーン（最背面へ）
   ll.appendChild(makeDropZone(()=>{
     if(_dragLayerId!==null){
@@ -1107,19 +1145,38 @@ function moveFolderToBottom(folderId){
 
 function makeFolderRow(folder){
   const isActive=activeFolderId===folder.id;
+  const isSystem=!!folder.system; // GLBシステムフォルダ（削除不可）
   const row=document.createElement('div');
   row.className='lf-row'+(isActive?' on':'');
-  row.draggable=true;
+  if(isSystem) row.style.opacity='0.65'; // グレーがかった表示
 
   const vis=document.createElement('span'); vis.className='lf-vis'; vis.textContent=folder.vis?'👁':'○';
   const arrow=document.createElement('span'); arrow.className='lf-arrow'+(folder.open?' open':''); arrow.textContent='▶';
-  const icon=document.createElement('span'); icon.className='lf-icon'; icon.textContent='📁';
+  const icon=document.createElement('span'); icon.className='lf-icon'; icon.textContent=isSystem?'🔒':'📁';
   const name=document.createElement('span'); name.className='lf-name'; name.title=folder.name; name.textContent=folder.name;
   const count=document.createElement('span'); count.className='lf-count'; count.textContent=folder.children.length;
   const del=document.createElement('span');
-  del.textContent='✕'; del.style.cssText='cursor:pointer;font-size:11px;color:var(--dim);padding:0 4px;flex-shrink:0;';
+  del.textContent='✕';
+  if(isSystem){
+    del.style.cssText='font-size:11px;color:var(--bdr);padding:0 4px;flex-shrink:0;cursor:default;';
+    del.title='システムフォルダは削除できません';
+  } else {
+    del.style.cssText='cursor:pointer;font-size:11px;color:var(--dim);padding:0 4px;flex-shrink:0;';
+    del.addEventListener('click',e=>{
+      e.stopPropagation();
+      const childIds=new Set(folder.children);
+      layers=layers.filter(l=>!childIds.has(l.id));
+      folders=folders.filter(f=>f.id!==folder.id);
+      if(activeFolderId===folder.id) activeFolderId=null;
+      if(!layers.find(x=>x.id===activeLayerId)) activeLayerId=layers[0]?.id||null;
+      renderLL(); comp();
+    });
+    del.addEventListener('mouseenter',()=>{ del.style.color='#ff6b6b'; });
+    del.addEventListener('mouseleave',()=>{ del.style.color='var(--dim)'; });
+  }
   row.append(vis,arrow,icon,name,count,del);
 
+  row.draggable=!isSystem;
   row.addEventListener('click',()=>{ activeFolderId=folder.id; activeLayerId=null; renderLL(); });
   arrow.addEventListener('click',e=>{
     e.stopPropagation(); folder.open=!folder.open;
@@ -1132,22 +1189,12 @@ function makeFolderRow(folder){
     vis.textContent=folder.vis?'👁':'○';
     renderLL(); comp();
   });
-  name.addEventListener('dblclick',e=>{
-    e.stopPropagation(); const n=prompt('フォルダ名:',folder.name);
-    if(n!==null&&n.trim()!==''){folder.name=n.trim();renderLL();}
-  });
-  del.addEventListener('click',e=>{
-    e.stopPropagation();
-    // フォルダ内レイヤーをlayersから削除
-    const childIds=new Set(folder.children);
-    layers=layers.filter(l=>!childIds.has(l.id));
-    folders=folders.filter(f=>f.id!==folder.id);
-    if(activeFolderId===folder.id) activeFolderId=null;
-    if(!layers.find(x=>x.id===activeLayerId)) activeLayerId=layers[0]?.id||null;
-    renderLL(); comp();
-  });
-  del.addEventListener('mouseenter',()=>{ del.style.color='#ff6b6b'; });
-  del.addEventListener('mouseleave',()=>{ del.style.color='var(--dim)'; });
+  if(!isSystem){
+    name.addEventListener('dblclick',e=>{
+      e.stopPropagation(); const n=prompt('フォルダ名:',folder.name);
+      if(n!==null&&n.trim()!==''){folder.name=n.trim();renderLL();}
+    });
+  }
 
   // D&D
   row.addEventListener('dragstart',e=>{
@@ -2008,14 +2055,20 @@ function commitMove(){
   float_=null;px.clearRect(0,0,W,H);comp();renderLL();
 }
 
-// ═══ CROP
 // アンカーからオフセット計算
-function _anchorOffset(nw,nh){
-  const dw=nw-W,dh=nh-H;
-  const hmap={l:0,c:0.5,r:1};const vmap={t:0,m:0.5,b:1};
+// アンカー位置 = 元画像のどの点を固定するか
+// ox,oy = 新キャンバスに元画像を描く際のdrawImage第2・3引数
+function _anchorOffset(nw, nh){
+  const dw=nw-W, dh=nh-H;
+  // hmap: l=元画像の左端を左に固定(ox=0), c=中央, r=右端を右に固定(ox=dw)
+  const hmap={l:0, c:0.5, r:1};
+  const vmap={t:0, m:0.5, b:1};
   const hk=trimAnc[1]==='l'?'l':trimAnc[1]==='r'?'r':'c';
   const vk=trimAnc[0]==='t'?'t':trimAnc[0]==='b'?'b':'m';
-  return{ox:-Math.round(dw*hmap[hk]),oy:-Math.round(dh*vmap[vk])};
+  return{
+    ox: Math.round(dw * hmap[hk]),
+    oy: Math.round(dh * vmap[vk])
+  };
 }
 
 function applyTrimFilter(){
@@ -3753,7 +3806,10 @@ function extractTexturesAsLayers(entry){
   const usedFolders=new Set(layers.map(l=>l._folder).filter(Boolean));
   folderOrder.forEach(fname=>{
     if(!usedFolders.has(fname)) return;
-    const f={id:'f'+(fid++),name:fname,vis:true,open:true,children:[]};
+    const f={
+      id:'f'+(fid++), name:fname, vis:true, open:true, children:[],
+      system: fname!=='Paint' // Paint以外はシステムフォルダ（削除不可・グレー）
+    };
     folders.push(f);
   });
 
