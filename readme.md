@@ -161,6 +161,26 @@
 </td>
 
 </tr>
+<tr>
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/star_luster.html">
+<img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
+<b>mahjong</b>
+</a>
+<br>
+麻雀
+</td>
+
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/dungeon_rpg.html">
+<img src="https://github.com/cgtc11/image/blob/main/14_ico.png" width="120"><br>
+<b>7narabe</b>
+</a>
+<br>
+７ならべ
+</td>
+
+</tr>
 </table>
 
 <br>
