@@ -615,6 +615,7 @@ let G = {
   dungeon:null, floor:1,
   enemy:null, battleActive:false,
   defending:false, exposed:false, counterBoost:false, runFailed:false, poisonTurns:0,
+  lastHit:null,
   floorKills:0, floorKillsNeeded:3,
   isBoss:false,
   record:{kills:0,dungeons:0,gold:0}
@@ -981,17 +982,21 @@ function enemyTurn(){
     dmg=Math.max(1,Math.round(dmg*0.8));
     const drain=Math.round(dmg*0.3);
     P.hp-=dmg;e.hp=Math.min(e.maxHp,e.hp+drain);
+    G.lastHit={enemy:e.name,attack:'吸血攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
     blog(`${e.name} の吸血！ ${dmg} ダメージ（${drain}回復）`+(runFailed?' ×2倍！':''),'enemy');
     updateEnemyUI();
   } else if(e.poison&&Math.random()<0.35&&!P.poisoned){
     P.hp-=dmg;P.poisoned=true;P.poisonTurns=4;
+    G.lastHit={enemy:e.name,attack:'毒攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
     blog(`${e.name} の毒攻撃！ ${dmg} ダメージ！毒状態に…`+(runFailed?' ×2倍！':''),'enemy');
   } else if(e.burn&&Math.random()<0.35){
     const extra=Math.round(dmg*0.5);
     P.hp-=dmg+extra;
+    G.lastHit={enemy:e.name,attack:'炎攻撃',dmg:dmg+extra,extra:runFailed?'（逃走失敗×2）':''};
     blog(`${e.name} の炎攻撃！ ${dmg+extra} の大ダメージ！`+(runFailed?' ×2倍！':''),'enemy');
   } else {
     P.hp-=dmg;
+    G.lastHit={enemy:e.name,attack:'通常攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
     blog(`${e.name} の攻撃！ ${dmg} ダメージ！`+(runFailed?' ×2倍！':''),'enemy');
   }
 
@@ -1005,6 +1010,7 @@ function enemyTurn(){
   if(P.poisoned&&P.poisonTurns>0){
     const pd=Math.max(1,Math.round(P.maxHp*0.08));
     P.hp-=pd;P.poisonTurns--;
+    G.lastHit={enemy:e.name,attack:'毒ダメージ',dmg:pd,extra:'（毒状態）'};
     blog(`☠ 毒ダメージ ${pd}！`,'bad');
     if(P.poisonTurns<=0)P.poisoned=false;
   }
@@ -1082,12 +1088,19 @@ function showDeath(){
   P.gold=Math.max(50, P.gold-loss);
   P.hp=Math.max(1,Math.round(P.maxHp*0.1));P.mp=Math.round(P.maxMp*0.2);
   P.poisoned=false;P.poisonTurns=0;
+  const lh=G.lastHit;
+  const causeStr=lh?`${lh.enemy} の ${lh.attack} で ${lh.dmg} ダメージ ${lh.extra}`:'不明';
   document.getElementById('resultTitle').textContent='全滅…';
   document.getElementById('resultTitle').className='result-title lose';
   document.getElementById('resultSub').textContent='命からがら逃げ帰った…';
-  document.getElementById('lvupArea').innerHTML='';
+  document.getElementById('lvupArea').innerHTML=`
+    <div style="background:rgba(192,57,43,.1);border:1px solid var(--hp-red);border-radius:4px;padding:9px 12px;width:100%;max-width:300px;margin:0 auto 8px;text-align:left">
+      <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">💀 致命の一撃</div>
+      <div style="font-size:14px;color:var(--hp-red);font-weight:600">${causeStr}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:3px">${G.dungeon?.name||'—'} ${G.floor}F</div>
+    </div>`;
   document.getElementById('rewardBox').innerHTML=`
-    <div class="ritem"><span class="rl">HP</span><span class="rv h">${P.hp} / ${P.maxHp}</span></div>
+    <div class="ritem"><span class="rl">残りHP</span><span class="rv h">${P.hp} / ${P.maxHp}</span></div>
     <div class="ritem"><span class="rl">ゴールド損失</span><span class="rv" style="color:var(--hp-red)">-${loss} G</span></div>
     <div class="ritem"><span class="rl">残りゴールド</span><span class="rv g">${P.gold} G</span></div>`;
   document.getElementById('resultBtns').innerHTML=
