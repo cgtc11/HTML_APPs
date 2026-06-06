@@ -192,7 +192,84 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 .slot-btn.danger:hover{border-color:var(--hp-red);color:var(--hp-red)}
 .slot-btn.disabled{opacity:.35;cursor:not-allowed}
 
-/* ===== STATUS ===== */
+/* ===== FLOOR EDITOR ===== */
+#flooredit-screen{background:var(--dark2)}
+.fe-dungeon-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--border);background:var(--dark3);flex-shrink:0}
+.fe-dungeon-tab{padding:9px 14px;font-size:13px;color:var(--text-dim);cursor:pointer;white-space:nowrap;border:none;background:none;font-family:'Crimson Pro',serif;border-bottom:2px solid transparent;flex-shrink:0}
+.fe-dungeon-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.fe-dungeon-tab:hover{color:var(--text)}
+.fe-body{flex:1;overflow-y:auto;padding:12px 14px}
+.fe-floor-block{background:var(--dark3);border:1px solid var(--border);border-radius:4px;margin-bottom:10px;overflow:hidden}
+.fe-floor-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none}
+.fe-floor-label{font-size:14px;color:var(--gold);font-weight:600}
+.fe-floor-summary{font-size:11px;color:var(--text-dim)}
+.fe-floor-body{padding:10px 12px;border-top:1px solid var(--border);display:none}
+.fe-floor-body.open{display:block}
+.fe-enemy-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.fe-enemy-emoji{font-size:20px;min-width:26px;text-align:center}
+.fe-enemy-name{font-size:13px;flex:1}
+.fe-weight-wrap{display:flex;align-items:center;gap:5px}
+.fe-weight-label{font-size:10px;color:var(--text-dim);white-space:nowrap}
+.fe-weight-input{background:var(--dark4);border:1px solid var(--border);color:var(--text);width:52px;padding:3px 6px;font-size:13px;border-radius:3px;text-align:center;font-family:'Crimson Pro',serif}
+.fe-weight-input:focus{outline:none;border-color:var(--gold-dim)}
+.fe-toggle{width:36px;height:20px;background:var(--dark4);border:1px solid var(--border);border-radius:10px;cursor:pointer;position:relative;flex-shrink:0;transition:background .15s}
+.fe-toggle.on{background:rgba(200,168,75,.3);border-color:var(--gold-dim)}
+.fe-toggle::after{content:'';position:absolute;width:14px;height:14px;background:var(--text-dim);border-radius:50%;top:2px;left:2px;transition:left .15s,background .15s}
+.fe-toggle.on::after{left:18px;background:var(--gold)}
+.fe-add-btn{background:none;border:1px dashed var(--border);color:var(--text-dim);padding:5px 10px;font-size:12px;border-radius:3px;cursor:pointer;font-family:'Crimson Pro',serif;width:100%;margin-top:4px;transition:all .15s}
+.fe-add-btn:hover{border-color:var(--gold-dim);color:var(--gold)}
+.fe-save-bar{background:var(--dark3);border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:8px;flex-shrink:0}
+.fe-save-btn{flex:1;background:rgba(200,168,75,.15);border:1px solid var(--gold-dim);color:var(--gold);padding:9px;font-size:14px;border-radius:4px;cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s}
+.fe-save-btn:hover{background:rgba(200,168,75,.25)}
+.fe-reset-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:9px 14px;font-size:13px;border-radius:4px;cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s}
+.fe-reset-btn:hover{border-color:var(--hp-red);color:var(--hp-red)}
+.fe-enemy-select{background:var(--dark4);border:1px solid var(--border);color:var(--text);padding:3px 6px;font-size:12px;border-radius:3px;font-family:'Crimson Pro',serif;flex:1}
+.fe-remove-btn{background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:0 4px;line-height:1}
+.fe-remove-btn:hover{color:var(--hp-red)}
+
+.export-box{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.export-card{background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:12px 14px}
+.export-card-title{font-size:13px;color:var(--gold);font-weight:600;margin-bottom:8px}
+.export-card-desc{font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5}
+.export-btns{display:flex;gap:8px}
+.exp-btn{flex:1;padding:8px;font-size:13px;border-radius:4px;cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s;border:1px solid}
+.exp-btn.dl{background:rgba(200,168,75,.15);border-color:var(--gold-dim);color:var(--gold)}
+.exp-btn.dl:hover{background:rgba(200,168,75,.25)}
+.exp-btn.imp{background:rgba(41,128,185,.15);border-color:#2980b9;color:#5dade2}
+.exp-btn.imp:hover{background:rgba(41,128,185,.25)}
+.exp-btn.all{background:rgba(39,174,96,.15);border-color:#27ae60;color:#27ae60}
+.exp-btn.all:hover{background:rgba(39,174,96,.25)}
+
+/* ===== ENEMY EDITOR ===== */
+#enemyedit-screen{background:var(--dark2)}
+.ee-body{flex:1;overflow-y:auto;padding:12px 14px}
+.ee-card{background:var(--dark3);border:1px solid var(--border);border-radius:4px;margin-bottom:10px;overflow:hidden}
+.ee-card-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;user-select:none}
+.ee-card-emoji{font-size:24px;min-width:30px;text-align:center}
+.ee-card-name{font-size:15px;color:var(--gold);font-weight:600;flex:1}
+.ee-card-tags{display:flex;gap:4px;flex-wrap:wrap}
+.ee-tag{font-size:10px;padding:1px 6px;border-radius:2px;border:1px solid var(--border);color:var(--text-dim)}
+.ee-tag.poison{border-color:#8e44ad;color:#8e44ad}
+.ee-tag.drain{border-color:var(--hp-red);color:var(--hp-red)}
+.ee-tag.burn{border-color:#e67e22;color:#e67e22}
+.ee-card-body{padding:12px 14px;border-top:1px solid var(--border);display:none}
+.ee-card-body.open{display:block}
+.ee-stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.ee-stat-row{display:flex;flex-direction:column;gap:3px}
+.ee-stat-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px}
+.ee-stat-input{background:var(--dark4);border:1px solid var(--border);color:var(--text);padding:5px 4px;font-size:14px;border-radius:3px;font-family:'Crimson Pro',serif;width:100%;text-align:center}
+.ee-stat-input:focus{outline:none;border-color:var(--gold-dim)}
+.ee-abilities-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.ee-ability-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ee-ability-name{font-size:13px;flex:1}
+.ee-ability-desc{font-size:11px;color:var(--text-dim)}
+.ee-toggle{width:38px;height:22px;background:var(--dark4);border:1px solid var(--border);border-radius:11px;cursor:pointer;position:relative;flex-shrink:0;transition:background .15s}
+.ee-toggle.on{background:rgba(200,168,75,.3);border-color:var(--gold-dim)}
+.ee-toggle::after{content:'';position:absolute;width:16px;height:16px;background:var(--text-dim);border-radius:50%;top:2px;left:2px;transition:left .15s,background .15s}
+.ee-toggle.on::after{left:18px;background:var(--gold)}
+.ee-reset-one{background:none;border:1px solid var(--border);color:var(--text-dim);padding:3px 10px;font-size:11px;border-radius:3px;cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s;margin-top:6px}
+.ee-reset-one:hover{border-color:var(--hp-red);color:var(--hp-red)}
+
 #status-screen{background:var(--dark2)}
 .status-body{padding:14px 16px;flex:1;overflow-y:auto}
 .status-card{background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px}
@@ -224,6 +301,8 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
     </div>
     <button class="start-btn" onclick="startGame()">⚔ 冒険を始める</button>
     <button class="start-btn" style="background:rgba(41,128,185,.15);border-color:#2980b9;color:#5dade2;margin-top:6px" onclick="openSaveLoad('load')">📂 セーブデータをロード</button>
+    <button class="start-btn" style="background:rgba(138,111,46,.15);border-color:var(--gold-dim);color:var(--gold);margin-top:6px" onclick="openFloorEditor()">⚙ 階層設定</button>
+    <button class="start-btn" style="background:rgba(192,57,43,.15);border-color:#c0392b;color:#e74c3c;margin-top:6px" onclick="openEnemyEditor()">👹 敵設定</button>
   </div>
 </div>
 
@@ -353,6 +432,37 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
   </div>
 </div>
 
+<!-- ===== ENEMY EDITOR ===== -->
+<div id="enemyedit-screen" class="screen">
+  <div class="page-header">
+    <div class="page-title">敵設定</div>
+    <button class="back-btn" onclick="showScreen('create-screen')">← 戻る</button>
+  </div>
+  <div class="ee-body" id="eeBody"></div>
+  <div class="fe-save-bar">
+    <button class="fe-save-btn" onclick="saveEnemySettings()">💾 保存</button>
+    <button class="fe-save-btn" style="background:rgba(41,128,185,.15);border-color:#2980b9;color:#5dade2" onclick="exportEnemySettings()">📤 書き出し</button>
+    <button class="fe-reset-btn" onclick="importEnemySettings()">📥 読込</button>
+    <button class="fe-reset-btn" onclick="resetEnemySettings()">↩ 初期値</button>
+  </div>
+</div>
+
+<!-- ===== FLOOR EDITOR ===== -->
+<div id="flooredit-screen" class="screen">
+  <div class="page-header">
+    <div class="page-title">階層設定</div>
+    <button class="back-btn" onclick="showScreen('create-screen')">← 戻る</button>
+  </div>
+  <div class="fe-dungeon-tabs" id="feDungeonTabs"></div>
+  <div class="fe-body" id="feBody"></div>
+  <div class="fe-save-bar">
+    <button class="fe-save-btn" onclick="saveFloorSettings()">💾 保存</button>
+    <button class="fe-save-btn" style="background:rgba(41,128,185,.15);border-color:#2980b9;color:#5dade2" onclick="exportFloorSettings()">📤 書き出し</button>
+    <button class="fe-reset-btn" onclick="importFloorSettings()">📥 読込</button>
+    <button class="fe-reset-btn" onclick="resetFloorSettings()">↩ 初期値</button>
+  </div>
+</div>
+
 <!-- ===== SAVE / LOAD ===== -->
 <div id="saveload-screen" class="screen">
   <div class="page-header">
@@ -362,6 +472,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
   <div class="sl-tabs">
     <button class="sl-tab active" id="tabSave" onclick="switchSlTab('save')">💾 セーブ</button>
     <button class="sl-tab" id="tabLoad" onclick="switchSlTab('load')">📂 ロード</button>
+    <button class="sl-tab" id="tabExport" onclick="switchSlTab('export')">📤 エクスポート</button>
   </div>
   <div class="slot-list" id="slotList"></div>
 </div>
@@ -400,19 +511,19 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 // ============================================================
 const CLASSES = [
   {id:'warrior', name:'戦士',   emoji:'⚔️', desc:'HP高・物理攻撃特化',
-   stats:{hp:45,mp:8,atk:13,def:9,spd:6,int:3},
+   stats:{hp:45,mp:8,atk:12,def:9,spd:6,int:3},
    skills:[{name:'渾身の一撃',cost:4,desc:'ATK×2倍打撃 MP4消費・次ターン被ダメ増',icon:'💥'},
            {name:'防御姿勢',  cost:0,desc:'次の被ダメ半減',icon:'🛡️'}]},
   {id:'mage',    name:'魔法使い',emoji:'🔮', desc:'MP高・魔法火力特化',
-   stats:{hp:18,mp:35,atk:4,def:2,spd:5,int:18},
+   stats:{hp:18,mp:35,atk:3,def:2,spd:5,int:14},
    skills:[{name:'ファイアボール',cost:8, desc:'INT×3 魔法ダメ',icon:'🔥'},
            {name:'アイスランス', cost:6, desc:'INT×2.5 低コスト魔法',icon:'❄️'}]},
   {id:'rogue',   name:'盗賊',  emoji:'🗡️', desc:'素早さ高・クリ特化',
-   stats:{hp:26,mp:14,atk:9,def:4,spd:15,int:7},
+   stats:{hp:26,mp:14,atk:8,def:4,spd:15,int:7},
    skills:[{name:'急所狙い',  cost:0,desc:'防御無視ダメージ',icon:'🎯'},
            {name:'毒手',      cost:4,desc:'毒を付与する攻撃',icon:'☠️'}]},
   {id:'cleric',  name:'僧侶',  emoji:'✨', desc:'回復魔法・バランス型',
-   stats:{hp:32,mp:24,atk:7,def:7,spd:6,int:12},
+   stats:{hp:32,mp:24,atk:6,def:7,spd:6,int:10},
    skills:[{name:'ヒール',      cost:10,desc:'HP +INT×2+10 回復',icon:'💚'},
            {name:'ホーリーライト',cost:12,desc:'INT×3.5 神聖ダメ',icon:'⭐'}]},
 ];
@@ -421,46 +532,66 @@ const DUNGEONS = [
   {id:'forest', name:'妖精の迷い森', minLv:1, floors:5,
    desc:'初心者向け。草木の精霊が眠る浅い迷宮。',
    tags:['e','x'],
-   enemies:[
-     {name:'スライム',  emoji:'🟢',hp:12,atk:4, def:1,exp:8, gold:5},
-     {name:'コウモリ',  emoji:'🦇',hp:10,atk:6, def:0,exp:10,gold:6},
-     {name:'ゴブリン',  emoji:'👺',hp:20,atk:7, def:2,exp:15,gold:12},
-     {name:'毒キノコ',  emoji:'🍄',hp:14,atk:5, def:2,exp:12,gold:8, poison:true},
+   // floorTable: 各階の出現テーブル [{enemy, weight}]
+   floorTable:[
+     // 1F: ほぼスライム緑・コウモリ、稀に毒キノコ
+     [{e:{name:'スライム緑',emoji:'🟢',hp:20,atk:1,def:1,exp:8, gold:5},        w:45},
+      {e:{name:'コウモリ',  emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},        w:45},
+      {e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:10}],
+     // 2F: スライム緑・青・コウモリ・毒キノコ
+     [{e:{name:'スライム緑',emoji:'🟢',hp:20,atk:1,def:1,exp:8, gold:5},        w:30},
+      {e:{name:'スライム青',emoji:'🔵',hp:24,atk:2,def:2,exp:11,gold:7},        w:30},
+      {e:{name:'コウモリ',  emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},        w:25},
+      {e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:15}],
+     // 3F: スライム緑・青・赤・コウモリ・毒キノコ・稀にゴブリン
+     [{e:{name:'スライム緑',emoji:'🟢',hp:20,atk:1,def:1,exp:8, gold:5},        w:20},
+      {e:{name:'スライム青',emoji:'🔵',hp:24,atk:2,def:2,exp:11,gold:7},        w:20},
+      {e:{name:'スライム赤',emoji:'🔴',hp:28,atk:3,def:2,exp:14,gold:9},        w:20},
+      {e:{name:'コウモリ',  emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},        w:20},
+      {e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:15},
+      {e:{name:'ゴブリン',  emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},       w:5}],
+     // 4F: コウモリ・毒キノコ・ゴブリン中心
+     [{e:{name:'コウモリ',  emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},        w:25},
+      {e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:30},
+      {e:{name:'ゴブリン',  emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},       w:45}],
+     // 5F: ゴブリン多め（ボス前）
+     [{e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:20},
+      {e:{name:'ゴブリン',  emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},       w:80}],
    ],
-   boss:{name:'森の番人', emoji:'🌳',hp:60,atk:12,def:5,exp:50,gold:40,isBoss:true}},
+   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:40,isBoss:true}},
 
   {id:'caves',  name:'銀の洞窟', minLv:3, floors:7,
    desc:'鉱石が光る地下洞窟。岩石の怪物が棲む。',
    tags:['m','g'],
    enemies:[
-     {name:'コボルト',    emoji:'🐾',hp:22,atk:9, def:3,exp:18,gold:14},
-     {name:'岩石ゴーレム',emoji:'🪨',hp:38,atk:11,def:9,exp:26,gold:22},
-     {name:'毒蜘蛛',     emoji:'🕷️',hp:22,atk:10,def:2,exp:20,gold:15,poison:true},
-     {name:'オーク',     emoji:'👹',hp:32,atk:13,def:5,exp:28,gold:22},
+     {name:'コボルト',    emoji:'🐾',hp:35,atk:9, def:3,exp:18,gold:14},
+     {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:11,def:9,exp:26,gold:22},
+     {name:'毒蜘蛛',     emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
+     {name:'オーク',     emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
    ],
-   boss:{name:'ロックワーム',emoji:'🐍',hp:130,atk:20,def:10,exp:110,gold:90,isBoss:true}},
+   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:90,isBoss:true}},
 
   {id:'castle', name:'呪われた古城', minLv:7, floors:10,
    desc:'魔王の遺した黒魔術が漂う廃城。強敵揃い。',
    tags:['h','x'],
    enemies:[
-     {name:'スケルトン',emoji:'💀',hp:30,atk:14,def:6,exp:32,gold:20},
-     {name:'ゾンビ',   emoji:'🧟',hp:44,atk:12,def:8,exp:30,gold:16},
-     {name:'魔法騎士', emoji:'🧙',hp:38,atk:18,def:9,exp:42,gold:32},
-     {name:'ヴァンパイア',emoji:'🧛',hp:48,atk:20,def:7,exp:52,gold:36,drain:true},
+     {name:'スケルトン',emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20},
+     {name:'ゾンビ',   emoji:'🧟',hp:60,atk:12,def:8,exp:30,gold:16},
+     {name:'魔法騎士', emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32},
+     {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,drain:true},
    ],
-   boss:{name:'魔城の番人',emoji:'🏰',hp:220,atk:30,def:15,exp:200,gold:160,isBoss:true}},
+   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:160,isBoss:true}},
 
   {id:'abyss',  name:'深淵の奈落', minLv:14, floors:15,
    desc:'世界の底に続く終わりなき闇。最高の試練。',
    tags:['h','x','g'],
    enemies:[
-     {name:'デーモン',  emoji:'😈',hp:55,atk:24,def:12,exp:65,gold:45},
-     {name:'地獄の炎',  emoji:'🔥',hp:40,atk:28,def:5, exp:58,gold:32,burn:true},
-     {name:'暗黒騎士',  emoji:'🖤',hp:65,atk:26,def:16,exp:72,gold:52},
-     {name:'リッチ',   emoji:'☠️',hp:72,atk:30,def:10,exp:82,gold:62,drain:true},
+     {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45},
+     {name:'地獄の炎',  emoji:'🔥',hp:60,atk:28,def:5, exp:58,gold:32,burn:true},
+     {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52},
+     {name:'リッチ',   emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,drain:true},
    ],
-   boss:{name:'深淵の魔神',emoji:'👁️',hp:420,atk:52,def:26,exp:520,gold:320,isBoss:true}},
+   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:320,isBoss:true}},
 ];
 
 const SHOP_ITEMS = [
@@ -655,12 +786,28 @@ function nextEncounter(){
 }
 
 function scaledEnemy(){
-  const arr=G.dungeon.enemies;
-  const e={...arr[rand(0,arr.length-1)]};
-  const m=1+G.floor*0.14;
-  e.hp=Math.round(e.hp*m);e.atk=Math.round(e.atk*m*0.75);
-  e.def=Math.round(e.def*m*0.5);e.exp=Math.round(e.exp*m);e.gold=Math.round(e.gold*m);
-  return e;
+  const d=G.dungeon;
+  const fl=G.floor;
+  let base;
+  if(d.floorTable){
+    // 階層テーブルあり：該当階（0始まり）のテーブルから重み付き抽選
+    const idx=Math.min(fl-1, d.floorTable.length-1);
+    const table=d.floorTable[idx];
+    const total=table.reduce((s,t)=>s+t.w,0);
+    let r=Math.random()*total;
+    base={...table.find(t=>{r-=t.w;return r<=0})?.e || table[0].e};
+  } else {
+    const arr=d.enemies;
+    base={...arr[rand(0,arr.length-1)]};
+  }
+  // 階層スケーリング（下層ほど強くなる）
+  const m=1+fl*0.14;
+  base.hp=Math.round(base.hp*m);
+  base.atk=Math.round(base.atk*m*0.8);
+  base.def=Math.round(base.def*m*0.5);
+  base.exp=Math.round(base.exp*m);
+  base.gold=Math.round(base.gold*m);
+  return base;
 }
 
 // ============================================================
@@ -668,9 +815,17 @@ function scaledEnemy(){
 // ============================================================
 function setActions(v){document.querySelectorAll('.abtn').forEach(b=>b.disabled=!v);}
 
-function calcDmg(atk,def,variance=0.25){
-  const base=Math.max(1,atk-def);
-  return Math.max(1,Math.round(base*(0.85+Math.random()*0.3)));
+// プレイヤー → 敵：ATKを抑えめに
+function calcDmg(atk,def){
+  const reduction=Math.min(0.75, def/(def+10));
+  const base=Math.max(1, Math.round(atk*(1-reduction)*0.45));
+  return Math.max(1, Math.round(base*(0.85+Math.random()*0.3)));
+}
+// 敵 → プレイヤー：ATKがそのまま響く、プレイヤーDEFで軽減
+function calcEnemyDmg(atk,def){
+  const reduction=Math.min(0.70, def/(def+15));
+  const base=Math.max(1, Math.round(atk*(1-reduction)));
+  return Math.max(1, Math.round(base*(0.85+Math.random()*0.3)));
 }
 
 function shakeEnemy(){
@@ -720,10 +875,10 @@ function doSkill(i){
   const id=P.cls.id;
   const name=sk.name;
   if(name==='渾身の一撃'){
-    const dmg=calcDmg(P.atk*2,G.enemy.def);
-    blog(`${name}！ ${dmg} の大ダメージ！（次ターン隙が生じる）`,'player');
+    const flatDmg=Math.max(3, Math.round((P.atk - G.enemy.def*0.2) * (0.9+Math.random()*0.2)));
+    blog(`${name}！ ${flatDmg} の大ダメージ！（次ターン隙が生じる）`,'player');
     G.exposed=true;
-    G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
+    G.enemy.hp-=flatDmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
   } else if(name==='防御姿勢'){
     G.defending=true;blog(`${P.name} は防御姿勢をとった。`,'player');setTimeout(enemyTurn,700);
   } else if(name==='ファイアボール'){
@@ -770,12 +925,28 @@ function doRun(){
   if(Math.random()<rate){
     blog('逃走に成功した！','good');
     G.battleActive=false;
-    setTimeout(()=>{showScreen('tavern-screen');refreshTavern();tlog('逃走して酒場に戻った。');},800);
+    setTimeout(()=>showEscapeResult(),800);
   } else {
     blog('逃走に失敗した！隙を突かれた！','bad');
     G.runFailed=true;
     setTimeout(enemyTurn,700);
   }
+}
+
+function showEscapeResult(){
+  document.getElementById('resultTitle').textContent='逃走成功';
+  document.getElementById('resultTitle').className='result-title';
+  document.getElementById('resultTitle').style.color='#5dade2';
+  document.getElementById('resultSub').textContent=`${G.currentEnemy||G.enemy?.name||'敵'} から逃げ出した`;
+  document.getElementById('lvupArea').innerHTML='';
+  document.getElementById('rewardBox').innerHTML=`
+    <div class="ritem"><span class="rl">HP</span><span class="rv h">${P.hp} / ${P.maxHp}</span></div>
+    <div class="ritem"><span class="rl">MP</span><span class="rv" style="color:var(--mp-blue)">${P.mp} / ${P.maxMp}</span></div>
+    <div class="ritem"><span class="rl">深度</span><span class="rv">${G.floor}F</span></div>`;
+  document.getElementById('resultBtns').innerHTML=`
+    <button class="rbtn pri" onclick="nextEncounter()">▶ 次の戦闘へ</button>
+    <button class="rbtn" onclick="backToTavern()">🍺 酒場へ帰還</button>`;
+  showScreen('result-screen');
 }
 
 // ============================================================
@@ -793,19 +964,18 @@ function enemyTurn(){
 
   // 防御時：魔法（drain/burn系）は跳ね返す
   if(wasDefending&&(e.drain||e.burn)){
-    const reflect=Math.round(calcDmg(e.atk,0)*0.8);
+    const reflect=Math.round(calcEnemyDmg(e.atk,0)*0.8);
     e.hp=Math.max(0,e.hp-reflect);
     blog(`✨ 魔法を跳ね返した！ ${e.name} に ${reflect} ダメージ！`,'good');
     updateEnemyUI();
     if(e.hp<=0){P.hp=Math.max(0,P.hp);updatePlayerHud();setTimeout(checkResult,400);return;}
     P.hp=Math.max(0,P.hp);updatePlayerHud();setActions(true);
-    // 防御後は次ターン攻撃力2倍フラグ
     G.counterBoost=true;
     return;
   }
 
-  let dmg=calcDmg(e.atk,P.def*defMult);
-  if(runFailed)dmg=dmg*2;
+  let dmg=calcEnemyDmg(e.atk,P.def*defMult);
+  if(runFailed)dmg=Math.round(dmg*2);
 
   if(e.drain){
     dmg=Math.max(1,Math.round(dmg*0.8));
@@ -826,14 +996,14 @@ function enemyTurn(){
   }
 
   if(G.enemy.poisoned){
-    const pd=Math.max(1,Math.round(e.maxHp*0.25));
+    const pd=Math.max(1,Math.round(e.maxHp*0.08));
     e.hp-=pd;blog(`☠ ${e.name} 毒ダメージ ${pd}！`,'good');
     updateEnemyUI();
     if(e.hp<=0){P.hp=Math.max(0,P.hp);updatePlayerHud();setTimeout(checkResult,400);return;}
   }
 
   if(P.poisoned&&P.poisonTurns>0){
-    const pd=Math.max(1,Math.round(P.maxHp*0.25));
+    const pd=Math.max(1,Math.round(P.maxHp*0.08));
     P.hp-=pd;P.poisonTurns--;
     blog(`☠ 毒ダメージ ${pd}！`,'bad');
     if(P.poisonTurns<=0)P.poisoned=false;
@@ -870,7 +1040,7 @@ function giveRewards(e){
   while(P.exp>=P.expNext){
     P.exp-=P.expNext;P.level++;
     P.expNext=Math.round(P.expNext*1.6);
-    const inc={hp:rand(4,9),mp:rand(2,5),atk:rand(1,3),def:rand(1,2),spd:rand(1,2),int:rand(1,3)};
+    const inc={hp:rand(4,9),mp:rand(2,5),atk:rand(0,1),def:rand(0,1),spd:rand(0,1),int:rand(0,1)};
     P.maxHp+=inc.hp;P.maxMp+=inc.mp;
     P.hp=Math.min(P.maxHp,P.hp+Math.round(inc.hp/2));
     P.atk+=inc.atk;P.def+=inc.def;P.spd+=inc.spd;P.int+=inc.int;
@@ -908,7 +1078,8 @@ function showResult(e,lvups,bossCleared){
 }
 
 function showDeath(){
-  const loss=Math.max(0,Math.round(P.gold*0.1));P.gold-=loss;
+  const loss=Math.max(0,Math.round(P.gold*0.1));
+  P.gold=Math.max(50, P.gold-loss);
   P.hp=Math.max(1,Math.round(P.maxHp*0.1));P.mp=Math.round(P.maxMp*0.2);
   P.poisoned=false;P.poisonTurns=0;
   document.getElementById('resultTitle').textContent='全滅…';
@@ -967,6 +1138,521 @@ function buyItem(id){
 }
 
 // ============================================================
+//  FLOOR EDITOR
+// ============================================================
+const FE_SAVE_KEY='dungeon_rpg_floors';
+
+// 全ダンジョンで使える敵マスター（選択肢用）
+const ALL_ENEMIES=[
+  {name:'スライム緑', emoji:'🟢',hp:20,atk:1,def:1,exp:8, gold:5},
+  {name:'スライム青', emoji:'🔵',hp:24,atk:2,def:2,exp:11,gold:7},
+  {name:'スライム赤', emoji:'🔴',hp:28,atk:3,def:2,exp:14,gold:9},
+  {name:'コウモリ',   emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},
+  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8, poison:true},
+  {name:'ゴブリン',   emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},
+  {name:'コボルト',   emoji:'🐾',hp:35,atk:9,def:3,exp:18,gold:14},
+  {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:11,def:9,exp:26,gold:22},
+  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
+  {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
+  {name:'スケルトン', emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20},
+  {name:'ゾンビ',    emoji:'🧟',hp:60,atk:12,def:8,exp:30,gold:16},
+  {name:'魔法騎士',  emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32},
+  {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,drain:true},
+  {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45},
+  {name:'地獄の炎',  emoji:'🔥',hp:60,atk:28,def:5,exp:58,gold:32,burn:true},
+  {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52},
+  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,drain:true},
+];
+
+let feCurrentDungeon=0; // 編集中のダンジョンindex
+// 編集作業用データ（DUNGEONS構造をミラー）
+let feData=null;
+
+function getDefaultFeData(){
+  return DUNGEONS.map(d=>({
+    id:d.id,
+    floors:d.floors,
+    table: d.floorTable
+      ? d.floorTable.map(ft=>ft.map(entry=>({name:entry.e.name,weight:entry.w,enabled:true})))
+      : Array.from({length:d.floors},()=>
+          (d.enemies||[]).map(e=>({name:e.name,weight:25,enabled:true}))
+        )
+  }));
+}
+
+function loadFeData(){
+  try{
+    const saved=localStorage.getItem(FE_SAVE_KEY);
+    return saved?JSON.parse(saved):null;
+  }catch{return null;}
+}
+
+function openFloorEditor(){
+  feData=loadFeData()||getDefaultFeData();
+  feCurrentDungeon=0;
+  renderFeDungeonTabs();
+  renderFeFloors();
+  showScreen('flooredit-screen');
+}
+
+function renderFeDungeonTabs(){
+  document.getElementById('feDungeonTabs').innerHTML=
+    DUNGEONS.map((d,i)=>`
+      <button class="fe-dungeon-tab${i===feCurrentDungeon?' active':''}" onclick="switchFeDungeon(${i})">${d.name}</button>
+    `).join('');
+}
+
+function switchFeDungeon(i){
+  feCurrentDungeon=i;
+  renderFeDungeonTabs();
+  renderFeFloors();
+}
+
+function renderFeFloors(){
+  const d=DUNGEONS[feCurrentDungeon];
+  const fd=feData[feCurrentDungeon];
+  const body=document.getElementById('feBody');
+  body.innerHTML='';
+
+  for(let fi=0;fi<d.floors;fi++){
+    const floorRows=fd.table[fi]||[];
+    const enabledNames=floorRows.filter(r=>r.enabled).map(r=>r.name).join('・')||'（なし）';
+    const block=document.createElement('div');
+    block.className='fe-floor-block';
+    block.innerHTML=`
+      <div class="fe-floor-head" onclick="toggleFeFloor(this)">
+        <span class="fe-floor-label">${fi+1}F</span>
+        <span class="fe-floor-summary" id="fe-summary-${fi}">${enabledNames}</span>
+        <span style="color:var(--text-dim);font-size:12px">▼</span>
+      </div>
+      <div class="fe-floor-body" id="fe-floor-body-${fi}">
+        <div id="fe-rows-${fi}"></div>
+        <button class="fe-add-btn" onclick="feAddEnemy(${fi})">＋ 敵を追加</button>
+      </div>`;
+    body.appendChild(block);
+    renderFeRows(fi);
+  }
+}
+
+function toggleFeFloor(head){
+  const body=head.nextElementSibling;
+  body.classList.toggle('open');
+  head.querySelector('span:last-child').textContent=body.classList.contains('open')?'▲':'▼';
+}
+
+function renderFeRows(fi){
+  const fd=feData[feCurrentDungeon];
+  const rows=fd.table[fi]||[];
+  const container=document.getElementById(`fe-rows-${fi}`);
+  if(!container)return;
+  container.innerHTML=rows.map((row,ri)=>{
+    const em=ALL_ENEMIES.find(e=>e.name===row.name)||ALL_ENEMIES[0];
+    const opts=ALL_ENEMIES.map(e=>`<option value="${e.name}"${e.name===row.name?' selected':''}>${e.emoji} ${e.name}</option>`).join('');
+    return`<div class="fe-enemy-row" id="fe-row-${fi}-${ri}">
+      <button class="fe-toggle${row.enabled?' on':''}" onclick="feToggleEnemy(${fi},${ri})" title="出現ON/OFF"></button>
+      <span class="fe-enemy-emoji">${em.emoji}</span>
+      <select class="fe-enemy-select" onchange="feChangeEnemy(${fi},${ri},this.value)">${opts}</select>
+      <div class="fe-weight-wrap">
+        <span class="fe-weight-label">出現率</span>
+        <input class="fe-weight-input" type="number" min="1" max="99" value="${row.weight}" onchange="feChangeWeight(${fi},${ri},this.value)">
+      </div>
+      <button class="fe-remove-btn" onclick="feRemoveEnemy(${fi},${ri})" title="削除">✕</button>
+    </div>`;
+  }).join('');
+  updateFeSummary(fi);
+}
+
+function feToggleEnemy(fi,ri){
+  feData[feCurrentDungeon].table[fi][ri].enabled^=true;
+  renderFeRows(fi);
+}
+
+function feChangeEnemy(fi,ri,name){
+  feData[feCurrentDungeon].table[fi][ri].name=name;
+  const em=ALL_ENEMIES.find(e=>e.name===name)||ALL_ENEMIES[0];
+  const row=document.getElementById(`fe-row-${fi}-${ri}`);
+  if(row)row.querySelector('.fe-enemy-emoji').textContent=em.emoji;
+  updateFeSummary(fi);
+}
+
+function feChangeWeight(fi,ri,val){
+  feData[feCurrentDungeon].table[fi][ri].weight=Math.max(1,Math.min(99,parseInt(val)||1));
+  updateFeSummary(fi);
+}
+
+function feRemoveEnemy(fi,ri){
+  feData[feCurrentDungeon].table[fi].splice(ri,1);
+  renderFeRows(fi);
+}
+
+function feAddEnemy(fi){
+  feData[feCurrentDungeon].table[fi]=feData[feCurrentDungeon].table[fi]||[];
+  feData[feCurrentDungeon].table[fi].push({name:'スライム緑',weight:10,enabled:true});
+  renderFeRows(fi);
+  // 開く
+  const body=document.getElementById(`fe-floor-body-${fi}`);
+  if(body&&!body.classList.contains('open'))body.classList.add('open');
+}
+
+function updateFeSummary(fi){
+  const fd=feData[feCurrentDungeon];
+  const rows=(fd.table[fi]||[]).filter(r=>r.enabled);
+  const el=document.getElementById(`fe-summary-${fi}`);
+  if(el)el.textContent=rows.map(r=>{
+    const em=ALL_ENEMIES.find(e=>e.name===r.name);
+    return (em?.emoji||'?')+r.name;
+  }).join('・')||'（なし）';
+}
+
+function saveFloorSettings(){
+  // feDataをDUNGEONSのfloorTableに反映
+  feData.forEach((fd,di)=>{
+    const d=DUNGEONS[di];
+    d.floorTable=fd.table.map(floorRows=>
+      floorRows.filter(r=>r.enabled&&r.weight>0).map(r=>{
+        const base=ALL_ENEMIES.find(e=>e.name===r.name)||ALL_ENEMIES[0];
+        return{e:{...base},w:r.weight};
+      })
+    );
+    // floorTableが空のフロアはデフォルト敵で埋める
+    d.floorTable=d.floorTable.map((ft,fi)=>
+      ft.length>0?ft:[{e:{...ALL_ENEMIES[0]},w:1}]
+    );
+    delete d.enemies; // enemiesより優先されるよう削除
+  });
+  localStorage.setItem(FE_SAVE_KEY,JSON.stringify(feData));
+  showScreen('create-screen');
+  alert('階層設定を保存しました。');
+}
+
+function resetFloorSettings(){
+  if(!confirm('初期設定に戻しますか？'))return;
+  localStorage.removeItem(FE_SAVE_KEY);
+  feData=getDefaultFeData();
+  location.reload();
+}
+
+function exportFloorSettings(){
+  const data=feData||loadFeData()||getDefaultFeData();
+  downloadJson({type:'floors',data},`dungeon_floors_${dateTag()}.json`);
+}
+
+function importFloorSettings(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const json=JSON.parse(ev.target.result);
+        const d=json.data||json.floors||json;
+        localStorage.setItem(FE_SAVE_KEY,JSON.stringify(d));
+        alert('階層設定を読み込みました。ページをリロードして反映します。');
+        location.reload();
+      }catch{alert('読み込み失敗。正しいJSONファイルか確認してください。');}
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
+// 起動時にセーブ済み設定をDUNGEONSに反映
+(function applyFloorSettings(){
+  const saved=loadFeData();
+  if(!saved)return;
+  saved.forEach((fd,di)=>{
+    const d=DUNGEONS[di];
+    d.floorTable=fd.table.map(floorRows=>
+      floorRows.filter(r=>r.enabled&&r.weight>0).map(r=>{
+        const base=getEnemyMaster(r.name);
+        return{e:{...base},w:r.weight};
+      })
+    );
+    d.floorTable=d.floorTable.map(ft=>ft.length>0?ft:[{e:{...ALL_ENEMIES[0]},w:1}]);
+    delete d.enemies;
+  });
+})();
+
+// ============================================================
+//  ENEMY EDITOR
+// ============================================================
+const EE_SAVE_KEY='dungeon_rpg_enemies';
+
+// 特殊能力定義
+const ABILITIES=[
+  {id:'poison',label:'毒',      desc:'攻撃時に毒を付与'},
+  {id:'drain', label:'吸血',    desc:'ダメージの一部を回復'},
+  {id:'burn',  label:'炎上',    desc:'追加炎ダメージ'},
+];
+
+// 作業用データ
+let eeData=null;
+
+function getDefaultEeData(){
+  return {
+    enemies: ALL_ENEMIES.map(e=>({
+      name:e.name, emoji:e.emoji,
+      hp:e.hp, atk:e.atk, def:e.def, exp:e.exp, gold:e.gold,
+      poison:!!e.poison, drain:!!e.drain, burn:!!e.burn,
+    })),
+    bosses: DUNGEONS.map(d=>({
+      dungeonId:d.id, dungeonName:d.name,
+      name:d.boss.name, emoji:d.boss.emoji,
+      hp:d.boss.hp, atk:d.boss.atk, def:d.boss.def,
+      exp:d.boss.exp, gold:d.boss.gold,
+      poison:!!d.boss.poison, drain:!!d.boss.drain, burn:!!d.boss.burn,
+    })),
+    classes: CLASSES.map(c=>({
+      id:c.id, name:c.name, emoji:c.emoji,
+      hp:c.stats.hp, mp:c.stats.mp, atk:c.stats.atk,
+      def:c.stats.def, spd:c.stats.spd, int:c.stats.int,
+    })),
+  };
+}
+
+function loadEeData(){
+  try{const s=localStorage.getItem(EE_SAVE_KEY);return s?JSON.parse(s):null;}
+  catch{return null;}
+}
+
+// ALL_ENEMIESから名前検索
+function getEnemyMaster(name){
+  return ALL_ENEMIES.find(e=>e.name===name)||ALL_ENEMIES[0];
+}
+
+// 起動時にカスタム敵設定をALL_ENEMIES・DUNGEONSに反映
+(function applyEnemySettings(){
+  const saved=loadEeData();
+  if(!saved)return;
+  // 通常敵
+  const enemies=saved.enemies||saved; // 旧形式互換
+  if(Array.isArray(enemies)){
+    enemies.forEach(s=>{
+      const idx=ALL_ENEMIES.findIndex(e=>e.name===s.name);
+      if(idx<0)return;
+      ALL_ENEMIES[idx]={...ALL_ENEMIES[idx],hp:s.hp,atk:s.atk,def:s.def,exp:s.exp,gold:s.gold};
+      if(s.poison)ALL_ENEMIES[idx].poison=true; else delete ALL_ENEMIES[idx].poison;
+      if(s.drain) ALL_ENEMIES[idx].drain=true;  else delete ALL_ENEMIES[idx].drain;
+      if(s.burn)  ALL_ENEMIES[idx].burn=true;   else delete ALL_ENEMIES[idx].burn;
+    });
+  }
+  // ボス
+  if(saved.bosses){
+    saved.bosses.forEach(s=>{
+      const d=DUNGEONS.find(d=>d.id===s.dungeonId);
+      if(!d)return;
+      d.boss={...d.boss,hp:s.hp,atk:s.atk,def:s.def,exp:s.exp,gold:s.gold};
+      if(s.poison)d.boss.poison=true; else delete d.boss.poison;
+      if(s.drain) d.boss.drain=true;  else delete d.boss.drain;
+      if(s.burn)  d.boss.burn=true;   else delete d.boss.burn;
+    });
+  }
+  // 職業
+  if(saved.classes){
+    saved.classes.forEach(s=>{
+      const c=CLASSES.find(c=>c.id===s.id);
+      if(!c)return;
+      c.stats={hp:s.hp,mp:s.mp,atk:s.atk,def:s.def,spd:s.spd,int:s.int};
+    });
+  }
+})();
+
+function openEnemyEditor(){
+  const saved=loadEeData();
+  const def=getDefaultEeData();
+  eeData={
+    enemies: saved?.enemies || (Array.isArray(saved)?saved:def.enemies),
+    bosses:  saved?.bosses  || def.bosses,
+    classes: saved?.classes || def.classes,
+  };
+  renderEeCards();
+  showScreen('enemyedit-screen');
+}
+
+// セクション区切り用ラベル
+function eeSection(label){
+  const d=document.createElement('div');
+  d.style.cssText='font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:2px;padding:6px 2px 4px;border-bottom:1px solid var(--border);margin-bottom:8px';
+  d.textContent=label;
+  document.getElementById('eeBody').appendChild(d);
+}
+
+function renderEeCards(){
+  const body=document.getElementById('eeBody');
+  body.innerHTML='';
+
+  // --- 職業セクション ---
+  const secC=document.createElement('div');
+  secC.style.cssText='font-size:11px;color:#5dade2;text-transform:uppercase;letter-spacing:2px;padding:6px 2px 4px;border-bottom:1px solid #2980b9;margin-bottom:8px';
+  secC.textContent='⚔ プレイヤー職業';
+  body.appendChild(secC);
+  eeData.classes.forEach((c,i)=>body.appendChild(buildClassCard(c,i)));
+
+  // --- 通常敵セクション ---
+  const secN=document.createElement('div');
+  secN.style.cssText='font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:2px;padding:10px 2px 4px;border-bottom:1px solid var(--border);margin-bottom:8px;margin-top:6px';
+  secN.textContent='通常敵';
+  body.appendChild(secN);
+  eeData.enemies.forEach((e,i)=>body.appendChild(buildEeCard(e,`n-${i}`,i,'enemy')));
+
+  // --- ボスセクション ---
+  const secB=document.createElement('div');
+  secB.style.cssText='font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;padding:10px 2px 4px;border-bottom:1px solid var(--gold-dim);margin-bottom:8px;margin-top:6px';
+  secB.textContent='⚠ ボス';
+  body.appendChild(secB);
+  eeData.bosses.forEach((e,i)=>body.appendChild(buildEeCard(e,`b-${i}`,i,'boss')));
+}
+
+function buildClassCard(c,i){
+  const card=document.createElement('div');
+  card.className='ee-card';
+  card.id=`ee-card-c-${i}`;
+  const STAT_LABELS={hp:'HP',mp:'MP',atk:'ATK',def:'DEF',spd:'SPD',int:'INT'};
+  card.innerHTML=`
+    <div class="ee-card-head" onclick="toggleEeCard('c-${i}')">
+      <span class="ee-card-emoji">${c.emoji}</span>
+      <span class="ee-card-name" style="color:#5dade2">${c.name}</span>
+      <span style="color:var(--text-dim);font-size:12px;margin-left:6px">▼</span>
+    </div>
+    <div class="ee-card-body" id="ee-body-c-${i}">
+      <div class="ee-stat-grid">
+        ${['hp','mp','atk','def','spd','int'].map(k=>`
+          <div class="ee-stat-row">
+            <span class="ee-stat-label">${STAT_LABELS[k]}</span>
+            <input class="ee-stat-input" type="number" min="1" max="999" value="${c[k]}"
+              onchange="eeChangeClassStat(${i},'${k}',this.value)">
+          </div>`).join('')}
+      </div>
+      <button class="ee-reset-one" onclick="eeResetOne('c-${i}',${i},'class')">↩ リセット</button>
+    </div>`;
+  return card;
+}
+
+function eeChangeClassStat(i,key,val){
+  eeData.classes[i][key]=Math.max(1,parseInt(val)||1);
+}
+
+function buildEeCard(e,uid,i,kind){
+  const tags=[
+    e.poison?`<span class="ee-tag poison">毒</span>`:'',
+    e.drain? `<span class="ee-tag drain">吸血</span>`:'',
+    e.burn?  `<span class="ee-tag burn">炎</span>`:'',
+    kind==='boss'?`<span class="ee-tag" style="border-color:var(--gold-dim);color:var(--gold)">BOSS</span>`:'',
+  ].join('');
+  const sub=kind==='boss'?`<span style="font-size:10px;color:var(--text-dim);margin-left:6px">${e.dungeonName}</span>`:'';
+  const card=document.createElement('div');
+  card.className='ee-card';
+  card.id=`ee-card-${uid}`;
+  card.innerHTML=`
+    <div class="ee-card-head" onclick="toggleEeCard('${uid}')">
+      <span class="ee-card-emoji">${e.emoji}</span>
+      <span class="ee-card-name">${e.name}${sub}</span>
+      <div class="ee-card-tags">${tags}</div>
+      <span style="color:var(--text-dim);font-size:12px;margin-left:6px">▼</span>
+    </div>
+    <div class="ee-card-body" id="ee-body-${uid}">
+      <div class="ee-stat-grid">
+        ${['hp','atk','def','exp','gold'].map(k=>`
+          <div class="ee-stat-row">
+            <span class="ee-stat-label">${{hp:'HP',atk:'ATK',def:'DEF',exp:'EXP',gold:'GOLD'}[k]}</span>
+            <input class="ee-stat-input" type="number" min="0" max="99999" value="${e[k]}"
+              onchange="eeChangeStat('${uid}',${i},'${kind}','${k}',this.value)">
+          </div>`).join('')}
+        <div class="ee-stat-row" style="align-items:center;justify-content:center">
+          <span class="ee-stat-label">　</span>
+          <button class="ee-reset-one" onclick="eeResetOne('${uid}',${i},'${kind}')">↩ リセット</button>
+        </div>
+      </div>
+      <div class="ee-abilities-label">特殊能力</div>
+      ${ABILITIES.map(ab=>`
+        <div class="ee-ability-row">
+          <div>
+            <div class="ee-ability-name">${ab.label}</div>
+            <div class="ee-ability-desc">${ab.desc}</div>
+          </div>
+          <button class="ee-toggle${e[ab.id]?' on':''}" id="ee-tog-${uid}-${ab.id}"
+            onclick="eeToggleAbility('${uid}',${i},'${kind}','${ab.id}')"></button>
+        </div>`).join('')}
+    </div>`;
+  return card;
+}
+
+function toggleEeCard(uid){
+  const b=document.getElementById(`ee-body-${uid}`);
+  const a=document.querySelector(`#ee-card-${uid} .ee-card-head span:last-child`);
+  b.classList.toggle('open');
+  if(a)a.textContent=b.classList.contains('open')?'▲':'▼';
+}
+
+function eeChangeStat(uid,i,kind,key,val){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  arr[i][key]=Math.max(0,parseInt(val)||0);
+}
+
+function eeToggleAbility(uid,i,kind,ab){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  arr[i][ab]=!arr[i][ab];
+  const btn=document.getElementById(`ee-tog-${uid}-${ab}`);
+  if(btn)btn.classList.toggle('on',arr[i][ab]);
+  const tags=document.querySelector(`#ee-card-${uid} .ee-card-tags`);
+  const e=arr[i];
+  const isBoss=kind==='boss';
+  if(tags)tags.innerHTML=[
+    e.poison?`<span class="ee-tag poison">毒</span>`:'',
+    e.drain? `<span class="ee-tag drain">吸血</span>`:'',
+    e.burn?  `<span class="ee-tag burn">炎</span>`:'',
+    isBoss?`<span class="ee-tag" style="border-color:var(--gold-dim);color:var(--gold)">BOSS</span>`:'',
+  ].join('');
+}
+
+function eeResetOne(uid,i,kind){
+  const def=getDefaultEeData();
+  if(kind==='boss')       eeData.bosses[i]={...def.bosses[i]};
+  else if(kind==='class') eeData.classes[i]={...def.classes[i]};
+  else                    eeData.enemies[i]={...def.enemies[i]};
+  renderEeCards();
+  const b=document.getElementById(`ee-body-${uid}`);
+  if(b)b.classList.add('open');
+}
+
+function saveEnemySettings(){
+  // ALL_ENEMIESに通常敵反映
+  eeData.enemies.forEach(s=>{
+    const idx=ALL_ENEMIES.findIndex(e=>e.name===s.name);
+    if(idx<0)return;
+    ALL_ENEMIES[idx]={...ALL_ENEMIES[idx],hp:s.hp,atk:s.atk,def:s.def,exp:s.exp,gold:s.gold};
+    if(s.poison)ALL_ENEMIES[idx].poison=true; else delete ALL_ENEMIES[idx].poison;
+    if(s.drain) ALL_ENEMIES[idx].drain=true;  else delete ALL_ENEMIES[idx].drain;
+    if(s.burn)  ALL_ENEMIES[idx].burn=true;   else delete ALL_ENEMIES[idx].burn;
+  });
+  // DUNGEONSにボス反映
+  eeData.bosses.forEach(s=>{
+    const d=DUNGEONS.find(d=>d.id===s.dungeonId);
+    if(!d)return;
+    d.boss={...d.boss,hp:s.hp,atk:s.atk,def:s.def,exp:s.exp,gold:s.gold};
+    if(s.poison)d.boss.poison=true; else delete d.boss.poison;
+    if(s.drain) d.boss.drain=true;  else delete d.boss.drain;
+    if(s.burn)  d.boss.burn=true;   else delete d.boss.burn;
+  });
+  // CLASSESに職業反映
+  eeData.classes.forEach(s=>{
+    const c=CLASSES.find(c=>c.id===s.id);
+    if(!c)return;
+    c.stats={hp:s.hp,mp:s.mp,atk:s.atk,def:s.def,spd:s.spd,int:s.int};
+  });
+  localStorage.setItem(EE_SAVE_KEY,JSON.stringify(eeData));
+  showScreen('create-screen');
+  alert('設定を保存しました。');
+}
+
+function resetEnemySettings(){
+  if(!confirm('全敵・全ボス・職業を初期値に戻しますか？'))return;
+  localStorage.removeItem(EE_SAVE_KEY);
+  location.reload();
+}
+
+// ============================================================
 //  SAVE / LOAD  (localStorage, 4 slots)
 // ============================================================
 const SAVE_KEY='dungeon_rpg_saves';
@@ -1017,7 +1703,153 @@ function switchSlTab(mode){
   slMode=mode;
   document.getElementById('tabSave').classList.toggle('active',mode==='save');
   document.getElementById('tabLoad').classList.toggle('active',mode==='load');
-  renderSlots();
+  document.getElementById('tabExport').classList.toggle('active',mode==='export');
+  if(mode==='export') renderExportPanel();
+  else renderSlots();
+}
+
+function renderExportPanel(){
+  const list=document.getElementById('slotList');
+  list.innerHTML=`<div class="export-box">
+    <div class="export-card">
+      <div class="export-card-title">💾 セーブデータ</div>
+      <div class="export-card-desc">4スロット分のキャラクターデータをJSONファイルに書き出します。別PCや別ブラウザへの移行に使えます。</div>
+      <div class="export-btns">
+        <button class="exp-btn dl" onclick="exportSaves()">📤 書き出し (.json)</button>
+        <button class="exp-btn imp" onclick="triggerImport('saves')">📥 読み込み</button>
+      </div>
+    </div>
+    <div class="export-card">
+      <div class="export-card-title">⚙ 階層設定</div>
+      <div class="export-card-desc">各ダンジョンの出現敵テーブル設定をJSONファイルに書き出します。</div>
+      <div class="export-btns">
+        <button class="exp-btn dl" onclick="exportFloorSettings()">📤 書き出し (.json)</button>
+        <button class="exp-btn imp" onclick="triggerImport('floors')">📥 読み込み</button>
+      </div>
+    </div>
+    <div class="export-card">
+      <div class="export-card-title">👹 敵設定</div>
+      <div class="export-card-desc">各敵のATK・DEF・HP・特殊能力設定をJSONファイルに書き出します。</div>
+      <div class="export-btns">
+        <button class="exp-btn dl" onclick="exportEnemySettings()">📤 書き出し (.json)</button>
+        <button class="exp-btn imp" onclick="triggerImport('enemies')">📥 読み込み</button>
+      </div>
+    </div>
+    <div class="export-card">
+      <div class="export-card-title">📦 まとめて書き出し</div>
+      <div class="export-card-desc">セーブデータ＋階層設定を1ファイルにまとめて書き出します。</div>
+      <div class="export-btns">
+        <button class="exp-btn all" onclick="exportAll()">📤 全データ書き出し</button>
+        <button class="exp-btn imp" onclick="triggerImport('all')">📥 全データ読み込み</button>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImportFile(this)">`;
+}
+
+// ---- エクスポート ----
+function downloadJson(data, filename){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportSaves(){
+  const data=getSaves();
+  if(!Object.keys(data).length){alert('セーブデータがありません。');return;}
+  downloadJson({type:'saves',data},`dungeon_saves_${dateTag()}.json`);
+}
+
+function exportFloorSettings(){
+  const data=loadFeData()||getDefaultFeData();
+  downloadJson({type:'floors',data},`dungeon_floors_${dateTag()}.json`);
+}
+
+function exportAll(){
+  downloadJson({
+    type:'all',
+    saves:getSaves(),
+    floors:loadFeData()||getDefaultFeData(),
+    enemies:loadEeData()||getDefaultEeData(),
+  },`dungeon_all_${dateTag()}.json`);
+}
+
+function exportEnemySettings(){
+  const data=eeData||loadEeData()||getDefaultEeData();
+  downloadJson({type:'enemies',data},`dungeon_enemies_${dateTag()}.json`);
+}
+
+function importEnemySettings(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const json=JSON.parse(ev.target.result);
+        const d=json.data||json.enemies||json;
+        localStorage.setItem(EE_SAVE_KEY,JSON.stringify(d));
+        alert('敵設定を読み込みました。ページをリロードして反映します。');
+        location.reload();
+      }catch{alert('読み込み失敗。正しいJSONファイルか確認してください。');}
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
+function dateTag(){
+  const d=new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ---- インポート ----
+let importTarget='';
+function triggerImport(target){
+  importTarget=target;
+  document.getElementById('importFileInput').value='';
+  document.getElementById('importFileInput').click();
+}
+
+function handleImportFile(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const json=JSON.parse(e.target.result);
+      if(importTarget==='saves'||json.type==='saves'){
+        const d=json.data||json.saves||json;
+        setSaves(d);
+        alert('セーブデータを読み込みました。');
+        renderExportPanel();
+      }
+      if(importTarget==='floors'||json.type==='floors'){
+        const d=json.data||json.floors||json;
+        localStorage.setItem(FE_SAVE_KEY,JSON.stringify(d));
+        alert('階層設定を読み込みました。ページをリロードして反映します。');
+        location.reload();
+      }
+      if(importTarget==='enemies'||json.type==='enemies'){
+        const d=json.data||json.enemies||json;
+        localStorage.setItem(EE_SAVE_KEY,JSON.stringify(d));
+        alert('敵設定を読み込みました。ページをリロードして反映します。');
+        location.reload();
+      }
+      if(json.type==='all'){
+        if(json.saves)setSaves(json.saves);
+        if(json.floors)localStorage.setItem(FE_SAVE_KEY,JSON.stringify(json.floors));
+        if(json.enemies)localStorage.setItem(EE_SAVE_KEY,JSON.stringify(json.enemies));
+        alert('全データを読み込みました。ページをリロードして反映します。');
+        location.reload();
+      }
+    }catch{alert('ファイルの読み込みに失敗しました。正しいJSONファイルか確認してください。');}
+  };
+  reader.readAsText(file);
 }
 
 function renderSlots(){
