@@ -208,7 +208,7 @@ function advanceEnemies(){
   for(let r=0;r<MH;r++)for(let c=0;c<MW;c++)sec[r][c].enemies=ns[r][c].enemies;
 }
 
-function spawnBossEnemy(){boss={x:0,y:0,z:600,vx:0,vy:0,vz:0,hp:30,maxHp:30,shootCD:60,wobble:0,size:120};}
+function spawnBossEnemy(){boss={x:0,y:0,z:3000,vx:0,vy:0,vz:0,hp:30,maxHp:30,shootCD:80,wobble:0,size:120,barrier:false,barrierCD:0,barrierTimer:0};}
 
 function showMsg(t,d=120){document.getElementById('msg').textContent=t;msgTimer=d;}
 function showTutorial(step){
@@ -383,8 +383,8 @@ function update(dt=1){
     if(K['ArrowLeft'])dc=-1;else if(K['ArrowRight'])dc=1;else if(K['ArrowUp'])dr=-1;else if(K['ArrowDown'])dr=1;
     if(dr!==0||dc!==0){
       const nr=pSec.r+dr,nc=pSec.c+dc;
-      if(nr>=0&&nr<MH&&nc>=0&&nc<MW&&energy>=50){
-        energy=Math.max(0,energy-50);
+      if(nr>=0&&nr<MH&&nc>=0&&nc<MW&&energy>=20){
+        energy=Math.max(0,energy-20);
         advanceEnemies();pSec={r:nr,c:nc};sec[nr][nc].visited=true;
         warpFlash=50;warpCD=130;
         if(sec[nr][nc].isBoss&&bossActive){bullets=[];eBullets=[];enemies=[];if(!boss)spawnBossEnemy();showMsg('★ BOSS SECTOR ★\nボスを倒せ！',100);}
@@ -402,7 +402,7 @@ function update(dt=1){
     if(b.life<=0){bullets.splice(i,1);continue;}
     let hit=false;
     if(boss){const dx=b.x-boss.x,dy=b.y-boss.y,dz=b.z-boss.z;
-      if(Math.sqrt(dx*dx+dy*dy+dz*dz)<boss.size){boss.hp--;hit=true;addParts(boss.x,boss.y,boss.z,5,'#f80');
+      if(Math.sqrt(dx*dx+dy*dy+dz*dz)<boss.size){if(boss.barrier){hit=true;addParts(boss.x,boss.y,boss.z,4,'#08f');bullets.splice(i,1);continue;}boss.hp--;hit=true;addParts(boss.x,boss.y,boss.z,5,'#f80');
         if(boss.hp<=0){for(let k=0;k<80;k++)addParts(boss.x+(Math.random()-0.5)*300,boss.y+(Math.random()-0.5)*300,boss.z+(Math.random()-0.5)*100,3,['#ff0','#f80','#f44','#fff'][Math.floor(Math.random()*4)]);
           score+=10000;boss=null;enemies=[];eBullets=[];bullets=[];missionComplete=true;
           const el=document.getElementById('msg');el.style.color='#0f0';el.style.fontSize='clamp(13px,1.8vw,22px)';el.style.top='4%';
@@ -446,7 +446,7 @@ function update(dt=1){
     if(b.reflected){
       let rhit=false;
       if(boss){const dx=b.x-boss.x,dy=b.y-boss.y,dz=b.z-boss.z;
-        if(Math.sqrt(dx*dx+dy*dy+dz*dz)<boss.size){boss.hp--;rhit=true;addParts(boss.x,boss.y,boss.z,5,'#0ff');
+        if(Math.sqrt(dx*dx+dy*dy+dz*dz)<boss.size){if(boss.barrier){rhit=true;addParts(boss.x,boss.y,boss.z,4,'#08f');eBullets.splice(i,1);continue;}boss.hp--;rhit=true;addParts(boss.x,boss.y,boss.z,5,'#0ff');
           if(boss.hp<=0){for(let k=0;k<80;k++)addParts(boss.x+(Math.random()-0.5)*300,boss.y+(Math.random()-0.5)*300,boss.z+(Math.random()-0.5)*100,3,['#ff0','#f80','#f44','#fff'][Math.floor(Math.random()*4)]);
             score+=10000;boss=null;enemies=[];eBullets=[];bullets=[];missionComplete=true;
             const el=document.getElementById('msg');el.style.color='#0f0';el.style.fontSize='clamp(13px,1.8vw,22px)';el.style.top='4%';
@@ -469,7 +469,12 @@ function update(dt=1){
     boss.wobble+=0.01;const dx=-boss.x,dy=-boss.y,dz=-boss.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
     if(d>600){boss.vx+=dx/d*0.05;boss.vz+=dz/d*0.05;}
     boss.vx*=0.98;boss.vz*=0.98;boss.x+=boss.vx+Math.sin(boss.wobble*0.7)*0.8;boss.y+=Math.sin(boss.wobble)*0.4;boss.z+=boss.vz;
-    boss.shootCD--;if(boss.shootCD<=0){boss.shootCD=25+Math.floor(Math.random()*20);const nd=d||1,sp=8;for(let k=0;k<3;k++){const s=(Math.random()-0.5)*0.4;eBullets.push({x:boss.x,y:boss.y,z:boss.z,vx:(dx/nd+s)*sp,vy:(dy/nd+s)*sp,vz:dz/nd*sp,life:120});}}
+    // バリア管理
+    if(boss.barrierTimer>0){boss.barrierTimer--;boss.barrier=true;}else{boss.barrier=false;}
+    if(boss.barrierCD>0)boss.barrierCD--;
+    if(boss.barrierCD<=0&&Math.random()<0.008){boss.barrierTimer=180;boss.barrierCD=600;}
+    // 射撃（バリア中は撃たない）
+    boss.shootCD--;if(boss.shootCD<=0&&!boss.barrier){boss.shootCD=60+Math.floor(Math.random()*40);const nd=d||1,sp=8;for(let k=0;k<2;k++){const s=(Math.random()-0.5)*0.3;eBullets.push({x:boss.x,y:boss.y,z:boss.z,vx:(dx/nd+s)*sp,vy:(dy/nd+s)*sp,vz:dz/nd*sp,life:120});}}
   }
 
   enemies.forEach(e=>{
@@ -574,7 +579,7 @@ function render(){
     ct.beginPath();ct.arc(W/2,CT*0.48,70,0,Math.PI*2);ct.stroke();
   }
 
-  if(boss){const p=proj(boss.x,boss.y,boss.z);if(p&&p.sy<CT+100){const sz=Math.max(30,p.scale*boss.size);const g=ct.createRadialGradient(p.sx-sz*0.3,p.sy-sz*0.3,sz*0.1,p.sx,p.sy,sz);g.addColorStop(0,'#ff8800');g.addColorStop(0.5,'#cc4400');g.addColorStop(1,'#440000');ct.fillStyle=g;ct.beginPath();ct.arc(p.sx,p.sy,sz,0,Math.PI*2);ct.fill();ct.strokeStyle='rgba(255,180,0,0.6)';ct.lineWidth=3;ct.beginPath();ct.ellipse(p.sx,p.sy,sz*1.5,sz*0.3,0.3,0,Math.PI*2);ct.stroke();ct.fillStyle='#ff0';ct.font=`bold ${Math.max(14,sz*0.28)}px Courier New`;ct.textAlign='center';ct.textBaseline='middle';ct.fillText('BOSS',p.sx,p.sy);const bw=sz*3,bx2=p.sx-bw/2,by2=p.sy-sz-20;ct.fillStyle='#400';ct.fillRect(bx2,by2,bw,10);ct.fillStyle='#f40';ct.fillRect(bx2,by2,bw*(boss.hp/boss.maxHp),10);ct.strokeStyle='#f80';ct.lineWidth=1;ct.strokeRect(bx2,by2,bw,10);}}
+  if(boss){const p=proj(boss.x,boss.y,boss.z);if(p&&p.sy<CT+100){const sz=Math.max(30,p.scale*boss.size);const g=ct.createRadialGradient(p.sx-sz*0.3,p.sy-sz*0.3,sz*0.1,p.sx,p.sy,sz);if(boss.barrier){g.addColorStop(0,'#88ccff');g.addColorStop(0.5,'#0044cc');g.addColorStop(1,'#001144');}else{g.addColorStop(0,'#ff8800');g.addColorStop(0.5,'#cc4400');g.addColorStop(1,'#440000');}ct.fillStyle=g;ct.beginPath();ct.arc(p.sx,p.sy,sz,0,Math.PI*2);ct.fill();ct.strokeStyle='rgba(255,180,0,0.6)';ct.lineWidth=3;ct.beginPath();ct.ellipse(p.sx,p.sy,sz*1.5,sz*0.3,0.3,0,Math.PI*2);ct.stroke();ct.fillStyle='#ff0';ct.font=`bold ${Math.max(14,sz*0.28)}px Courier New`;ct.textAlign='center';ct.textBaseline='middle';ct.fillText('BOSS',p.sx,p.sy);const bw=sz*3,bx2=p.sx-bw/2,by2=p.sy-sz-20;ct.fillStyle='#400';ct.fillRect(bx2,by2,bw,10);ct.fillStyle='#f40';ct.fillRect(bx2,by2,bw*(boss.hp/boss.maxHp),10);ct.strokeStyle='#f80';ct.lineWidth=1;ct.strokeRect(bx2,by2,bw,10);}}
 
   const objs=[...enemies.map(e=>({...e,_t:'e'})),...bullets.map(b=>({...b,_t:'b'})),...eBullets.map(b=>({...b,_t:'eb'})),...parts.map(p=>({...p,_t:'p'}))];
   objs.map(o=>({o,p:proj(o.x,o.y,o.z)})).filter(x=>x.p&&x.p.sy>-80&&x.p.sy<CT+20).sort((a,b)=>b.p.depth-a.p.depth).forEach(({o,p})=>{
