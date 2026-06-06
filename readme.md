@@ -166,7 +166,7 @@
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/star_luster.html">
 <img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
-<b>mahjong</b>
+<b>star_luster</b>
 </a>
 <br>
 スターラスター
@@ -175,7 +175,7 @@
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/F1Race.html">
 <img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
-<b>mahjong</b>
+<b>F1Race</b>
 </a>
 <br>
 F1Face
@@ -184,7 +184,7 @@ F1Face
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/dungeon_rpg.html">
 <img src="https://github.com/cgtc11/image/blob/main/14_ico.png" width="120"><br>
-<b>7narabe</b>
+<b>dungeon_rpg</b>
 </a>
 <br>
 ダンジョンRPG
