@@ -162,6 +162,7 @@
 
 </tr>
 <tr>
+  
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/star_luster.html">
 <img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
@@ -171,7 +172,6 @@
 スターラスター
 </td>
 
-<tr>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/F1Race.html">
 <img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
