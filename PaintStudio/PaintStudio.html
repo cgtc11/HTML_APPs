@@ -257,6 +257,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
       <button class="uvtool-btn" id="uvt-move"   onclick="setUVTool('move')"  >✥ 頂点移動</button>
       <button class="uvtool-btn" id="uvt-smooth" onclick="setUVTool('smooth')">〜 スムーズ</button>
       <button class="uvtool-btn" id="uvt-hard"   onclick="setUVTool('hard')"  >◆ ハード</button>
+      <button class="uvtool-btn" id="uvt-normal" onclick="setUVTool('normal')">⛰ 法線描画</button>
       <div class="uvtool-sep"></div>
       <span style="color:var(--dim);font-size:10px;flex-shrink:0">サイズ:</span>
       <input type="range" id="uvtSize" min="5" max="200" value="40" style="width:80px"
@@ -268,6 +269,20 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
              oninput="G('uvtStrVal').textContent=this.value">
       <span id="uvtStrVal" style="width:24px;text-align:right;flex-shrink:0;color:var(--tx)">30</span>
       <div class="uvtool-sep"></div>
+      <!-- ノーマルマップ描画コントロール（法線描画ツール選択時のみ表示） -->
+      <div id="normalCtrl" style="display:none;align-items:center;gap:6px;flex-shrink:0">
+        <span style="color:var(--dim);font-size:10px">凹凸:</span>
+        <span style="font-size:10px;color:var(--dim)">凹</span>
+        <input type="range" id="nmHeight" min="-128" max="128" value="64" style="width:80px"
+               oninput="G('nmHeightVal').textContent=this.value>0?'+'+this.value:this.value">
+        <span style="font-size:10px;color:var(--dim)">凸</span>
+        <span id="nmHeightVal" style="width:28px;color:var(--tx);font-size:10px">+64</span>
+        <div class="uvtool-sep"></div>
+        <span style="color:var(--dim);font-size:10px">強度:</span>
+        <input type="range" id="nmStrength" min="1" max="10" value="3" step="0.5" style="width:60px"
+               oninput="G('nmStrVal').textContent=this.value">
+        <span id="nmStrVal" style="width:20px;color:var(--tx);font-size:10px">3</span>
+      </div>
       <button class="uvtool-btn" onclick="uvUndoUV()">↩ UV戻す</button>
     </div>
     <div id="uvCanvasWrap">
@@ -3725,6 +3740,7 @@ function closeGlbMode(){
   folders=[]; fid=0;
   window._glbCanvasTex=null;
   glbPanX=0; glbPanY=0;
+  nmHeightCanvas=null; nmHeightCtx=null;
 }
 
 // ─── Three.jsシーン ──────────────────────────────
@@ -4067,7 +4083,11 @@ function uvMouseDown(e){
   const pos=uvToCanvas(e.clientX,e.clientY);
   uvLastCX=pos.x; uvLastCY=pos.y;
   uvDrawing=true; uvPrevCX=pos.x; uvPrevCY=pos.y;
-  if(uvEditTool!=='paint'){
+  if(uvEditTool==='normal'){
+    initNmHeightCanvas();
+    backupUVPositions(); // Undo用（layerのImageDataをバックアップ）
+    applyNmBrush(pos.x,pos.y,pos.x,pos.y);
+  } else if(uvEditTool!=='paint'){
     backupUVPositions();
     applyUVBrush(pos.x,pos.y);
     drawUVWire();
@@ -4087,12 +4107,14 @@ function uvMouseMove(e){
   uvLastCX=pos.x; uvLastCY=pos.y;
   G('stPos').textContent='X:'+Math.round(pos.x)+' Y:'+Math.round(pos.y);
   if(uvDrawing){
-    if(uvEditTool!=='paint'){
+    if(uvEditTool==='normal'){
+      applyNmBrush(pos.x,pos.y,uvPrevCX,uvPrevCY);
+      drawUVContent();
+    } else if(uvEditTool!=='paint'){
       applyUVBrush(pos.x,pos.y);
       drawUVWire();
     } else {
       uvCallMove(pos.x,pos.y);
-      // リアルタイム3D反映（約60fps）
       clearTimeout(window._glbTexRT);
       window._glbTexRT=setTimeout(updateGlbTexture,16);
       drawUVContent();
@@ -4301,7 +4323,123 @@ function glbExportTexture(){
 // ─── ウィンドウリサイズ ───────────────────────────
 window.addEventListener('resize',()=>{ if(glbMode) setTimeout(resizeGlbCanvases,50); });
 
-// ─── UVビュー回転 ────────────────────────────────
+// ─── ノーマルマップ描画 ──────────────────────────
+// activeLayerがNormalフォルダ内 or 名前に"Normal"を含む場合に有効
+// ハイトマップ的に描いてリアルタイムでノーマルマップRGBに変換
+
+// heightCanvas: グレースケールの高さ情報を保持する作業キャンバス
+let nmHeightCanvas=null, nmHeightCtx=null;
+
+function initNmHeightCanvas(){
+  const l=aL(); if(!l) return;
+  if(!nmHeightCanvas||nmHeightCanvas.width!==W||nmHeightCanvas.height!==H){
+    nmHeightCanvas=document.createElement('canvas');
+    nmHeightCanvas.width=W; nmHeightCanvas.height=H;
+    nmHeightCtx=nmHeightCanvas.getContext('2d');
+    // 128（中間・フラット）で初期化
+    nmHeightCtx.fillStyle='rgb(128,128,128)';
+    nmHeightCtx.fillRect(0,0,W,H);
+  }
+}
+
+// ハイトマップをブラシで描く
+function applyNmBrush(cx, cy, prevCx, prevCy){
+  if(!nmHeightCanvas) initNmHeightCanvas();
+  const r=getUVtSize();
+  const h=parseFloat(G('nmHeight').value); // -128〜128
+  const str=getUVtStr();
+  const gray=Math.max(0,Math.min(255, 128+h)); // 0〜255
+
+  nmHeightCtx.save();
+  // ソフトブラシ：中心ほど濃く
+  const grad=nmHeightCanvas.ownerDocument?
+    nmHeightCtx.createRadialGradient(cx,cy,0,cx,cy,r):null;
+  if(grad){
+    const a=str*0.03;
+    grad.addColorStop(0, `rgba(${gray},${gray},${gray},${Math.min(1,a)})`);
+    grad.addColorStop(1, `rgba(${gray},${gray},${gray},0)`);
+    nmHeightCtx.globalCompositeOperation='source-over';
+    nmHeightCtx.fillStyle=grad;
+    // ライン補間
+    const steps=Math.max(1,Math.ceil(Math.hypot(cx-prevCx,cy-prevCy)/r*2));
+    for(let s=0;s<=steps;s++){
+      const t=s/steps;
+      const ix=prevCx+(cx-prevCx)*t, iy=prevCy+(cy-prevCy)*t;
+      const g2=nmHeightCtx.createRadialGradient(ix,iy,0,ix,iy,r);
+      g2.addColorStop(0,`rgba(${gray},${gray},${gray},${Math.min(1,a)})`);
+      g2.addColorStop(1,`rgba(${gray},${gray},${gray},0)`);
+      nmHeightCtx.fillStyle=g2;
+      nmHeightCtx.fillRect(ix-r,iy-r,r*2,r*2);
+    }
+  }
+  nmHeightCtx.restore();
+
+  // ハイトマップ→ノーマルマップ変換してアクティブレイヤーに書き込む
+  convertHeightToNormal();
+}
+
+// ハイトマップ→ノーマルマップ変換（Sobel法）
+function convertHeightToNormal(){
+  if(!nmHeightCanvas) return;
+  const strength=parseFloat(G('nmStrength').value)||3;
+  const src=nmHeightCtx.getImageData(0,0,W,H);
+  const l=aL(); if(!l) return;
+  const dst=l.ctx.createImageData(W,H);
+
+  const getH=(x,y)=>{
+    x=Math.max(0,Math.min(W-1,x));
+    y=Math.max(0,Math.min(H-1,y));
+    return src.data[(y*W+x)*4]/255;
+  };
+
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      // Sobelフィルタで勾配計算
+      const tl=getH(x-1,y-1),t=getH(x,y-1),tr=getH(x+1,y-1);
+      const ml=getH(x-1,y),        mr=getH(x+1,y);
+      const bl=getH(x-1,y+1),b=getH(x,y+1),br=getH(x+1,y+1);
+      const dx=(-tl-2*ml-bl+tr+2*mr+br)*strength;
+      const dy=(-tl-2*t-tr+bl+2*b+br)*strength;
+      // 法線ベクトルを正規化
+      const len=Math.sqrt(dx*dx+dy*dy+1);
+      const nx=-dx/len, ny=-dy/len, nz=1/len;
+      // -1〜1 → 0〜255にマッピング
+      const i=(y*W+x)*4;
+      dst.data[i  ]=Math.round((nx+1)*127.5); // R=X
+      dst.data[i+1]=Math.round((ny+1)*127.5); // G=Y
+      dst.data[i+2]=Math.round((nz+1)*127.5); // B=Z
+      dst.data[i+3]=255;
+    }
+  }
+  l.ctx.putImageData(dst,0,0);
+  comp();
+  // 3Dプレビューにノーマルマップを反映
+  applyNormalMapTo3D(l);
+}
+
+// ノーマルマップを3Dマテリアルに適用
+function applyNormalMapTo3D(l){
+  if(!glbActiveMesh) return;
+  const mat=glbActiveMesh.material;
+  if(!mat) return;
+  if(mat.normalMap){
+    mat.normalMap.image=l.cv;
+    mat.normalMap.needsUpdate=true;
+  } else {
+    const tex=new THREE.CanvasTexture(l.cv);
+    tex.flipY=false;
+    mat.normalMap=tex;
+  }
+  mat.needsUpdate=true;
+}
+
+// ノーマルマップレイヤーかどうか判定
+function isNormalLayer(){
+  const l=aL(); if(!l) return false;
+  const folder=layerFolder(l.id);
+  return l.name.toLowerCase().includes('normal')||
+         (folder&&folder.name.toLowerCase().includes('normal'));
+}
 function rotateUVView(deg){
   uvViewRotation=((uvViewRotation+deg)%360+360)%360;
   drawUVContent(); drawUVWire();
@@ -4310,9 +4448,12 @@ function rotateUVView(deg){
 // ─── UVツール切替 ────────────────────────────────
 function setUVTool(t){
   uvEditTool=t;
-  ['paint','move','smooth','hard'].forEach(n=>{
+  ['paint','move','smooth','hard','normal'].forEach(n=>{
     const b=G('uvt-'+n); if(b) b.classList.toggle('on',n===t);
   });
+  // ノーマルマップコントロールの表示切り替え
+  const nc=G('normalCtrl');
+  if(nc) nc.style.display=(t==='normal')?'flex':'none';
 }
 
 // ─── UV頂点操作 ──────────────────────────────────
