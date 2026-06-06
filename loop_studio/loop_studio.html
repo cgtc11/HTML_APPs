@@ -513,7 +513,7 @@ function schedRange(rs,re,audioNow){
   tracks.forEach(tr=>{if(tr.muted)return;const g=getGain(tr);
     tr.clips.forEach(cl=>{
       if(cl.type==='audio')schedAudioR(cl,rs,re,audioNow,g);
-      else if(cl.type==='midi')schedMidiR(cl,rs,re,audioNow,g);
+      // MIDIは先読みスケジューラーが担当
     });
   });
 }
@@ -542,6 +542,45 @@ function schedMidiR(cl,rs,re,audioNow,g){
     playNote(g,n.note,n.velocity,st,dur,cl.instrument);
   });
 }
+// ── MIDI先読みスケジューラー（一度に全ノートを生成しない）──────
+const SCHED_AHEAD=0.4; // 何秒先まで先読みするか
+let midiSchedHorizon=0; // ここまで生成済み（ctx.currentTime基準）
+
+function schedMidiUpcoming(){
+  if(!playing||!ctx)return;
+  const now=ctx.currentTime;
+  const schedTo=now+SCHED_AHEAD;
+  if(midiSchedHorizon>=schedTo)return;
+  const from=midiSchedHorizon;
+  tracks.forEach(tr=>{
+    if(tr.muted)return;const g=getGain(tr);
+    tr.clips.forEach(cl=>{
+      if(cl.type!=='midi'||cl.clipMuted)return;
+      const ts=cl.trimStart||0;
+      const te=cl.trimEnd!==null&&cl.trimEnd!==undefined?cl.trimEnd:Infinity;
+      const clipEndAbs=cl.startTime+clipTotalDur(cl);
+      cl.notes.forEach(n=>{
+        if(n.muted||n.time<ts||n.time>=te)return;
+        let absT=playStart+cl.startTime+(n.time-ts);
+        // ループモードの場合、ループ内の相対位置に変換
+        if(loopEnabled){
+          const ld=loopEnd-loopStart;
+          // playStartはループ基準で毎回更新されるので絶対時刻で扱う
+          const loopAbsT=absT;
+          if(loopAbsT<from||loopAbsT>=schedTo)return;
+        }else{
+          if(absT<from||absT>=schedTo)return;
+        }
+        if(absT<now-0.05)return;
+        const dur=Math.min(n.duration,clipEndAbs-(cl.startTime+(n.time-ts)));
+        if(dur<=0)return;
+        playNote(g,n.note,n.velocity,absT,dur,cl.instrument);
+      });
+    });
+  });
+  midiSchedHorizon=schedTo;
+}
+
 function schedAll(){
   tracks.forEach(tr=>{if(tr.muted)return;const g=getGain(tr);
     tr.clips.forEach(cl=>{
@@ -549,29 +588,19 @@ function schedAll(){
         const at=playStart+cl.startTime;
         if(cl.loopCount===0){const src=ctx.createBufferSource();src.buffer=cl.buffer;src.loop=true;src.loopStart=cl.trimStart;src.loopEnd=cl.trimEnd??cl.buffer.duration;src.connect(g);src.start(Math.max(at,ctx.currentTime),cl.trimStart);nodes.push(src);}
         else{for(let i=0;i<cl.loopCount;i++){const st=at+i*cl.duration,en=st+cl.duration;if(en<ctx.currentTime-0.05)continue;const src=ctx.createBufferSource();src.buffer=cl.buffer;src.connect(g);const off=Math.max(0,ctx.currentTime-st);src.start(Math.max(st,ctx.currentTime),cl.trimStart+off,cl.duration-off);nodes.push(src);}}
-      }else if(cl.type==='midi'){
-        if(cl.clipMuted)return;
-        const ts=cl.trimStart||0;
-        const te=cl.trimEnd!==null&&cl.trimEnd!==undefined?cl.trimEnd:Infinity;
-        const clipEndAbs=cl.startTime+clipTotalDur(cl); // absolute end on timeline
-        cl.notes.forEach(n=>{
-          if(n.muted)return;
-          if(n.time<ts||n.time>=te)return;
-          const st=playStart+cl.startTime+(n.time-ts);
-          if(st<ctx.currentTime-0.05)return;
-          const dur=Math.min(n.duration,clipEndAbs-(cl.startTime+(n.time-ts)));
-          if(dur<=0)return;
-          playNote(g,n.note,n.velocity,st,dur,cl.instrument);
-        });
       }
+      // MIDIは先読みスケジューラーが担当（schedAll時点では生成しない）
     });
   });
+  // MIDI先読み開始点をリセット
+  midiSchedHorizon=ctx.currentTime;
 }
 function doLoopRestart(){
   if(!playing||!loopEnabled)return;
   nodes.forEach(n=>{try{n.stop();}catch(e){}});nodes=[];
   const now=ctx.currentTime;playStart=now-loopStart;
-  schedRange(loopStart,loopEnd,now);
+  schedRange(loopStart,loopEnd,now); // audioのみ
+  midiSchedHorizon=now; // MIDIはananimLoopの先読みに任せる
   clearTimeout(loopTimer);loopTimer=setTimeout(doLoopRestart,(loopEnd-loopStart)*1000);
 }
 function startLoopTimer(){
@@ -705,7 +734,7 @@ function doStop(){
 function toggleLoop(){loopEnabled=!loopEnabled;document.getElementById('loopBtn').className=loopEnabled?'tbtn loop-on':'tbtn';if(loopEnabled&&playing)startLoopTimer();drawAll();}
 function setPlayhead(pos){
   playheadPos=Math.max(0,pos);updateTimeDsp(playheadPos);
-  if(playing){nodes.forEach(n=>{try{n.stop();}catch(e){}});nodes=[];playStart=ctx.currentTime-playheadPos;if(loopEnabled)schedRange(loopStart,loopEnd,ctx.currentTime);else schedAll();}
+  if(playing){nodes.forEach(n=>{try{n.stop();}catch(e){}});nodes=[];playStart=ctx.currentTime-playheadPos;midiSchedHorizon=ctx.currentTime;if(loopEnabled)schedRange(loopStart,loopEnd,ctx.currentTime);else schedAll();}
   drawAll(playheadPos);
   if(!document.getElementById('prModal').classList.contains('hidden'))drawPR();
 }
@@ -715,6 +744,7 @@ function animLoop(){
   const elapsed=ctx.currentTime-playStart;let pos=elapsed;
   if(loopEnabled&&loopEnd>loopStart){const ld=loopEnd-loopStart;pos=loopStart+(((elapsed-loopStart)%ld+ld)%ld);}
   playheadPos=pos;updateTimeDsp(pos);drawAll(pos);
+  schedMidiUpcoming(); // MIDI先読みスケジューリング
   if(!document.getElementById('prModal').classList.contains('hidden'))drawPR();
   raf=requestAnimationFrame(animLoop);
 }
