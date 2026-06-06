@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>PaintStudio 2 - GLB UV Paint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&family=Noto+Serif+JP&family=Zen+Kaku+Gothic+New&family=Zen+Old+Mincho&family=BIZ+UDGothic&family=BIZ+UDMincho&family=Kosugi+Maru&family=Dela+Gothic+One&family=DotGothic16&family=Hachi+Maru+Pop&family=Kaisei+Decol&family=M+PLUS+1p&family=M+PLUS+Rounded+1c&family=Rampart+One&family=Reggae+One&family=RocknRoll+One&family=Stick&family=Train+One&family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Oswald&family=Raleway&family=Playfair+Display&family=Merriweather&family=Pacifico&family=Dancing+Script&family=Press+Start+2P&family=Bebas+Neue&family=Anton&family=Bangers&family=Creepster&family=Special+Elite&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 body.fullscreen #tb{display:none;}
@@ -341,12 +344,51 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
     <div id="txOpts">
       <span class="ol">フォント</span>
       <select id="fntSel">
-        <option value="'Yu Gothic','Hiragino Sans',sans-serif">游ゴシック</option>
-        <option value="'Yu Mincho','Hiragino Mincho Pro',serif">游明朝</option>
-        <option value="'MS PGothic',sans-serif">MSPゴシック</option>
-        <option value="sans-serif">サンセリフ</option>
-        <option value="serif">セリフ</option>
-        <option value="monospace">等幅</option>
+        <optgroup label="── 日本語 ──">
+          <option value="'Yu Gothic','Hiragino Sans',sans-serif">游ゴシック</option>
+          <option value="'Yu Mincho','Hiragino Mincho Pro',serif">游明朝</option>
+          <option value="'MS PGothic',sans-serif">MSPゴシック</option>
+          <option value="'MS PMincho',serif">MSP明朝</option>
+          <option value="'Noto Sans JP',sans-serif">Noto Sans JP</option>
+          <option value="'Noto Serif JP',serif">Noto Serif JP</option>
+          <option value="'Zen Kaku Gothic New',sans-serif">禅角ゴシック</option>
+          <option value="'Zen Old Mincho',serif">禅旧字明朝</option>
+          <option value="'BIZ UDGothic',sans-serif">BIZ UDゴシック</option>
+          <option value="'BIZ UDMincho',serif">BIZ UD明朝</option>
+          <option value="'Kosugi Maru',sans-serif">小杉丸ゴシック</option>
+          <option value="'Dela Gothic One',sans-serif">デラゴシック（太）</option>
+          <option value="'DotGothic16',sans-serif">ドットゴシック16</option>
+          <option value="'Hachi Maru Pop',cursive">はちまるポップ</option>
+          <option value="'Kaisei Decol',serif">海星デコール</option>
+          <option value="'M PLUS 1p',sans-serif">M PLUS 1p</option>
+          <option value="'M PLUS Rounded 1c',sans-serif">M PLUS 丸ゴシック</option>
+          <option value="'Rampart One',sans-serif">ランパートOne</option>
+          <option value="'Reggae One',sans-serif">レゲエOne</option>
+          <option value="'RocknRoll One',sans-serif">ロックンロールOne</option>
+          <option value="'Stick',sans-serif">スティック</option>
+          <option value="'Train One',cursive">トレインOne</option>
+        </optgroup>
+        <optgroup label="── 英語 ──">
+          <option value="sans-serif">サンセリフ (system)</option>
+          <option value="serif">セリフ (system)</option>
+          <option value="monospace">等幅 (system)</option>
+          <option value="'Roboto',sans-serif">Roboto</option>
+          <option value="'Open Sans',sans-serif">Open Sans</option>
+          <option value="'Lato',sans-serif">Lato</option>
+          <option value="'Montserrat',sans-serif">Montserrat</option>
+          <option value="'Oswald',sans-serif">Oswald</option>
+          <option value="'Raleway',sans-serif">Raleway</option>
+          <option value="'Playfair Display',serif">Playfair Display</option>
+          <option value="'Merriweather',serif">Merriweather</option>
+          <option value="'Pacifico',cursive">Pacifico</option>
+          <option value="'Dancing Script',cursive">Dancing Script</option>
+          <option value="'Press Start 2P',monospace">Press Start 2P</option>
+          <option value="'Bebas Neue',sans-serif">Bebas Neue</option>
+          <option value="'Anton',sans-serif">Anton</option>
+          <option value="'Bangers',cursive">Bangers</option>
+          <option value="'Creepster',cursive">Creepster</option>
+          <option value="'Special Elite',cursive">Special Elite</option>
+        </optgroup>
       </select>
       <span class="ol">方向</span>
       <select id="txDir"><option value="h">横書き</option><option value="v">縦書き</option></select>
@@ -2137,6 +2179,29 @@ txBar.addEventListener('mousedown',e=>{if(e.button!==0)return;e.preventDefault()
 txSz.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();txSDrag=true;txSSX=e.clientY;txSOsz=bSz;});
 txIn.addEventListener('keydown',e=>{if(e.key==='Escape')commitText();});
 
+// テキスト編集中のリアルタイムプレビュー
+function _updateTxStyle(){
+  if(txW.style.display==='none') return;
+  txIn.style.fontSize=bSz+'px';
+  txIn.style.fontFamily=G('fntSel').value;
+  txIn.style.color=c2s(fg,fg.a);
+  txIn.style.opacity=bOp/100;
+  txIn.style.writingMode=G('txDir').value==='v'?'vertical-rl':'horizontal-tb';
+}
+G('fntSel').addEventListener('change', _updateTxStyle);
+G('txDir').addEventListener('change', _updateTxStyle);
+
+// フォントセレクターをホイールで切り替え
+G('fntSel').addEventListener('wheel', e=>{
+  e.preventDefault();
+  const sel=G('fntSel');
+  const n=sel.options.length;
+  let i=sel.selectedIndex + (e.deltaY>0?1:-1);
+  // optgroupのラベル行はスキップ
+  while(i>=0&&i<n&&!sel.options[i].value) i+=(e.deltaY>0?1:-1);
+  if(i>=0&&i<n){ sel.selectedIndex=i; _updateTxStyle(); }
+},{passive:false});
+
 // ═══ TOOLS
 const TNAMES={brush:'ブラシ',dotpen:'ドットペン',eraser:'消しゴム',blur:'ぼかし',fill:'塗りつぶし',eyedrop:'スポイト',select:'矩形選択',lasso:'自由選択',wand:'自動選択',move:'移動',rotate:'回転',scale:'拡縮',line:'ライン',rect:'四角形',ellipse:'楕円',text:'テキスト'};
 // ─── 回転ツール関数
@@ -2320,8 +2385,8 @@ function updCur(c){
 }
 function syncO(t,v){
   v=parseInt(v);
-  if(t==='sz'){bSz=v;G('sSz').value=v;G('nSz').value=v;if(txW.style.display!=='none')txIn.style.fontSize=v+'px';}
-  else if(t==='op'){bOp=v;G('sOp').value=v;G('nOp').value=v;}
+  if(t==='sz'){bSz=v;G('sSz').value=v;G('nSz').value=v;if(txW.style.display!=='none'){txIn.style.fontSize=v+'px';_updateTxStyle();}}
+  else if(t==='op'){bOp=v;G('sOp').value=v;G('nOp').value=v;if(typeof _updateTxStyle==='function')_updateTxStyle();}
   else if(t==='hd'){bHd=v;G('sHd').value=v;G('nHd').value=v;}
 }
 
@@ -2869,6 +2934,7 @@ function swUpd(){
   const f=G('cpFg'),b=G('cpBg');f.style.background=c2s(fg);b.style.background=c2s(bg);
   const lf=(fg.r*.299+fg.g*.587+fg.b*.114)/255;f.style.color=lf>.5?'rgba(0,0,0,.8)':'rgba(255,255,255,.9)';
   const lb=(bg.r*.299+bg.g*.587+bg.b*.114)/255;b.style.color=lb>.5?'rgba(0,0,0,.8)':'rgba(255,255,255,.9)';
+  if(typeof _updateTxStyle==='function') _updateTxStyle();
 }
 function swapCol(){[fg,bg]=[bg,fg];[cpH,cpS,cpV]=rgb2hsv(fg.r,fg.g,fg.b);cpA=fg.a;swUpd();cpRender();cpInpUpd();}
 svC.addEventListener('mousedown',e=>{svDrag=true;svCk(e);});
