@@ -21,7 +21,7 @@ body{display:flex;justify-content:center;align-items:flex-start;padding:0}
 button{cursor:pointer;font-family:'Crimson Pro',serif}
 
 /* ===== SHARED ===== */
-.page-header{background:var(--dark3);border-bottom:1px solid var(--gold-dim);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.page-header{background:var(--dark3);border-bottom:1px solid var(--gold-dim);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:46px;z-index:100}
 .page-title{font-family:'UnifrakturMaguntia',cursive;font-size:22px;color:var(--gold)}
 .back-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 14px;font-size:13px;border-radius:4px;transition:all .15s}
 .back-btn:hover{border-color:var(--gold-dim);color:var(--gold)}
@@ -136,7 +136,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 .abtn .al{font-size:10px;display:block}
 
 /* ===== RESULT ===== */
-#result-screen{background:var(--dark2);align-items:center;text-align:center;padding:20px 16px}
+#result-screen{background:var(--dark2);align-items:center;text-align:center;padding:16px 16px 24px;overflow-y:auto}
 .result-title{font-family:'UnifrakturMaguntia',cursive;font-size:32px;margin-bottom:4px}
 .result-title.win{color:var(--gold)}
 .result-title.lose{color:var(--hp-red)}
@@ -270,6 +270,39 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 .ee-reset-one{background:none;border:1px solid var(--border);color:var(--text-dim);padding:3px 10px;font-size:11px;border-radius:3px;cursor:pointer;font-family:'Crimson Pro',serif;transition:all .15s;margin-top:6px}
 .ee-reset-one:hover{border-color:var(--hp-red);color:var(--hp-red)}
 
+/* ===== PERSISTENT STATUS BAR ===== */
+#statusBar{
+  position:fixed;top:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;
+  background:rgba(10,12,15,0.96);
+  border-bottom:1px solid var(--border);
+  padding:5px 12px 4px;
+  display:none;
+  flex-direction:column;
+  gap:3px;
+  z-index:9999;
+  backdrop-filter:blur(4px);
+}
+#statusBar.visible{display:flex}
+.sb-row1{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.sb-name{font-size:13px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.sb-lv{font-size:12px;color:var(--text-dim)}
+.sb-lv span{color:var(--text);font-weight:600}
+.sb-gold{font-size:12px;color:var(--gold)}
+.sb-floor{font-size:12px;color:#5dade2;white-space:nowrap}
+.sb-row2{display:flex;gap:8px;align-items:center}
+.sb-bar-group{display:flex;align-items:center;gap:4px;flex:1}
+.sb-bar-label{font-size:9px;color:var(--text-dim);width:18px;text-align:right;flex-shrink:0}
+.sb-bar{height:5px;border-radius:3px;background:var(--dark4);flex:1;overflow:hidden;min-width:40px}
+.sb-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.sb-bar-num{font-size:9px;color:var(--text-dim);white-space:nowrap;min-width:42px;text-align:right}
+.sb-exp{font-size:9px;color:#8e44ad;white-space:nowrap;flex-shrink:0}
+/* screenにpadding-topを付けてバーに隠れないようにする */
+.screen.has-bar{padding-top:46px !important}
+/* result/rest はflex centerなのでpaddingではなくmargin-topで対応 */
+#result-screen.has-bar .result-title,
+#rest-screen.has-bar .rest-anim{margin-top:0}
+
 #status-screen{background:var(--dark2)}
 .status-body{padding:14px 16px;flex:1;overflow-y:auto}
 .status-card{background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px}
@@ -283,6 +316,29 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 </head>
 <body>
 <div id="app">
+
+<!-- ===== PERSISTENT STATUS BAR ===== -->
+<div id="statusBar">
+  <div class="sb-row1">
+    <span class="sb-name" id="sbName">—</span>
+    <span class="sb-lv">Lv <span id="sbLv">1</span></span>
+    <span class="sb-gold">💰 <span id="sbGold">0</span>G</span>
+    <span class="sb-floor" id="sbFloor"></span>
+  </div>
+  <div class="sb-row2">
+    <div class="sb-bar-group">
+      <span class="sb-bar-label">HP</span>
+      <div class="sb-bar"><div class="sb-bar-fill hp-fill" id="sbHpFill" style="width:100%"></div></div>
+      <span class="sb-bar-num" id="sbHpNum">—</span>
+    </div>
+    <div class="sb-bar-group">
+      <span class="sb-bar-label">MP</span>
+      <div class="sb-bar"><div class="sb-bar-fill mp-fill" id="sbMpFill" style="width:100%"></div></div>
+      <span class="sb-bar-num" id="sbMpNum">—</span>
+    </div>
+    <span class="sb-exp" id="sbExp">EXP —</span>
+  </div>
+</div>
 
 <!-- ===== CHARACTER CREATE ===== -->
 <div id="create-screen" class="screen active">
@@ -404,6 +460,13 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
     </div>
   </div>
   <div class="actions">
+    <div id="itemPanel" style="display:none;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">🎒 アイテム選択</span>
+        <button onclick="closeItemPanel()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1;padding:0">✕</button>
+      </div>
+      <div id="itemPanelList" style="display:flex;flex-direction:column;gap:5px"></div>
+    </div>
     <div class="action-grid" id="actionGrid"></div>
   </div>
 </div>
@@ -424,11 +487,12 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
     <div class="gold-badge">💰 <span id="shopGold">0</span> G</div>
   </div>
   <div class="items-body">
+    <div id="shopMsg" style="font-size:13px;color:var(--gold);min-height:18px;margin-bottom:8px"></div>
     <div class="section-label">所持アイテム</div>
     <div id="inventoryList" style="margin-bottom:14px"></div>
     <div class="section-label">購入</div>
     <div class="shop-grid" id="shopGrid"></div>
-    <button class="back-btn" onclick="showScreen('tavern-screen')">← 酒場へ戻る</button>
+    <button class="back-btn" onclick="refreshTavern();showScreen('tavern-screen')">← 酒場へ戻る</button>
   </div>
 </div>
 
@@ -513,7 +577,7 @@ const CLASSES = [
   {id:'warrior', name:'戦士',   emoji:'⚔️', desc:'HP高・物理攻撃特化',
    stats:{hp:45,mp:8,atk:12,def:9,spd:6,int:3},
    skills:[{name:'渾身の一撃',cost:4,desc:'ATK×2倍打撃 MP4消費・次ターン被ダメ増',icon:'💥'},
-           {name:'防御姿勢',  cost:0,desc:'次の被ダメ半減',icon:'🛡️'}]},
+           {name:'防御姿勢',  cost:0,desc:'次の被ダメ0.3倍',icon:'🛡️'}]},
   {id:'mage',    name:'魔法使い',emoji:'🔮', desc:'MP高・魔法火力特化',
    stats:{hp:18,mp:35,atk:3,def:2,spd:5,int:14},
    skills:[{name:'ファイアボール',cost:8, desc:'INT×3 魔法ダメ',icon:'🔥'},
@@ -558,7 +622,7 @@ const DUNGEONS = [
      [{e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:20},
       {e:{name:'ゴブリン',  emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},       w:80}],
    ],
-   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:40,isBoss:true}},
+   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:200,isBoss:true}},
 
   {id:'caves',  name:'銀の洞窟', minLv:3, floors:7,
    desc:'鉱石が光る地下洞窟。岩石の怪物が棲む。',
@@ -569,7 +633,7 @@ const DUNGEONS = [
      {name:'毒蜘蛛',     emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
      {name:'オーク',     emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
    ],
-   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:90,isBoss:true}},
+   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:400,isBoss:true}},
 
   {id:'castle', name:'呪われた古城', minLv:7, floors:10,
    desc:'魔王の遺した黒魔術が漂う廃城。強敵揃い。',
@@ -580,7 +644,7 @@ const DUNGEONS = [
      {name:'魔法騎士', emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32},
      {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,drain:true},
    ],
-   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:160,isBoss:true}},
+   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:600,isBoss:true}},
 
   {id:'abyss',  name:'深淵の奈落', minLv:14, floors:15,
    desc:'世界の底に続く終わりなき闇。最高の試練。',
@@ -591,7 +655,7 @@ const DUNGEONS = [
      {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52},
      {name:'リッチ',   emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,drain:true},
    ],
-   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:320,isBoss:true}},
+   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:1000,isBoss:true}},
 ];
 
 const SHOP_ITEMS = [
@@ -630,6 +694,38 @@ const clamp = (v,mn,mx) => Math.max(mn,Math.min(mx,v));
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // タイトル・キャラ作成はバー非表示、それ以外は表示
+  const hideBar=['create-screen'];
+  const bar=document.getElementById('statusBar');
+  if(hideBar.includes(id)){
+    bar.classList.remove('visible');
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('has-bar'));
+  } else {
+    bar.classList.add('visible');
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('has-bar'));
+    document.getElementById(id).classList.add('has-bar');
+    updateStatusBar();
+  }
+}
+
+function updateStatusBar(){
+  if(!P)return;
+  const inDungeon=document.getElementById('battle-screen').classList.contains('active')||
+                  document.getElementById('result-screen').classList.contains('active');
+  document.getElementById('sbName').textContent=`${P.name}（${P.cls.name}）`;
+  document.getElementById('sbLv').textContent=P.level;
+  document.getElementById('sbGold').textContent=P.gold;
+  document.getElementById('sbHpFill').style.width=(P.hp/P.maxHp*100)+'%';
+  document.getElementById('sbHpNum').textContent=`${P.hp}/${P.maxHp}`;
+  document.getElementById('sbMpFill').style.width=(P.mp/P.maxMp*100)+'%';
+  document.getElementById('sbMpNum').textContent=`${P.mp}/${P.maxMp}`;
+  const toNext=P.expNext-P.exp;
+  document.getElementById('sbExp').textContent=`次LV -${toNext}`;
+  if(inDungeon&&G.dungeon){
+    document.getElementById('sbFloor').textContent=`${G.dungeon.name} ${G.floor}F`;
+  } else {
+    document.getElementById('sbFloor').textContent='';
+  }
 }
 
 function tlog(msg,cls=''){
@@ -705,6 +801,7 @@ function refreshTavern(){
   document.getElementById('tavernStats').innerHTML=
     [{l:'ATK',v:P.atk},{l:'DEF',v:P.def},{l:'SPD',v:P.spd},{l:'INT',v:P.int}]
     .map(s=>`<div class="stat-box"><span class="stat-l">${s.l}</span><span class="stat-v">${s.v}</span></div>`).join('');
+  updateStatusBar();
 }
 
 function doRest(){
@@ -744,7 +841,9 @@ function openDungeonSelect(){
 function enterDungeon(id){
   if(P.hp<=0){tlog('戦えない状態だ！','bad');showScreen('tavern-screen');return;}
   G.dungeon=DUNGEONS.find(d=>d.id===id);
-  G.floor=1;G.floorKills=0;G.floorKillsNeeded=rand(2,4);G.isBoss=false;
+  G.floor=1;G.floorKills=0;
+  G.floorKillsNeeded=G.dungeon.floorKills?.[0]??rand(2,4);
+  G.isBoss=false;
   P.poisoned=false;P.poisonTurns=0;G.defending=false;
   buildActionGrid();
   nextEncounter();
@@ -769,7 +868,9 @@ function nextEncounter(){
   if(G.floor===d.floors&&G.floorKills>=G.floorKillsNeeded){
     enemy={...d.boss};G.isBoss=true;
   } else if(G.floorKills>=G.floorKillsNeeded){
-    G.floor++;G.floorKills=0;G.floorKillsNeeded=rand(2,4);G.isBoss=false;
+    G.floor++;G.floorKills=0;
+    G.floorKillsNeeded=G.dungeon.floorKills?.[G.floor-1]??rand(2,4);
+    G.isBoss=false;
     document.getElementById('battleFloor').textContent=G.floor;
     enemy=scaledEnemy();
     blog(`── ${G.floor}F に到達 ──`,'system');
@@ -850,6 +951,7 @@ function updatePlayerHud(){
   document.getElementById('bMpText').textContent=`${P.mp}/${P.maxMp}`;
   document.getElementById('bLevel').textContent=P.level;
   document.getElementById('bExpText').textContent=`EXP ${P.exp}/${P.expNext}`;
+  updateStatusBar();
 }
 
 function doAttack(){
@@ -911,8 +1013,35 @@ function doSkill(i){
 function useBattleItem(){
   if(!G.battleActive)return;
   if(P.inventory.length===0){blog('アイテムがない！','bad');return;}
+  openItemPanel();
+}
+
+function openItemPanel(){
+  const panel=document.getElementById('itemPanel');
+  const list=document.getElementById('itemPanelList');
+  list.innerHTML=P.inventory.map((item,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:7px 10px">
+      <div>
+        <span style="font-size:14px">${item.emoji} ${item.name}</span>
+        <span style="font-size:11px;color:var(--text-dim);margin-left:6px">${item.desc}</span>
+      </div>
+      <button class="inv-use" onclick="selectBattleItem(${i})">使う</button>
+    </div>`).join('');
+  panel.style.display='block';
+  // アクションボタンを無効化
+  document.querySelectorAll('.abtn').forEach(b=>b.disabled=true);
+}
+
+function closeItemPanel(){
+  document.getElementById('itemPanel').style.display='none';
+  if(G.battleActive) setActions(true);
+}
+
+function selectBattleItem(i){
+  if(i>=P.inventory.length)return;
+  document.getElementById('itemPanel').style.display='none';
   setActions(false);
-  const item=P.inventory.shift();
+  const item=P.inventory.splice(i,1)[0];
   const msg=item.use(P);
   blog(`🎒 ${item.name} を使った。${msg}`,'good');
   updatePlayerHud();
@@ -957,7 +1086,7 @@ function enemyTurn(){
   if(!G.battleActive)return;
   const e=G.enemy;
   const wasDefending=G.defending;
-  const defMult=G.defending?2:(G.exposed?0.5:1);
+  const defMult=G.exposed?0.5:1;
   const runFailed=G.runFailed||false;
   G.defending=false;
   G.exposed=false;
@@ -976,28 +1105,31 @@ function enemyTurn(){
   }
 
   let dmg=calcEnemyDmg(e.atk,P.def*defMult);
+  // 防御姿勢：ダメージを半分にカット（最低1）
+  if(wasDefending)dmg=Math.max(1,Math.round(dmg*0.3));
   if(runFailed)dmg=Math.round(dmg*2);
 
+  const defStr=wasDefending?' 🛡️半減':'';
   if(e.drain){
     dmg=Math.max(1,Math.round(dmg*0.8));
     const drain=Math.round(dmg*0.3);
     P.hp-=dmg;e.hp=Math.min(e.maxHp,e.hp+drain);
     G.lastHit={enemy:e.name,attack:'吸血攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の吸血！ ${dmg} ダメージ（${drain}回復）`+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の吸血！ ${dmg} ダメージ（${drain}回復）`+defStr+(runFailed?' ×2倍！':''),'enemy');
     updateEnemyUI();
   } else if(e.poison&&Math.random()<0.35&&!P.poisoned){
     P.hp-=dmg;P.poisoned=true;P.poisonTurns=4;
     G.lastHit={enemy:e.name,attack:'毒攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の毒攻撃！ ${dmg} ダメージ！毒状態に…`+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の毒攻撃！ ${dmg} ダメージ！毒状態に…`+defStr+(runFailed?' ×2倍！':''),'enemy');
   } else if(e.burn&&Math.random()<0.35){
     const extra=Math.round(dmg*0.5);
     P.hp-=dmg+extra;
     G.lastHit={enemy:e.name,attack:'炎攻撃',dmg:dmg+extra,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の炎攻撃！ ${dmg+extra} の大ダメージ！`+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の炎攻撃！ ${dmg+extra} の大ダメージ！`+defStr+(runFailed?' ×2倍！':''),'enemy');
   } else {
     P.hp-=dmg;
     G.lastHit={enemy:e.name,attack:'通常攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の攻撃！ ${dmg} ダメージ！`+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の攻撃！ ${dmg} ダメージ！`+defStr+(runFailed?' ×2倍！':''),'enemy');
   }
 
   if(G.enemy.poisoned){
@@ -1064,12 +1196,22 @@ function showResult(e,lvups,bossCleared){
     bossCleared?`${G.dungeon.name} — ${G.dungeon.floors}F ボス討伐！`:`${e.name} を倒した！`;
   document.getElementById('lvupArea').innerHTML=
     lvups.map(l=>`<div class="lvup-banner">★ レベルアップ！ Lv ${l.lv} HP+${l.inc.hp} ATK+${l.inc.atk} DEF+${l.inc.def}</div>`).join('');
+
+  // 状態異常表示
+  const statusTags=[];
+  if(P.poisoned) statusTags.push(`<span style="background:rgba(142,68,173,.2);border:1px solid #8e44ad;color:#8e44ad;padding:2px 8px;border-radius:3px;font-size:12px">☠ 毒状態（残り${P.poisonTurns}ターン）</span>`);
+
   document.getElementById('rewardBox').innerHTML=`
     <div class="ritem"><span class="rl">敵</span><span class="rv">${e.name}</span></div>
     <div class="ritem"><span class="rl">経験値</span><span class="rv e">+${e.exp} EXP</span></div>
     <div class="ritem"><span class="rl">ゴールド</span><span class="rv g">+${e.gold} G</span></div>
     <div class="ritem"><span class="rl">HP</span><span class="rv h">${P.hp} / ${P.maxHp}</span></div>
-    <div class="ritem"><span class="rl">${G.floor}F 進捗</span><span class="rv">${G.floorKills}/${G.floorKillsNeeded} 討伐</span></div>`;
+    <div class="ritem"><span class="rl">MP</span><span class="rv" style="color:var(--mp-blue)">${P.mp} / ${P.maxMp}</span></div>
+    <div class="ritem"><span class="rl">所持金</span><span class="rv g">${P.gold} G</span></div>
+    <div class="ritem"><span class="rl">${G.floor}F 進捗</span><span class="rv">${G.floorKills}/${G.floorKillsNeeded} 討伐</span></div>
+    ${statusTags.length?`<div class="ritem" style="border-top:1px solid var(--border);padding-top:6px">${statusTags.join('')}</div>`:''}
+    ${renderResultItems()}`;
+
   const btns=document.getElementById('resultBtns');
   if(bossCleared){
     btns.innerHTML=`
@@ -1081,6 +1223,41 @@ function showResult(e,lvups,bossCleared){
       <button class="rbtn" onclick="backToTavern()">🍺 酒場へ帰還</button>`;
   }
   showScreen('result-screen');
+}
+
+function renderResultItems(){
+  if(P.inventory.length===0) return '';
+  const rows=P.inventory.map((item,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${item.emoji} ${item.name}</span>
+      <button class="inv-use" onclick="useItemResult(${i})">使う</button>
+    </div>`).join('');
+  return `<div style="margin-top:8px">
+    <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🎒 アイテム使用</div>
+    ${rows}
+  </div>`;
+}
+
+function useItemResult(i){
+  if(i>=P.inventory.length)return;
+  const item=P.inventory[i];
+  const msg=item.use(P);
+  P.inventory.splice(i,1);
+  // rewardBoxだけ再描画（現在の討伐画面をリフレッシュ）
+  const statusTags=[];
+  if(P.poisoned) statusTags.push(`<span style="background:rgba(142,68,173,.2);border:1px solid #8e44ad;color:#8e44ad;padding:2px 8px;border-radius:3px;font-size:12px">☠ 毒状態（残り${P.poisonTurns}ターン）</span>`);
+  const notif=document.createElement('div');
+  notif.style.cssText='font-size:13px;color:var(--green-bright);text-align:center;padding:4px 0;margin-bottom:4px';
+  notif.textContent=`✅ ${item.name}を使用。${msg}`;
+  const box=document.getElementById('rewardBox');
+  box.innerHTML=`
+    <div class="ritem"><span class="rl">HP</span><span class="rv h">${P.hp} / ${P.maxHp}</span></div>
+    <div class="ritem"><span class="rl">MP</span><span class="rv" style="color:var(--mp-blue)">${P.mp} / ${P.maxMp}</span></div>
+    <div class="ritem"><span class="rl">所持金</span><span class="rv g">${P.gold} G</span></div>
+    ${statusTags.length?`<div class="ritem">${statusTags.join('')}</div>`:''}
+    ${renderResultItems()}`;
+  box.insertBefore(notif,box.firstChild);
+  updateStatusBar();
 }
 
 function showDeath(){
@@ -1143,10 +1320,16 @@ function useItemTavern(i){
 
 function buyItem(id){
   const item=SHOP_ITEMS.find(i=>i.id===id);
-  if(P.gold<item.price){tlog('ゴールドが足りない！','bad');showScreen('tavern-screen');return;}
-  if(P.inventory.length>=8){tlog('荷物がいっぱいだ！（最大8個）','bad');showScreen('tavern-screen');return;}
+  if(P.gold<item.price){
+    document.getElementById('shopMsg').textContent=`💰 ゴールドが足りない！（${item.price}G 必要）`;
+    return;
+  }
+  if(P.inventory.length>=8){
+    document.getElementById('shopMsg').textContent='🎒 荷物がいっぱいだ！（最大8個）';
+    return;
+  }
   P.gold-=item.price;P.inventory.push({...item});
-  tlog(`${item.name} を ${item.price}G で購入した。`,'gold');
+  document.getElementById('shopMsg').textContent=`${item.name} を購入した！`;
   openItems();
 }
 
@@ -1157,14 +1340,14 @@ const FE_SAVE_KEY='dungeon_rpg_floors';
 
 // 全ダンジョンで使える敵マスター（選択肢用）
 const ALL_ENEMIES=[
-  {name:'スライム緑', emoji:'🟢',hp:20,atk:1,def:1,exp:8, gold:5},
-  {name:'スライム青', emoji:'🔵',hp:24,atk:2,def:2,exp:11,gold:7},
-  {name:'スライム赤', emoji:'🔴',hp:28,atk:3,def:2,exp:14,gold:9},
+  {name:'スライム緑', emoji:'🟢',hp:20,atk:1,def:0,exp:8, gold:5},
+  {name:'スライム青', emoji:'🔵',hp:24,atk:1,def:1,exp:11,gold:7},
+  {name:'スライム赤', emoji:'🔴',hp:28,atk:2,def:1,exp:14,gold:9},
   {name:'コウモリ',   emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},
-  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8, poison:true},
-  {name:'ゴブリン',   emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},
-  {name:'コボルト',   emoji:'🐾',hp:35,atk:9,def:3,exp:18,gold:14},
-  {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:11,def:9,exp:26,gold:22},
+  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:3,def:1,exp:12,gold:8, poison:true},
+  {name:'ゴブリン',   emoji:'👺',hp:28,atk:5,def:2,exp:15,gold:12},
+  {name:'コボルト',   emoji:'🐾',hp:35,atk:6,def:3,exp:18,gold:14},
+  {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:8,def:6,exp:26,gold:22},
   {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
   {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
   {name:'スケルトン', emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20},
@@ -1183,14 +1366,14 @@ let feData=null;
 
 function getDefaultFeData(){
   return [
-    {id:'forest', floors:5, table:[
+    {id:'forest', floors:5, kills:[2,2,2,2,2], table:[
       [{name:'スライム緑',weight:60,enabled:true},{name:'コウモリ',weight:40,enabled:true}],
-      [{name:'スライム緑',weight:40,enabled:true},{name:'スライム青',weight:30,enabled:true},{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:5,enabled:true}],
+      [{name:'スライム緑',weight:40,enabled:true},{name:'スライム青',weight:30,enabled:true},{name:'スライム赤',weight:25,enabled:true},{name:'コウモリ',weight:5,enabled:true}],
       [{name:'スライム青',weight:30,enabled:true},{name:'スライム赤',weight:20,enabled:true},{name:'コウモリ',weight:20,enabled:true},{name:'毒キノコ',weight:15,enabled:true},{name:'ゴブリン',weight:5,enabled:true}],
-      [{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:20,enabled:true},{name:'スライム赤',weight:30,enabled:true}],
-      [{name:'毒キノコ',weight:20,enabled:true},{name:'ゴブリン',weight:80,enabled:true}],
+      [{name:'スライム青',weight:25,enabled:true},{name:'スライム赤',weight:25,enabled:true},{name:'コウモリ',weight:20,enabled:true},{name:'ゴブリン',weight:30,enabled:true}],
+      [{name:'コウモリ',weight:20,enabled:true},{name:'ゴブリン',weight:80,enabled:true}],
     ]},
-    {id:'caves', floors:7, table:[
+    {id:'caves', floors:7, kills:[2,2,2,2,2,2,2], table:[
       [{name:'スライム青',weight:40,enabled:true},{name:'スライム赤',weight:30,enabled:true},{name:'ゴブリン',weight:20,enabled:true}],
       [{name:'スライム赤',weight:40,enabled:true},{name:'ゴブリン',weight:30,enabled:true},{name:'コボルト',weight:20,enabled:true}],
       [{name:'スライム赤',weight:40,enabled:true},{name:'毒キノコ',weight:30,enabled:true},{name:'ゴブリン',weight:20,enabled:true},{name:'オーク',weight:10,enabled:true}],
@@ -1199,7 +1382,7 @@ function getDefaultFeData(){
       [{name:'コボルト',weight:40,enabled:true},{name:'岩石ゴーレム',weight:30,enabled:true},{name:'毒蜘蛛',weight:20,enabled:true},{name:'オーク',weight:10,enabled:true}],
       [{name:'岩石ゴーレム',weight:30,enabled:true},{name:'毒蜘蛛',weight:30,enabled:true},{name:'オーク',weight:40,enabled:true}],
     ]},
-    {id:'castle', floors:10, table:[
+    {id:'castle', floors:10, kills:[2,2,2,2,2,2,2,2,2,2], table:[
       [{name:'スライム赤',weight:30,enabled:true},{name:'コウモリ',weight:40,enabled:true},{name:'毒キノコ',weight:30,enabled:true}],
       [{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true}],
       [{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true}],
@@ -1208,10 +1391,10 @@ function getDefaultFeData(){
       [{name:'岩石ゴーレム',weight:25,enabled:true},{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true}],
       [{name:'毒蜘蛛',weight:25,enabled:true},{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true}],
       [{name:'オーク',weight:25,enabled:true},{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true}],
-      [{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
-      [{name:'スケルトン',weight:25,enabled:true},{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
+      [{name:'ゾンビ',weight:25,enabled:true},{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
+      [{name:'魔法騎士',weight:25,enabled:true},{name:'ヴァンパイア',weight:25,enabled:true}],
     ]},
-    {id:'abyss', floors:15, table:[
+    {id:'abyss', floors:15, kills:[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], table:[
       [{name:'スライム赤',weight:30,enabled:true},{name:'コウモリ',weight:30,enabled:true},{name:'ゴブリン',weight:40,enabled:true}],
       [{name:'コウモリ',weight:25,enabled:true},{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true}],
       [{name:'毒キノコ',weight:25,enabled:true},{name:'ゴブリン',weight:25,enabled:true},{name:'コボルト',weight:25,enabled:true},{name:'岩石ゴーレム',weight:25,enabled:true}],
@@ -1267,6 +1450,7 @@ function renderFeFloors(){
 
   for(let fi=0;fi<d.floors;fi++){
     const floorRows=fd.table[fi]||[];
+    const kills=(fd.kills&&fd.kills[fi]!=null)?fd.kills[fi]:3;
     const enabledNames=floorRows.filter(r=>r.enabled).map(r=>r.name).join('・')||'（なし）';
     const block=document.createElement('div');
     block.className='fe-floor-block';
@@ -1277,6 +1461,13 @@ function renderFeFloors(){
         <span style="color:var(--text-dim);font-size:12px">▼</span>
       </div>
       <div class="fe-floor-body" id="fe-floor-body-${fi}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-dim)">次の階へ進む討伐数</span>
+          <input class="fe-weight-input" type="number" min="1" max="99" value="${kills}"
+            onchange="feChangeKills(${fi},this.value)"
+            style="width:52px">
+          <span style="font-size:11px;color:var(--text-dim)">体</span>
+        </div>
         <div id="fe-rows-${fi}"></div>
         <button class="fe-add-btn" onclick="feAddEnemy(${fi})">＋ 敵を追加</button>
       </div>`;
@@ -1289,6 +1480,12 @@ function toggleFeFloor(head){
   const body=head.nextElementSibling;
   body.classList.toggle('open');
   head.querySelector('span:last-child').textContent=body.classList.contains('open')?'▲':'▼';
+}
+
+function feChangeKills(fi,val){
+  const fd=feData[feCurrentDungeon];
+  if(!fd.kills)fd.kills=Array(fd.floors||5).fill(3);
+  fd.kills[fi]=Math.max(1,Math.min(99,parseInt(val)||1));
 }
 
 function renderFeRows(fi){
@@ -1356,7 +1553,6 @@ function updateFeSummary(fi){
 }
 
 function saveFloorSettings(){
-  // feDataをDUNGEONSのfloorTableに反映
   feData.forEach((fd,di)=>{
     const d=DUNGEONS[di];
     d.floorTable=fd.table.map(floorRows=>
@@ -1365,11 +1561,12 @@ function saveFloorSettings(){
         return{e:{...base},w:r.weight};
       })
     );
-    // floorTableが空のフロアはデフォルト敵で埋める
     d.floorTable=d.floorTable.map((ft,fi)=>
       ft.length>0?ft:[{e:{...ALL_ENEMIES[0]},w:1}]
     );
-    delete d.enemies; // enemiesより優先されるよう削除
+    // 討伐数をDUNGEONSに反映
+    d.floorKills=fd.kills||Array(d.floors).fill(3);
+    delete d.enemies;
   });
   localStorage.setItem(FE_SAVE_KEY,JSON.stringify(feData));
   showScreen('create-screen');
@@ -1421,6 +1618,7 @@ function importFloorSettings(){
       })
     );
     d.floorTable=d.floorTable.map(ft=>ft.length>0?ft:[{e:{...ALL_ENEMIES[0]},w:1}]);
+    d.floorKills=fd.kills||Array(d.floors).fill(3);
     delete d.enemies;
   });
 })();
