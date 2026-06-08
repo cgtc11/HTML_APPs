@@ -174,7 +174,11 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
 </style>
 </head>
 <body>
-<div id="top">
+<div id="top"
+  ondragover="onTopDragOver(event)"
+  ondragleave="onTopDragLeave(event)"
+  ondrop="onTopDrop(event)"
+  style="transition:background .15s">
   <span class="logo">PaintStudio</span>
   <button class="tbtn" onclick="newCanvas()">新規</button>
   <button class="tbtn" onclick="importImg()">画像読込</button>
@@ -3681,6 +3685,41 @@ function showGlbLoad(){ G('glbModal').style.display='flex'; glbLog(''); }
 function onGlbDrop(ev){ const f=ev.dataTransfer.files[0]; if(f)loadGlbFile(f); }
 function onGlbFile(ev){ const f=ev.target.files[0]; if(f)loadGlbFile(f); ev.target.value=''; }
 
+// トップバーへのD&D
+function onTopDragOver(e){
+  const files=e.dataTransfer.items;
+  let hasGlb=false;
+  for(let i=0;i<files.length;i++){
+    if(files[i].type===''||files[i].type==='model/gltf-binary'||
+       (files[i].getAsFile&&(/\.(glb|gltf)$/i.test(files[i].getAsFile()?.name||'')))){
+      hasGlb=true; break;
+    }
+  }
+  if(hasGlb){
+    e.preventDefault();
+    G('top').style.background='var(--acc2)';
+    G('top').style.opacity='0.85';
+  }
+}
+function onTopDragLeave(e){
+  if(!G('top').contains(e.relatedTarget)){
+    G('top').style.background='';
+    G('top').style.opacity='';
+  }
+}
+function onTopDrop(e){
+  G('top').style.background='';
+  G('top').style.opacity='';
+  const files=e.dataTransfer.files;
+  for(let i=0;i<files.length;i++){
+    if(/\.(glb|gltf)$/i.test(files[i].name)){
+      e.preventDefault();
+      loadGlbFile(files[i]);
+      return;
+    }
+  }
+}
+
 // ─── GLTFLoader ──────────────────────────────────
 function ensureGLTFLoader(cb){
   if(window.THREE && window.THREE.GLTFLoader){ cb(THREE.GLTFLoader); return; }
@@ -3887,7 +3926,9 @@ function extractTexturesAsLayers(entry){
     const ctx=cv.getContext('2d');
     try { ctx.drawImage(tex.image,0,0,tw,th); }
     catch(e){ ctx.fillStyle='#888'; ctx.fillRect(0,0,tw,th); }
-    layers.push({id:lid++,name:slot.label,cv,ctx,vis:slot.key==='map',opac:100,blend:'source-over',mask:null,maskEnabled:true,_folder:slot.folder});
+    layers.push({id:lid++,name:slot.label,cv,ctx,
+      vis:slot.key==='map'||slot.key==='normalMap', // BaseColorとNormalはデフォルトON
+      opac:100,blend:'source-over',mask:null,maskEnabled:true,_folder:slot.folder});
   }
 
   if(!addedAny){
@@ -4409,6 +4450,17 @@ function initNmHeightCanvas(){
   // 完全フラット（128）で初期化
   nmHeightCtx.fillStyle='rgb(128,128,128)';
   nmHeightCtx.fillRect(0,0,W,H);
+  // ★初期状態（フラットノーマル: 128,128,255）をレイヤーに即時反映
+  const l=getNmPaintLayer(); if(!l) return;
+  const dst=new ImageData(W,H);
+  for(let i=0;i<dst.data.length;i+=4){
+    dst.data[i  ]=128; // R: X=0
+    dst.data[i+1]=128; // G: Y=0
+    dst.data[i+2]=255; // B: Z=1（上向き法線）
+    dst.data[i+3]=255;
+  }
+  l.ctx.putImageData(dst,0,0);
+  comp();
 }
 
 // 描き先ラベル更新
@@ -4464,16 +4516,22 @@ function applyNmBrush(cx, cy, prevCx, prevCy){
     nmHeightCtx.putImageData(id,x0,y0);
   }
 
-  convertHeightToNormal();
+  convertHeightToNormal(cx, cy, r);
 }
 
 // Sobelフィルタでハイトマップ→ノーマルマップRGB変換
-function convertHeightToNormal(){
+function convertHeightToNormal(rx, ry, rr){
   if(!nmHeightCanvas) return;
   const l=getNmPaintLayer(); if(!l) return;
   const strength=parseFloat(G('nmStrength').value)||3;
   const src=nmHeightCtx.getImageData(0,0,W,H).data;
-  const dst=new ImageData(W,H);
+
+  // 更新範囲（引数なしなら全面、あれば+2マージン）
+  const margin=2;
+  const x0=rx!==undefined?Math.max(0,Math.floor(rx-rr-margin)):0;
+  const y0=ry!==undefined?Math.max(0,Math.floor(ry-rr-margin)):0;
+  const x1=rx!==undefined?Math.min(W-1,Math.ceil(rx+rr+margin)):W-1;
+  const y1=ry!==undefined?Math.min(H-1,Math.ceil(ry+rr+margin)):H-1;
 
   const getH=(x,y)=>{
     x=Math.max(0,Math.min(W-1,x));
@@ -4481,8 +4539,10 @@ function convertHeightToNormal(){
     return src[(y*W+x)*4]/255;
   };
 
-  for(let y=0;y<H;y++){
-    for(let x=0;x<W;x++){
+  const pw=x1-x0+1, ph=y1-y0+1;
+  const dst=new ImageData(pw,ph);
+  for(let y=y0;y<=y1;y++){
+    for(let x=x0;x<=x1;x++){
       const tl=getH(x-1,y-1),tc=getH(x,y-1),tr=getH(x+1,y-1);
       const ml=getH(x-1,y),              mr=getH(x+1,y);
       const bl=getH(x-1,y+1),bc=getH(x,y+1),br=getH(x+1,y+1);
@@ -4490,16 +4550,14 @@ function convertHeightToNormal(){
       const gy=(-tl-2*tc-tr+bl+2*bc+br)*strength;
       const len=Math.sqrt(gx*gx+gy*gy+1);
       const nx=-gx/len, ny=-gy/len, nz=1/len;
-      const i=(y*W+x)*4;
+      const i=((y-y0)*pw+(x-x0))*4;
       dst.data[i  ]=Math.round((nx+1)*127.5);
       dst.data[i+1]=Math.round((ny+1)*127.5);
       dst.data[i+2]=Math.round((nz+1)*127.5);
       dst.data[i+3]=255;
     }
   }
-  l.ctx.putImageData(dst,0,0);
-
-  // ★comp()を呼んで全レイヤー合成結果を更新してから3Dに反映
+  l.ctx.putImageData(dst,x0,y0);
   comp();
 }
 
