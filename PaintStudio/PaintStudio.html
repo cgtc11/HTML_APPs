@@ -4421,7 +4421,7 @@ function getNmPaintLayer(){
   // 新規作成
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const ctx=cv.getContext('2d');
-  // 完全透明で初期化（元のノーマルマップに重ねて使う）
+  // 完全透明で初期化（描いた部分だけ上書き）
   l={id:lid++,name:'法線ペイント',cv,ctx,vis:true,opac:100,
      blend:'source-over',mask:null,maskEnabled:true,_isNmPaint:true};
   nmPaintLayerId=l.id;
@@ -4440,26 +4440,19 @@ function getNmPaintLayer(){
   return l;
 }
 
-// ハイトマップ初期化（完全フラット=128）
+// ハイトマップ初期化（完全フラット=128、レイヤーは透明のまま）
 function initNmHeightCanvas(){
   if(!nmHeightCanvas||nmHeightCanvas.width!==W||nmHeightCanvas.height!==H){
     nmHeightCanvas=document.createElement('canvas');
     nmHeightCanvas.width=W; nmHeightCanvas.height=H;
     nmHeightCtx=nmHeightCanvas.getContext('2d');
   }
-  // 完全フラット（128）で初期化
+  // ハイトマップはフラット（128）で初期化
   nmHeightCtx.fillStyle='rgb(128,128,128)';
   nmHeightCtx.fillRect(0,0,W,H);
-  // ★初期状態（フラットノーマル: 128,128,255）をレイヤーに即時反映
+  // ★レイヤーは透明のまま（描いた部分だけ上書き）
   const l=getNmPaintLayer(); if(!l) return;
-  const dst=new ImageData(W,H);
-  for(let i=0;i<dst.data.length;i+=4){
-    dst.data[i  ]=128; // R: X=0
-    dst.data[i+1]=128; // G: Y=0
-    dst.data[i+2]=255; // B: Z=1（上向き法線）
-    dst.data[i+3]=255;
-  }
-  l.ctx.putImageData(dst,0,0);
+  l.ctx.clearRect(0,0,W,H);
   comp();
 }
 
@@ -4554,10 +4547,42 @@ function convertHeightToNormal(rx, ry, rr){
       dst.data[i  ]=Math.round((nx+1)*127.5);
       dst.data[i+1]=Math.round((ny+1)*127.5);
       dst.data[i+2]=Math.round((nz+1)*127.5);
-      dst.data[i+3]=255;
+      dst.data[i+3]=255; // 一旦全部不透明
     }
   }
-  l.ctx.putImageData(dst,x0,y0);
+
+  // オフスクリーンキャンバスにSobel結果を描く
+  const offCv=document.createElement('canvas'); offCv.width=pw; offCv.height=ph;
+  const offCtx=offCv.getContext('2d');
+  offCtx.putImageData(dst,0,0);
+
+  // ★ブラシ形状（ソフト円）でマスクして書き込む
+  if(rx!==undefined){
+    // ブラシの中心からの距離でアルファを制御
+    const str=getUVtStr();
+    const maskCv=document.createElement('canvas'); maskCv.width=pw; maskCv.height=ph;
+    const maskCtx=maskCv.getContext('2d');
+    const lx=rx-x0, ly=ry-y0; // ローカル座標
+    const grad=maskCtx.createRadialGradient(lx,ly,0,lx,ly,rr);
+    const baseAlpha=Math.min(1,str*0.035);
+    grad.addColorStop(0,   `rgba(0,0,0,${baseAlpha})`);
+    grad.addColorStop(0.5, `rgba(0,0,0,${baseAlpha*0.6})`);
+    grad.addColorStop(1,   'rgba(0,0,0,0)');
+    maskCtx.fillStyle=grad;
+    maskCtx.fillRect(0,0,pw,ph);
+
+    // offCvのアルファにmaskのアルファを掛ける
+    const nmId=offCtx.getImageData(0,0,pw,ph);
+    const mkId=maskCtx.getImageData(0,0,pw,ph);
+    for(let i=3;i<nmId.data.length;i+=4){
+      nmId.data[i]=Math.round(mkId.data[i]*(255/baseAlpha/255)*255);
+      nmId.data[i]=Math.min(255,nmId.data[i]);
+    }
+    offCtx.putImageData(nmId,0,0);
+  }
+
+  // l.ctxにsource-overで合成（円形ソフトブラシで上書き）
+  l.ctx.drawImage(offCv,x0,y0);
   comp();
 }
 
