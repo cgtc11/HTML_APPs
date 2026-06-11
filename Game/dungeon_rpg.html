@@ -303,6 +303,19 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 #result-screen.has-bar .result-title,
 #rest-screen.has-bar .rest-anim{margin-top:0}
 
+/* ===== INLINE MODAL ===== */
+#modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;align-items:center;justify-content:center}
+#modalOverlay.show{display:flex}
+.modal-box{background:var(--dark3);border:1px solid var(--gold-dim);border-radius:6px;padding:20px 18px;max-width:300px;width:90%;text-align:center}
+.modal-title{font-size:16px;color:var(--gold);font-family:'UnifrakturMaguntia',cursive;margin-bottom:8px}
+.modal-msg{font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.modal-btn{padding:8px 20px;font-size:13px;border-radius:4px;cursor:pointer;font-family:'Crimson Pro',serif;border:1px solid;transition:all .15s}
+.modal-btn.ok{border-color:var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.1)}
+.modal-btn.ok:hover{background:rgba(200,168,75,.25)}
+.modal-btn.cancel{border-color:var(--border);color:var(--text-dim);background:none}
+.modal-btn.cancel:hover{border-color:var(--gold-dim);color:var(--text)}
+
 #status-screen{background:var(--dark2)}
 .status-body{padding:14px 16px;flex:1;overflow-y:auto}
 .status-card{background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px}
@@ -316,6 +329,18 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 </head>
 <body>
 <div id="app">
+
+<!-- ===== INLINE MODAL ===== -->
+<div id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">確認</div>
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-btns">
+      <button class="modal-btn ok" id="modalOk">はい</button>
+      <button class="modal-btn cancel" id="modalCancel">キャンセル</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== PERSISTENT STATUS BAR ===== -->
 <div id="statusBar">
@@ -406,7 +431,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
         <span class="mi">💾</span>
         <span><span class="ml">セーブ / ロード</span><span class="ms">冒険の記録を保存・読み込む</span></span>
       </button>
-      <button class="menu-btn full" onclick="if(confirm('タイトルに戻りますか？（セーブ忘れずに）'))showScreen('create-screen')">
+      <button class="menu-btn full" onclick="showModal('タイトルに戻りますか？（セーブ忘れずに）',()=>showScreen('create-screen'))">
         <span class="mi">🏠</span>
         <span><span class="ml">タイトルへ戻る</span><span class="ms">キャラクター選択画面へ</span></span>
       </button>
@@ -437,7 +462,11 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
       <div class="enemy-sprite" id="enemySprite">👾</div>
       <div class="enemy-name" id="enemyName">—</div>
       <div class="enemy-hp-wrap"><div class="enemy-hp-fill" id="enemyHpFill" style="width:100%"></div></div>
-      <div class="enemy-status" id="enemyStatus">HP: — / —</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="enemy-status" id="enemyStatus">HP: — / —</div>
+        <div id="enemyElem" style="font-size:12px;color:var(--text-dim)"></div>
+        <div id="enemyAbilities" style="display:flex;gap:4px"></div>
+      </div>
     </div>
     <div class="battle-log" id="battleLog"></div>
   </div>
@@ -501,6 +530,22 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
   <div class="page-header">
     <div class="page-title">敵設定</div>
     <button class="back-btn" onclick="showScreen('create-screen')">← 戻る</button>
+  </div>
+  <div style="background:var(--dark3);border-bottom:1px solid var(--border);padding:8px 14px">
+    <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">属性相関表（→ 矢印先が弱点）</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+      <span style="font-size:11px;color:#e74c3c">🔥火→❄️氷・⬜無・🌑闇</span>
+      <span style="color:var(--border);font-size:14px">/</span>
+      <span style="font-size:11px;color:#5dade2">❄️氷→🔥火・⬜無</span>
+      <span style="color:var(--border);font-size:14px">/</span>
+      <span style="font-size:11px;color:#8e44ad">🌑闇→✨光・⬜無</span>
+      <span style="color:var(--border);font-size:14px">/</span>
+      <span style="font-size:11px;color:#f1c40f">✨光→🌑闇</span>
+      <span style="color:var(--border);font-size:14px">/</span>
+      <span style="font-size:11px;color:#95a5a6">⬜無→✨光</span>
+      <span style="color:var(--border);font-size:14px">/</span>
+      <span style="font-size:11px;color:var(--gold)">弱点倍率: ×2.5</span>
+    </div>
   </div>
   <div class="ee-body" id="eeBody"></div>
   <div class="fe-save-bar">
@@ -576,20 +621,25 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 const CLASSES = [
   {id:'warrior', name:'戦士',   emoji:'⚔️', desc:'HP高・物理攻撃特化',
    stats:{hp:45,mp:8,atk:12,def:9,spd:6,int:3},
-   skills:[{name:'渾身の一撃',cost:4,desc:'ATK×2倍打撃 MP4消費・次ターン被ダメ増',icon:'💥'},
-           {name:'防御姿勢',  cost:0,desc:'次の被ダメ0.3倍',icon:'🛡️'}]},
+   skillParams:{shinken_mult:2.0, defend_mult:0.3, defend_rand:0.1},
+   element:'無',
+   classSkills:[{id:'shinken',minLv:1},{id:'defend',minLv:1}],
+   extraSkills:[]},
   {id:'mage',    name:'魔法使い',emoji:'🔮', desc:'MP高・魔法火力特化',
    stats:{hp:18,mp:35,atk:3,def:2,spd:5,int:14},
-   skills:[{name:'ファイアボール',cost:8, desc:'INT×3 魔法ダメ',icon:'🔥'},
-           {name:'アイスランス', cost:6, desc:'INT×2.5 低コスト魔法',icon:'❄️'}]},
+   element:'無',
+   classSkills:[{id:'fireball',minLv:1},{id:'iceshot',minLv:1}],
+   extraSkills:[]},
   {id:'rogue',   name:'盗賊',  emoji:'🗡️', desc:'素早さ高・クリ特化',
    stats:{hp:26,mp:14,atk:8,def:4,spd:15,int:7},
-   skills:[{name:'急所狙い',  cost:0,desc:'防御無視ダメージ',icon:'🎯'},
-           {name:'毒手',      cost:4,desc:'毒を付与する攻撃',icon:'☠️'}]},
+   element:'無',
+   classSkills:[{id:'combo',minLv:1}],
+   extraSkills:[]},
   {id:'cleric',  name:'僧侶',  emoji:'✨', desc:'回復魔法・バランス型',
    stats:{hp:32,mp:24,atk:6,def:7,spd:6,int:10},
-   skills:[{name:'ヒール',      cost:10,desc:'HP +INT×2+10 回復',icon:'💚'},
-           {name:'ホーリーライト',cost:12,desc:'INT×3.5 神聖ダメ',icon:'⭐'}]},
+   element:'無',
+   classSkills:[{id:'heal',minLv:1},{id:'holy',minLv:1}],
+   extraSkills:[]},
 ];
 
 const DUNGEONS = [
@@ -622,7 +672,7 @@ const DUNGEONS = [
      [{e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:20},
       {e:{name:'ゴブリン',  emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},       w:80}],
    ],
-   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:200,isBoss:true}},
+   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:200,element:'火',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
 
   {id:'caves',  name:'銀の洞窟', minLv:3, floors:7,
    desc:'鉱石が光る地下洞窟。岩石の怪物が棲む。',
@@ -633,7 +683,7 @@ const DUNGEONS = [
      {name:'毒蜘蛛',     emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
      {name:'オーク',     emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
    ],
-   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:400,isBoss:true}},
+   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:400,element:'火',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
 
   {id:'castle', name:'呪われた古城', minLv:7, floors:10,
    desc:'魔王の遺した黒魔術が漂う廃城。強敵揃い。',
@@ -644,7 +694,7 @@ const DUNGEONS = [
      {name:'魔法騎士', emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32},
      {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,drain:true},
    ],
-   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:600,isBoss:true}},
+   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:600,element:'氷',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
 
   {id:'abyss',  name:'深淵の奈落', minLv:14, floors:15,
    desc:'世界の底に続く終わりなき闇。最高の試練。',
@@ -655,21 +705,99 @@ const DUNGEONS = [
      {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52},
      {name:'リッチ',   emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,drain:true},
    ],
-   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:1000,isBoss:true}},
+   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:1000,element:'闇',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
 ];
 
 const SHOP_ITEMS = [
-  {id:'potion',    name:'回復薬',   emoji:'🧪',desc:'HP +30 回復',       price:30,
-   use:(p)=>{const h=Math.min(p.maxHp,p.hp+30)-p.hp;p.hp+=h;return `HP が ${h} 回復した！`}},
-  {id:'elixir',    name:'エリクサー',emoji:'⚗️',desc:'HP/MP 全快',       price:120,
+  {id:'potion',       name:'回復薬',  emoji:'🧪', desc:'HP +200 回復',      price:60,
+   use:(p)=>{const h=Math.min(p.maxHp,p.hp+200)-p.hp;p.hp+=h;return `HP が ${h} 回復した！`}},
+  {id:'elixir',       name:'エリクサー',emoji:'⚗️',desc:'HP/MP 全快',       price:200,
    use:(p)=>{p.hp=p.maxHp;p.mp=p.maxMp;return 'HP と MP が全快した！'}},
-  {id:'antidote',  name:'解毒薬',   emoji:'💊',desc:'毒を解除する',      price:20,
+  {id:'antidote',     name:'解毒薬',  emoji:'💊', desc:'毒を解除する',      price:20,
    use:(p)=>{p.poisoned=false;p.poisonTurns=0;return '毒が解けた！'}},
-  {id:'manapotion',name:'マナポーション',emoji:'💧',desc:'MP +20 回復', price:40,
-   use:(p)=>{const m=Math.min(p.maxMp,p.mp+20)-p.mp;p.mp+=m;return `MP が ${m} 回復した！`}},
-  {id:'strengthstone',name:'力の石',emoji:'💎',desc:'ATK +3 永続強化',  price:200,
+  {id:'manapotion',   name:'魔法薬',  emoji:'💧', desc:'MP +200 回復',      price:60,
+   use:(p)=>{const m=Math.min(p.maxMp,p.mp+200)-p.mp;p.mp+=m;return `MP が ${m} 回復した！`}},
+  {id:'strengthstone',name:'力の石',  emoji:'💎', desc:'ATK +3 永続強化',   price:200,
    use:(p)=>{p.atk+=3;return 'ATK が 3 上がった！'}},
+  {id:'defstone',     name:'守の石',  emoji:'🛡️', desc:'DEF +3 永続強化',   price:200,
+   use:(p)=>{p.def+=3;return 'DEF が 3 上がった！'}},
+  {id:'spdstone',     name:'速の石',  emoji:'💨', desc:'SPD +3 永続強化',   price:200,
+   use:(p)=>{p.spd+=3;return 'SPD が 3 上がった！'}},
+  {id:'intstone',     name:'魔の石',  emoji:'🔮', desc:'INT +3 永続強化',   price:200,
+   use:(p)=>{p.int+=3;return 'INT が 3 上がった！'}},
 ];
+
+// ============================================================
+//  SKILL MASTER（全スキル定義）
+// ============================================================
+const SKILL_MASTER=[
+  {id:'attack',      name:'攻撃',     icon:'⚔️', elem:'無', cost:0,  minLv:1,  desc:'通常攻撃',              common:true},
+  {id:'item',        name:'道具',     icon:'🎒', elem:'無', cost:0,  minLv:1,  desc:'アイテムを使う',         common:true},
+  {id:'run',         name:'逃走',     icon:'💨', elem:'無', cost:0,  minLv:1,  desc:'戦闘から逃げる',         common:true},
+  {id:'shinken',     name:'渾身の一撃',icon:'💥',elem:'無', cost:4,  minLv:1,  desc:'ATK倍打撃・次ターン隙'},
+  {id:'defend',      name:'防御姿勢', icon:'🛡️', elem:'無', cost:0,  minLv:1,  desc:'次ターン被ダメ軽減'},
+  {id:'fireball',    name:'火魔法',   icon:'🔥', elem:'火', cost:8,  minLv:1,  desc:'INT×3 火属性魔法ダメ'},
+  {id:'iceshot',     name:'氷魔法',   icon:'❄️', elem:'氷', cost:6,  minLv:1,  desc:'INT×2.5 氷属性魔法ダメ'},
+  {id:'combo',       name:'連続攻撃', icon:'⚡', elem:'無', cost:0,  minLv:1,  desc:'2回連続で攻撃'},
+  {id:'poison_hand', name:'毒手',     icon:'☠️', elem:'闇', cost:4,  minLv:1,  desc:'毒を付与する攻撃'},
+  {id:'heal',        name:'回復魔法', icon:'💚', elem:'光', cost:10, minLv:1,  desc:'HP +INT×2+10 回復'},
+  {id:'holy',        name:'光魔法',   icon:'✨', elem:'光', cost:12, minLv:1,  desc:'INT×3.5 光属性ダメ'},
+  {id:'null_elem',   name:'属性無効', icon:'🔰', elem:'無', cost:8,  minLv:1,  desc:'1ターン属性無効化'},
+  {id:'dark_magic',  name:'闇魔法',   icon:'🌑', elem:'闇', cost:10, minLv:1,  desc:'INT×3 闇属性魔法ダメ'},
+  {id:'mp_heal',     name:'魔法回復', icon:'💙', elem:'無', cost:0,  minLv:1,  desc:'MP +INT×2+10 回復（HP消費なし）'},
+];
+function getSkill(id){return SKILL_MASTER.find(s=>s.id===id)||SKILL_MASTER[0];}
+
+const ELEMENTS=['無','火','氷','闇','光'];
+const ELEMENT_EMOJI={無:'⬜',火:'🔥',氷:'❄️',闇:'🌑',光:'✨'};
+// 弱点テーブル: WEAK_TO[攻撃属性] = 弱い属性リスト（その属性を持つ敵に有効）
+const WEAK_TO={
+  火:['氷','無','闇'], // 火→氷・無・闇に強い
+  氷:['火','無'],      // 氷→火・無に強い
+  闇:['光','無'],      // 闇→光・無に強い
+  光:['闇'],           // 光→闇に強い
+  無:['光'],           // 無→光に強い
+};
+const ELEM_MULT=2.5; // 弱点倍率
+// elem攻撃がtarget属性に対して弱点かチェック
+function isWeakness(attackElem, targetElem){
+  return (WEAK_TO[attackElem]||[]).includes(targetElem);
+}
+const DEFAULT_DROP_TABLE={
+  'スライム緑':  [{itemId:'potion',    rate:10}],
+  'スライム青':  [{itemId:'potion',    rate:15}],
+  'スライム赤':  [{itemId:'potion',    rate:20}],
+  'コウモリ':    [],
+  '毒キノコ':    [{itemId:'antidote',  rate:30}],
+  'ゴブリン':    [{itemId:'potion',    rate:15}],
+  'コボルト':    [{itemId:'potion',    rate:15}],
+  '岩石ゴーレム':[{itemId:'potion',    rate:10}],
+  '毒蜘蛛':     [{itemId:'antidote',  rate:35}],
+  'オーク':      [{itemId:'potion',    rate:20},{itemId:'manapotion',rate:10}],
+  'スケルトン':  [{itemId:'potion',    rate:15}],
+  'ゾンビ':      [{itemId:'potion',    rate:20}],
+  '魔法騎士':    [{itemId:'manapotion',rate:25},{itemId:'potion',rate:15}],
+  'ヴァンパイア':[{itemId:'elixir',    rate:10}],
+  'デーモン':    [{itemId:'elixir',    rate:15}],
+  '地獄の炎':    [{itemId:'manapotion',rate:20}],
+  '暗黒騎士':    [{itemId:'elixir',    rate:20}],
+  'リッチ':      [{itemId:'elixir',    rate:25}],
+  '森の番人':    [{itemId:'elixir',    rate:50}],
+  'ロックワーム':[{itemId:'elixir',    rate:60}],
+  '魔城の番人':  [{itemId:'elixir',    rate:70}],
+  '深淵の魔神':  [{itemId:'elixir',    rate:100}],
+};
+let DROP_TABLE=JSON.parse(JSON.stringify(DEFAULT_DROP_TABLE));
+const DROP_SAVE_KEY='dungeon_rpg_drops';
+
+function loadDropTable(){
+  try{const s=localStorage.getItem(DROP_SAVE_KEY);return s?JSON.parse(s):null;}
+  catch{return null;}
+}
+(function applyDropTable(){
+  const saved=loadDropTable();
+  if(saved)DROP_TABLE=saved;
+})();
 
 // ============================================================
 //  STATE
@@ -679,7 +807,7 @@ let G = {
   dungeon:null, floor:1,
   enemy:null, battleActive:false,
   defending:false, exposed:false, counterBoost:false, runFailed:false, poisonTurns:0,
-  lastHit:null,
+  lastHit:null, nullElemTurn:0,
   floorKills:0, floorKillsNeeded:3,
   isBoss:false,
   record:{kills:0,dungeons:0,gold:0}
@@ -690,6 +818,22 @@ let G = {
 // ============================================================
 const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
 const clamp = (v,mn,mx) => Math.max(mn,Math.min(mx,v));
+
+// ============================================================
+//  INLINE MODAL
+// ============================================================
+function showModal(msg, onOk, title='確認'){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalMsg').textContent=msg;
+  const overlay=document.getElementById('modalOverlay');
+  overlay.classList.add('show');
+  const okBtn=document.getElementById('modalOk');
+  const cancelBtn=document.getElementById('modalCancel');
+  const close=()=>overlay.classList.remove('show');
+  okBtn.onclick=()=>{close();onOk();};
+  cancelBtn.onclick=close;
+  overlay.onclick=(e)=>{if(e.target===overlay)close();};
+}
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -849,12 +993,32 @@ function enterDungeon(id){
   nextEncounter();
 }
 
+// プレイヤーが現在使えるスキルIDリストを返す（共通+職業+追加、LV条件チェック）
+function getActiveSkills(){
+  const cls=P.cls;
+  const lv=P.level;
+  const result=[];
+  // 職業固有スキル
+  for(const s of (cls.classSkills||[])){
+    if(lv>=(s.minLv||1))result.push(s.id);
+  }
+  // 追加スキル
+  for(const s of (cls.extraSkills||[])){
+    if(lv>=(s.minLv||1))result.push(s.id);
+  }
+  return result;
+}
+
 function buildActionGrid(){
-  const skills=P.cls.skills;
   const grid=document.getElementById('actionGrid');
+  const skillIds=getActiveSkills();
+  const skillBtns=skillIds.map((id,i)=>{
+    const sk=getSkill(id);
+    return `<button class="abtn" id="btnSk${i}" onclick="doSkill('${id}')"><span class="ai">${sk.icon}</span><span class="al">${sk.name}</span></button>`;
+  }).join('');
   grid.innerHTML=`
     <button class="abtn" id="btnAtk" onclick="doAttack()"><span class="ai">⚔️</span><span class="al">攻撃</span></button>
-    ${skills.map((sk,i)=>`<button class="abtn" id="btnSk${i}" onclick="doSkill(${i})"><span class="ai">${sk.icon}</span><span class="al">${sk.name}</span></button>`).join('')}
+    ${skillBtns}
     <button class="abtn" id="btnItem" onclick="useBattleItem()"><span class="ai">🎒</span><span class="al">道具</span></button>
     <button class="abtn" id="btnRun"  onclick="doRun()"><span class="ai">💨</span><span class="al">逃走</span></button>`;
 }
@@ -938,10 +1102,19 @@ function shakeEnemy(){
 function updateEnemyUI(){
   const e=G.enemy;
   document.getElementById('enemySprite').textContent=e.emoji;
-  document.getElementById('enemyName').textContent=e.name+(e.isBoss?' 【BOSS】':'');
+  const elemStr=e.element&&e.element!=='無'?` ${ELEMENT_EMOJI[e.element]}${e.element}`:'';
+  document.getElementById('enemyName').textContent=e.name+(e.isBoss?' 【BOSS】':'')+elemStr;
   const pct=Math.max(0,e.hp/e.maxHp*100);
   document.getElementById('enemyHpFill').style.width=pct+'%';
   document.getElementById('enemyStatus').textContent=`HP: ${Math.max(0,e.hp)} / ${e.maxHp}`;
+  const elem=e.element||'無';
+  document.getElementById('enemyElem').textContent=`${ELEMENT_EMOJI[elem]} ${elem}属性`;
+  const abilities=[];
+  if(e.poison)abilities.push(`<span style="font-size:10px;padding:1px 5px;border:1px solid #8e44ad;color:#8e44ad;border-radius:2px">毒</span>`);
+  if(e.drain) abilities.push(`<span style="font-size:10px;padding:1px 5px;border:1px solid var(--hp-red);color:var(--hp-red);border-radius:2px">吸血</span>`);
+  if(e.burn)  abilities.push(`<span style="font-size:10px;padding:1px 5px;border:1px solid #e67e22;color:#e67e22;border-radius:2px">炎</span>`);
+  if(e.poisoned)abilities.push(`<span style="font-size:10px;padding:1px 5px;border:1px solid #8e44ad;background:rgba(142,68,173,.2);color:#8e44ad;border-radius:2px">☠毒状態</span>`);
+  document.getElementById('enemyAbilities').innerHTML=abilities.join('');
 }
 
 function updatePlayerHud(){
@@ -960,54 +1133,99 @@ function doAttack(){
   const boost=G.counterBoost||false;
   G.counterBoost=false;
   const crit=Math.random()<(P.cls.id==='rogue'?0.25:0.1);
+  const attackElem=P.cls.element||'無';
+  const targetElem=G.enemy.element||'無';
+  const weak=isWeakness(attackElem,targetElem);
   let dmg=calcDmg(P.atk*(boost?2:1),G.enemy.def);
-  if(crit){dmg=Math.round(dmg*1.8);blog(`💥 クリティカル！ ${dmg} ダメージ！`+(boost?' (防御後強化)':''),'player');}
-  else blog(`${P.name} の攻撃！ ${dmg} ダメージ！`+(boost?' ⚡防御後強化×2':''),'player');
+  if(weak)dmg=Math.round(dmg*ELEM_MULT);
+  if(crit)dmg=Math.round(dmg*1.8);
+  const weakStr=weak?` ⚡弱点！`:'';
+  const critStr=crit?` 💥クリティカル！`:'';
+  blog(`${P.name} の攻撃！ ${dmg} ダメージ！`+(boost?' ⚡防御後強化×2':'')+weakStr+critStr,'player');
   G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();
   setTimeout(checkResult,700);
 }
 
-function doSkill(i){
+function doSkill(skillId){
   if(!G.battleActive)return;
-  const sk=P.cls.skills[i];
-  if(sk.cost>0&&P.mp<sk.cost){blog('MP が足りない！','bad');return;}
+  const sk=getSkill(skillId);
+  // コストチェック（SKILL_MASTERのcostまたはP.cls内のoverride）
+  const cost=getSkillCost(skillId);
+  if(cost>0&&P.mp<cost){blog('MP が足りない！','bad');return;}
   setActions(false);
   G.counterBoost=false;
-  if(sk.cost>0){P.mp=Math.max(0,P.mp-sk.cost);updatePlayerHud();}
+  if(cost>0){P.mp=Math.max(0,P.mp-cost);updatePlayerHud();}
 
-  const id=P.cls.id;
-  const name=sk.name;
-  if(name==='渾身の一撃'){
-    const flatDmg=Math.max(3, Math.round((P.atk - G.enemy.def*0.2) * (0.9+Math.random()*0.2)));
-    blog(`${name}！ ${flatDmg} の大ダメージ！（次ターン隙が生じる）`,'player');
+  const targetElem=G.enemy.element||'無';
+  const nullElem=G.nullElemTurn>0; // 属性無効状態
+  function applyElem(dmg,skillElem){
+    if(nullElem)return dmg;
+    if(isWeakness(skillElem||'無',targetElem)){
+      blog(`⚡ 弱点属性！`,'system');
+      return Math.round(dmg*ELEM_MULT);
+    }
+    return dmg;
+  }
+
+  if(skillId==='shinken'){
+    const mult=P.cls.skillParams?.shinken_mult||2.0;
+    let flatDmg=Math.max(3, Math.round((P.atk*mult - G.enemy.def*0.2) * (0.9+Math.random()*0.2)));
+    flatDmg=applyElem(flatDmg,'無');
+    blog(`渾身の一撃！ ${flatDmg} の大ダメージ！（次ターン隙が生じる）`,'player');
     G.exposed=true;
     G.enemy.hp-=flatDmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
-  } else if(name==='防御姿勢'){
+  } else if(skillId==='defend'){
     G.defending=true;blog(`${P.name} は防御姿勢をとった。`,'player');setTimeout(enemyTurn,700);
-  } else if(name==='ファイアボール'){
-    const dmg=calcDmg(P.int*3,G.enemy.def);
-    blog(`🔥 ファイアボール！ ${dmg} の魔法ダメージ！`,'player');
+  } else if(skillId==='fireball'){
+    let dmg=calcDmg(P.int*3,G.enemy.def);
+    dmg=applyElem(dmg,'火');
+    blog(`🔥 火魔法！ ${dmg} の魔法ダメージ！`,'player');
     G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
-  } else if(name==='アイスランス'){
-    const dmg=calcDmg(P.int*2.5,G.enemy.def);
-    blog(`❄️ アイスランス！ ${dmg} の魔法ダメージ！`,'player');
+  } else if(skillId==='iceshot'){
+    let dmg=calcDmg(P.int*2.5,G.enemy.def);
+    dmg=applyElem(dmg,'氷');
+    blog(`❄️ 氷魔法！ ${dmg} の魔法ダメージ！`,'player');
     G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
-  } else if(name==='急所狙い'){
-    const dmg=calcDmg(P.atk*1.5,0);
-    blog(`🎯 急所！ ${dmg} ダメージ！（防御無視）`,'player');
-    G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
-  } else if(name==='毒手'){
-    const dmg=calcDmg(P.atk,G.enemy.def);
+  } else if(skillId==='combo'){
+    const dmg1=calcDmg(P.atk,G.enemy.def);
+    const dmg2=calcDmg(P.atk,G.enemy.def);
+    const total=dmg1+dmg2;
+    blog(`⚡ 連続攻撃！ ${dmg1}+${dmg2}=${total} ダメージ！`,'player');
+    G.enemy.hp-=total;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
+  } else if(skillId==='poison_hand'){
+    let dmg=calcDmg(P.atk,G.enemy.def);
+    dmg=applyElem(dmg,'闇');
     blog(`☠️ 毒手！ ${dmg} ダメージ＋毒！`,'player');
     G.enemy.hp-=dmg;G.enemy.poisoned=true;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
-  } else if(name==='ヒール'){
+  } else if(skillId==='heal'){
     const heal=Math.round(P.int*2+10);P.hp=Math.min(P.maxHp,P.hp+heal);
-    blog(`💚 ヒール！ HP ${heal} 回復！`,'good');updatePlayerHud();setTimeout(enemyTurn,700);
-  } else if(name==='ホーリーライト'){
-    const dmg=calcDmg(P.int*3.5,G.enemy.def);
-    blog(`⭐ ホーリーライト！ ${dmg} の神聖ダメージ！`,'player');
+    blog(`💚 回復魔法！ HP ${heal} 回復！`,'good');updatePlayerHud();setTimeout(enemyTurn,700);
+  } else if(skillId==='holy'){
+    let dmg=calcDmg(P.int*3.5,G.enemy.def);
+    dmg=applyElem(dmg,'光');
+    blog(`✨ 光魔法！ ${dmg} の光属性ダメージ！`,'player');
     G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
+  } else if(skillId==='null_elem'){
+    G.nullElemTurn=2;
+    blog(`🔰 属性無効！ 次のターン属性ダメージを無効化！`,'good');setTimeout(enemyTurn,700);
+  } else if(skillId==='dark_magic'){
+    let dmg=calcDmg(P.int*3,G.enemy.def);
+    dmg=applyElem(dmg,'闇');
+    blog(`🌑 闇魔法！ ${dmg} の闇属性ダメージ！`,'player');
+    G.enemy.hp-=dmg;shakeEnemy();updateEnemyUI();setTimeout(checkResult,700);
+  } else if(skillId==='mp_heal'){
+    const heal=Math.round(P.int*2+10);P.mp=Math.min(P.maxMp,P.mp+heal);
+    blog(`💙 魔法回復！ MP ${heal} 回復！`,'good');updatePlayerHud();setTimeout(enemyTurn,700);
   }
+}
+
+function getSkillCost(skillId){
+  // classSkills/extraSkillsにcostオーバーライドがあれば優先
+  const cls=P.cls;
+  const all=[...(cls.classSkills||[]),...(cls.extraSkills||[])];
+  const override=all.find(s=>s.id===skillId);
+  if(override&&override.cost!=null)return override.cost;
+  return getSkill(skillId).cost||0;
 }
 
 function useBattleItem(){
@@ -1085,6 +1303,7 @@ function showEscapeResult(){
 function enemyTurn(){
   if(!G.battleActive)return;
   const e=G.enemy;
+  if(G.nullElemTurn>0)G.nullElemTurn--;
   const wasDefending=G.defending;
   const defMult=G.exposed?0.5:1;
   const runFailed=G.runFailed||false;
@@ -1105,31 +1324,42 @@ function enemyTurn(){
   }
 
   let dmg=calcEnemyDmg(e.atk,P.def*defMult);
-  // 防御姿勢：ダメージを半分にカット（最低1）
-  if(wasDefending)dmg=Math.max(1,Math.round(dmg*0.3));
+  // 属性弱点チェック（敵の属性 vs プレイヤーの属性）
+  const eElem=e.element||'無';
+  const pElem=P.cls.element||'無';
+  const eWeak=isWeakness(eElem,pElem);
+  if(eWeak)dmg=Math.round(dmg*ELEM_MULT);
+  const eWeakStr=eWeak?` ⚡弱点！`:'';
+  // 防御姿勢：ダメージをdefend_mult倍にカット＋ランダム幅
+  if(wasDefending){
+    const base=P.cls.skillParams?.defend_mult||0.3;
+    const rng=P.cls.skillParams?.defend_rand||0.0;
+    const mult=base+(rng>0?Math.random()*rng:0);
+    dmg=Math.max(1,Math.round(dmg*mult));
+  }
   if(runFailed)dmg=Math.round(dmg*2);
 
-  const defStr=wasDefending?' 🛡️半減':'';
+  const defStr=wasDefending?' 🛡️軽減':'';
   if(e.drain){
     dmg=Math.max(1,Math.round(dmg*0.8));
     const drain=Math.round(dmg*0.3);
     P.hp-=dmg;e.hp=Math.min(e.maxHp,e.hp+drain);
     G.lastHit={enemy:e.name,attack:'吸血攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の吸血！ ${dmg} ダメージ（${drain}回復）`+defStr+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の吸血！ ${dmg} ダメージ（${drain}回復）`+eWeakStr+defStr+(runFailed?' ×2倍！':''),'enemy');
     updateEnemyUI();
   } else if(e.poison&&Math.random()<0.35&&!P.poisoned){
     P.hp-=dmg;P.poisoned=true;P.poisonTurns=4;
     G.lastHit={enemy:e.name,attack:'毒攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の毒攻撃！ ${dmg} ダメージ！毒状態に…`+defStr+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の毒攻撃！ ${dmg} ダメージ！毒状態に…`+eWeakStr+defStr+(runFailed?' ×2倍！':''),'enemy');
   } else if(e.burn&&Math.random()<0.35){
     const extra=Math.round(dmg*0.5);
     P.hp-=dmg+extra;
     G.lastHit={enemy:e.name,attack:'炎攻撃',dmg:dmg+extra,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の炎攻撃！ ${dmg+extra} の大ダメージ！`+defStr+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の炎攻撃！ ${dmg+extra} の大ダメージ！`+eWeakStr+defStr+(runFailed?' ×2倍！':''),'enemy');
   } else {
     P.hp-=dmg;
     G.lastHit={enemy:e.name,attack:'通常攻撃',dmg,extra:runFailed?'（逃走失敗×2）':''};
-    blog(`${e.name} の攻撃！ ${dmg} ダメージ！`+defStr+(runFailed?' ×2倍！':''),'enemy');
+    blog(`${e.name} の攻撃！ ${dmg} ダメージ！`+eWeakStr+defStr+(runFailed?' ×2倍！':''),'enemy');
   }
 
   if(G.enemy.poisoned){
@@ -1184,18 +1414,33 @@ function giveRewards(e){
     P.atk+=inc.atk;P.def+=inc.def;P.spd+=inc.spd;P.int+=inc.int;
     lvups.push({lv:P.level,inc});
   }
+  // ドロップ判定（敵のdropsプロパティを使用）
+  const drops=[];
+  const dropList=e.drops||[];
+  for(const d of dropList){
+    if(d.rate>0&&Math.random()*100<d.rate){
+      const item=SHOP_ITEMS.find(i=>i.id===d.itemId);
+      if(item&&P.inventory.length<8){
+        P.inventory.push({...item});
+        drops.push(item);
+      }
+    }
+  }
   const bossCleared=e.isBoss;
   if(bossCleared)G.record.dungeons++;
-  showResult(e,lvups,bossCleared);
+  showResult(e,lvups,bossCleared,drops);
 }
 
-function showResult(e,lvups,bossCleared){
+function showResult(e,lvups,bossCleared,drops=[]){
   document.getElementById('resultTitle').textContent=bossCleared?'勝利！':'討伐！';
   document.getElementById('resultTitle').className='result-title win';
   document.getElementById('resultSub').textContent=
     bossCleared?`${G.dungeon.name} — ${G.dungeon.floors}F ボス討伐！`:`${e.name} を倒した！`;
   document.getElementById('lvupArea').innerHTML=
     lvups.map(l=>`<div class="lvup-banner">★ レベルアップ！ Lv ${l.lv} HP+${l.inc.hp} ATK+${l.inc.atk} DEF+${l.inc.def}</div>`).join('');
+
+  // ドロップ表示
+  const dropHtml=drops.length?`<div class="ritem"><span class="rl">🎁 ドロップ</span><span class="rv" style="color:#27ae60">${drops.map(d=>d.emoji+d.name).join('・')}</span></div>`:'';
 
   // 状態異常表示
   const statusTags=[];
@@ -1205,6 +1450,7 @@ function showResult(e,lvups,bossCleared){
     <div class="ritem"><span class="rl">敵</span><span class="rv">${e.name}</span></div>
     <div class="ritem"><span class="rl">経験値</span><span class="rv e">+${e.exp} EXP</span></div>
     <div class="ritem"><span class="rl">ゴールド</span><span class="rv g">+${e.gold} G</span></div>
+    ${dropHtml}
     <div class="ritem"><span class="rl">HP</span><span class="rv h">${P.hp} / ${P.maxHp}</span></div>
     <div class="ritem"><span class="rl">MP</span><span class="rv" style="color:var(--mp-blue)">${P.mp} / ${P.maxMp}</span></div>
     <div class="ritem"><span class="rl">所持金</span><span class="rv g">${P.gold} G</span></div>
@@ -1340,24 +1586,24 @@ const FE_SAVE_KEY='dungeon_rpg_floors';
 
 // 全ダンジョンで使える敵マスター（選択肢用）
 const ALL_ENEMIES=[
-  {name:'スライム緑', emoji:'🟢',hp:20,atk:1,def:0,exp:8, gold:5},
-  {name:'スライム青', emoji:'🔵',hp:24,atk:1,def:1,exp:11,gold:7},
-  {name:'スライム赤', emoji:'🔴',hp:28,atk:2,def:1,exp:14,gold:9},
-  {name:'コウモリ',   emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6},
-  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:3,def:1,exp:12,gold:8, poison:true},
-  {name:'ゴブリン',   emoji:'👺',hp:28,atk:5,def:2,exp:15,gold:12},
-  {name:'コボルト',   emoji:'🐾',hp:35,atk:6,def:3,exp:18,gold:14},
-  {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:8,def:6,exp:26,gold:22},
-  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
-  {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
-  {name:'スケルトン', emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20},
-  {name:'ゾンビ',    emoji:'🧟',hp:60,atk:12,def:8,exp:30,gold:16},
-  {name:'魔法騎士',  emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32},
-  {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,drain:true},
-  {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45},
-  {name:'地獄の炎',  emoji:'🔥',hp:60,atk:28,def:5,exp:58,gold:32,burn:true},
-  {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52},
-  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,drain:true},
+  {name:'スライム緑', emoji:'🟢',hp:20,atk:1,def:0,exp:8, gold:5,  element:'無'},
+  {name:'スライム青', emoji:'🔵',hp:24,atk:1,def:1,exp:11,gold:7,  element:'氷'},
+  {name:'スライム赤', emoji:'🔴',hp:28,atk:2,def:1,exp:14,gold:9,  element:'火'},
+  {name:'コウモリ',   emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6,  element:'火'},
+  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:3,def:1,exp:12,gold:8,  element:'火', poison:true, drops:[{itemId:'antidote',rate:20}]},
+  {name:'ゴブリン',   emoji:'👺',hp:28,atk:5,def:2,exp:15,gold:12, element:'火'},
+  {name:'コボルト',   emoji:'🐾',hp:35,atk:6,def:3,exp:18,gold:14, element:'闇'},
+  {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:8,def:6,exp:26,gold:22,element:'無'},
+  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,element:'闇',poison:true, drops:[{itemId:'antidote',rate:20}]},
+  {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22, element:'火', drops:[{itemId:'potion',rate:20}]},
+  {name:'スケルトン', emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20, element:'闇'},
+  {name:'ゾンビ',    emoji:'🧟',hp:60,atk:12,def:8,exp:30,gold:16, element:'闇'},
+  {name:'魔法騎士',  emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32, element:'氷'},
+  {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,element:'火', drain:true, drops:[{itemId:'potion',rate:20}]},
+  {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45,element:'闇'},
+  {name:'地獄の炎',  emoji:'🔥',hp:60,atk:28,def:5,exp:58,gold:32, element:'火', burn:true, drops:[{itemId:'potion',rate:50}]},
+  {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52,element:'闇'},
+  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,element:'闇',drain:true, drops:[{itemId:'elixir',rate:20}]},
 ];
 
 let feCurrentDungeon=0; // 編集中のダンジョンindex
@@ -1574,10 +1820,11 @@ function saveFloorSettings(){
 }
 
 function resetFloorSettings(){
-  if(!confirm('初期設定に戻しますか？'))return;
-  localStorage.removeItem(FE_SAVE_KEY);
-  feData=getDefaultFeData();
-  location.reload();
+  showModal('初期設定に戻しますか？',()=>{
+    localStorage.removeItem(FE_SAVE_KEY);
+    feData=getDefaultFeData();
+    location.reload();
+  });
 }
 
 function exportFloorSettings(){
@@ -1644,6 +1891,8 @@ function getDefaultEeData(){
       name:e.name, emoji:e.emoji,
       hp:e.hp, atk:e.atk, def:e.def, exp:e.exp, gold:e.gold,
       poison:!!e.poison, drain:!!e.drain, burn:!!e.burn,
+      element:e.element||'無',
+      drops:e.drops||[],
     })),
     bosses: DUNGEONS.map(d=>({
       dungeonId:d.id, dungeonName:d.name,
@@ -1651,11 +1900,17 @@ function getDefaultEeData(){
       hp:d.boss.hp, atk:d.boss.atk, def:d.boss.def,
       exp:d.boss.exp, gold:d.boss.gold,
       poison:!!d.boss.poison, drain:!!d.boss.drain, burn:!!d.boss.burn,
+      element:d.boss.element||'無',
+      drops:d.boss.drops||[],
     })),
     classes: CLASSES.map(c=>({
       id:c.id, name:c.name, emoji:c.emoji,
       hp:c.stats.hp, mp:c.stats.mp, atk:c.stats.atk,
       def:c.stats.def, spd:c.stats.spd, int:c.stats.int,
+      skillParams:c.skillParams?{...c.skillParams}:null,
+      element:c.element||'無',
+      classSkills:(c.classSkills||[]).map(s=>({...s})),
+      extraSkills:(c.extraSkills||[]).map(s=>({...s})),
     })),
   };
 }
@@ -1684,6 +1939,8 @@ function getEnemyMaster(name){
       if(s.poison)ALL_ENEMIES[idx].poison=true; else delete ALL_ENEMIES[idx].poison;
       if(s.drain) ALL_ENEMIES[idx].drain=true;  else delete ALL_ENEMIES[idx].drain;
       if(s.burn)  ALL_ENEMIES[idx].burn=true;   else delete ALL_ENEMIES[idx].burn;
+      ALL_ENEMIES[idx].element=s.element||'無';
+      ALL_ENEMIES[idx].drops=s.drops||[];
     });
   }
   // ボス
@@ -1695,6 +1952,8 @@ function getEnemyMaster(name){
       if(s.poison)d.boss.poison=true; else delete d.boss.poison;
       if(s.drain) d.boss.drain=true;  else delete d.boss.drain;
       if(s.burn)  d.boss.burn=true;   else delete d.boss.burn;
+      d.boss.element=s.element||'無';
+      d.boss.drops=s.drops||[];
     });
   }
   // 職業
@@ -1703,6 +1962,10 @@ function getEnemyMaster(name){
       const c=CLASSES.find(c=>c.id===s.id);
       if(!c)return;
       c.stats={hp:s.hp,mp:s.mp,atk:s.atk,def:s.def,spd:s.spd,int:s.int};
+      if(s.skillParams)c.skillParams={...s.skillParams};
+      c.element=s.element||'無';
+      if(s.classSkills)c.classSkills=s.classSkills.map(x=>({...x}));
+      if(s.extraSkills) c.extraSkills=s.extraSkills.map(x=>({...x}));
     });
   }
 })();
@@ -1758,11 +2021,38 @@ function buildClassCard(c,i){
   card.className='ee-card';
   card.id=`ee-card-c-${i}`;
   const STAT_LABELS={hp:'HP',mp:'MP',atk:'ATK',def:'DEF',spd:'SPD',int:'INT'};
+  const sp=c.skillParams;
+  const elemOpts=ELEMENTS.map(el=>`<option value="${el}"${(c.element||'無')===el?' selected':''}>${ELEMENT_EMOJI[el]} ${el}</option>`).join('');
+  const spHtml=sp?`
+    <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
+      <div class="ee-abilities-label">スキルパラメーター</div>
+      <div class="ee-stat-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="ee-stat-row">
+          <span class="ee-stat-label">渾身倍率</span>
+          <input class="ee-stat-input" type="number" min="1" max="10" step="0.1" value="${sp.shinken_mult}"
+            onchange="eeChangeSkillParam(${i},'shinken_mult',this.value)">
+        </div>
+        <div class="ee-stat-row">
+          <span class="ee-stat-label">防御軽減率</span>
+          <input class="ee-stat-input" type="number" min="0" max="1" step="0.05" value="${sp.defend_mult}"
+            onchange="eeChangeSkillParam(${i},'defend_mult',this.value)">
+        </div>
+        <div class="ee-stat-row">
+          <span class="ee-stat-label">防御ランダム幅</span>
+          <input class="ee-stat-input" type="number" min="0" max="0.5" step="0.05" value="${sp.defend_rand}"
+            onchange="eeChangeSkillParam(${i},'defend_rand',this.value)">
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px">
+        防御: ダメージ × (軽減率 〜 軽減率+ランダム幅)　例: 0.3+0.1 → 30%〜40%に軽減<br>
+        渾身: ATK × 倍率 - DEF×0.2
+      </div>
+    </div>`:'';
   card.innerHTML=`
     <div class="ee-card-head" onclick="toggleEeCard('c-${i}')">
       <span class="ee-card-emoji">${c.emoji}</span>
       <span class="ee-card-name" style="color:#5dade2">${c.name}</span>
-      <span style="color:var(--text-dim);font-size:12px;margin-left:6px">▼</span>
+      <span class="ee-arrow" style="color:var(--text-dim);font-size:12px;margin-left:6px">▼</span>
     </div>
     <div class="ee-card-body" id="ee-body-c-${i}">
       <div class="ee-stat-grid">
@@ -1773,13 +2063,101 @@ function buildClassCard(c,i){
               onchange="eeChangeClassStat(${i},'${k}',this.value)">
           </div>`).join('')}
       </div>
+      ${spHtml}
+      <div style="margin-top:8px">
+        <div class="ee-abilities-label">属性</div>
+        <select class="fe-enemy-select" style="width:120px" onchange="eeChangeClassElement(${i},this.value)">${elemOpts}</select>
+      </div>
+      <div style="margin-top:10px">
+        <div class="ee-abilities-label">職業固有スキル（LV条件設定）</div>
+        ${(c.classSkills||[]).map((s,si)=>{
+          const skm=getSkill(s.id);
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="font-size:13px;flex:1">${skm.icon} ${skm.name}</span>
+            <div class="fe-weight-wrap"><span class="fe-weight-label">LV</span>
+              <input class="fe-weight-input" type="number" min="1" max="99" value="${s.minLv||1}"
+                onchange="eeChangeClassSkillLv(${i},'class',${si},this.value)">
+            </div>
+            <div class="fe-weight-wrap"><span class="fe-weight-label">MP</span>
+              <input class="fe-weight-input" type="number" min="0" max="99" value="${s.cost!=null?s.cost:getSkill(s.id).cost||0}"
+                onchange="eeChangeClassSkillCost(${i},'class',${si},this.value)">
+            </div>
+          </div>`;
+        }).join('')}
+        <div class="ee-abilities-label" style="margin-top:8px">追加スキル（最大3枠）</div>
+        ${(c.extraSkills||[]).map((s,si)=>{
+          const skm=getSkill(s.id);
+          const addableIds=SKILL_MASTER.filter(x=>!x.common).map(x=>x.id);
+          const opts=addableIds.map(id=>{const sm=getSkill(id);return `<option value="${id}"${id===s.id?' selected':''}>${sm.icon} ${sm.name}</option>`;}).join('');
+          return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <select class="fe-enemy-select" style="flex:1" onchange="eeChangeExtraSkill(${i},${si},'id',this.value)">${opts}</select>
+            <div class="fe-weight-wrap"><span class="fe-weight-label">LV</span>
+              <input class="fe-weight-input" type="number" min="1" max="99" value="${s.minLv||1}"
+                onchange="eeChangeClassSkillLv(${i},'extra',${si},this.value)">
+            </div>
+            <div class="fe-weight-wrap"><span class="fe-weight-label">MP</span>
+              <input class="fe-weight-input" type="number" min="0" max="99" value="${s.cost!=null?s.cost:getSkill(s.id).cost||0}"
+                onchange="eeChangeClassSkillCost(${i},'extra',${si},this.value)">
+            </div>
+            <button class="fe-remove-btn" onclick="eeRemoveExtraSkill(${i},${si})">✕</button>
+          </div>`;
+        }).join('')}
+        ${(c.extraSkills||[]).length<3?`<button class="fe-add-btn" onclick="eeAddExtraSkill(${i})">＋ スキル追加</button>`:''}
+      </div>
       <button class="ee-reset-one" onclick="eeResetOne('c-${i}',${i},'class')">↩ リセット</button>
     </div>`;
   return card;
 }
 
+function eeChangeSkillParam(i,key,val){
+  if(!eeData.classes[i].skillParams)eeData.classes[i].skillParams={};
+  eeData.classes[i].skillParams[key]=Math.round(parseFloat(val)*100)/100;
+}
+
 function eeChangeClassStat(i,key,val){
   eeData.classes[i][key]=Math.max(1,parseInt(val)||1);
+}
+
+function eeChangeClassElement(i,val){
+  eeData.classes[i].element=val;
+}
+
+function eeChangeClassSkillLv(ci,kind,si,val){
+  const arr=kind==='class'?eeData.classes[ci].classSkills:eeData.classes[ci].extraSkills;
+  arr[si].minLv=Math.max(1,Math.min(99,parseInt(val)||1));
+}
+
+function eeChangeClassSkillCost(ci,kind,si,val){
+  const arr=kind==='class'?eeData.classes[ci].classSkills:eeData.classes[ci].extraSkills;
+  arr[si].cost=Math.max(0,Math.min(99,parseInt(val)||0));
+}
+
+function eeChangeExtraSkill(ci,si,key,val){
+  eeData.classes[ci].extraSkills[si][key]=val;
+}
+
+function eeAddExtraSkill(ci){
+  if(!eeData.classes[ci].extraSkills)eeData.classes[ci].extraSkills=[];
+  if(eeData.classes[ci].extraSkills.length>=3)return;
+  // デフォルトで渾身の一撃（まだ持っていないスキルを選ぶ）
+  const existing=new Set([
+    ...(eeData.classes[ci].classSkills||[]).map(s=>s.id),
+    ...(eeData.classes[ci].extraSkills||[]).map(s=>s.id),
+  ]);
+  const addable=SKILL_MASTER.filter(s=>!s.common&&!existing.has(s.id));
+  const defaultId=addable.length?addable[0].id:'shinken';
+  eeData.classes[ci].extraSkills.push({id:defaultId,minLv:1,cost:getSkill(defaultId).cost||0});
+  renderEeCards();
+  // 開き直す
+  const b=document.getElementById(`ee-body-c-${ci}`);
+  if(b)b.classList.add('open');
+}
+
+function eeRemoveExtraSkill(ci,si){
+  eeData.classes[ci].extraSkills.splice(si,1);
+  renderEeCards();
+  const b=document.getElementById(`ee-body-c-${ci}`);
+  if(b)b.classList.add('open');
 }
 
 function buildEeCard(e,uid,i,kind){
@@ -1789,7 +2167,23 @@ function buildEeCard(e,uid,i,kind){
     e.burn?  `<span class="ee-tag burn">炎</span>`:'',
     kind==='boss'?`<span class="ee-tag" style="border-color:var(--gold-dim);color:var(--gold)">BOSS</span>`:'',
   ].join('');
+  const elemTag=`<span class="ee-tag" style="border-color:#555;color:#aaa">${ELEMENT_EMOJI[e.element||'無']}${e.element||'無'}</span>`;
   const sub=kind==='boss'?`<span style="font-size:10px;color:var(--text-dim);margin-left:6px">${e.dungeonName}</span>`:'';
+  const elemOpts=ELEMENTS.map(el=>`<option value="${el}"${(e.element||'無')===el?' selected':''}>${ELEMENT_EMOJI[el]} ${el}</option>`).join('');
+  // ドロップ行HTML
+  const drops=e.drops||[];
+  const dropRowsHtml=drops.map((d,ri)=>{
+    const itemOpts=SHOP_ITEMS.map(it=>`<option value="${it.id}"${it.id===d.itemId?' selected':''}>${it.emoji} ${it.name}</option>`).join('');
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      <select class="fe-enemy-select" style="flex:1" onchange="eeDropChangeItem('${uid}',${i},'${kind}',${ri},this.value)">${itemOpts}</select>
+      <div class="fe-weight-wrap">
+        <span class="fe-weight-label">確率</span>
+        <input class="fe-weight-input" type="number" min="0" max="100" value="${d.rate}" onchange="eeDropChangeRate('${uid}',${i},'${kind}',${ri},this.value)">
+        <span style="font-size:11px;color:var(--text-dim)">%</span>
+      </div>
+      <button class="fe-remove-btn" onclick="eeDropRemove('${uid}',${i},'${kind}',${ri})">✕</button>
+    </div>`;
+  }).join('');
   const card=document.createElement('div');
   card.className='ee-card';
   card.id=`ee-card-${uid}`;
@@ -1797,8 +2191,8 @@ function buildEeCard(e,uid,i,kind){
     <div class="ee-card-head" onclick="toggleEeCard('${uid}')">
       <span class="ee-card-emoji">${e.emoji}</span>
       <span class="ee-card-name">${e.name}${sub}</span>
-      <div class="ee-card-tags">${tags}</div>
-      <span style="color:var(--text-dim);font-size:12px;margin-left:6px">▼</span>
+      <div class="ee-card-tags">${elemTag}${tags}</div>
+      <span class="ee-arrow" style="color:var(--text-dim);font-size:12px;margin-left:6px">▼</span>
     </div>
     <div class="ee-card-body" id="ee-body-${uid}">
       <div class="ee-stat-grid">
@@ -1813,6 +2207,10 @@ function buildEeCard(e,uid,i,kind){
           <button class="ee-reset-one" onclick="eeResetOne('${uid}',${i},'${kind}')">↩ リセット</button>
         </div>
       </div>
+      <div style="margin-bottom:10px">
+        <div class="ee-abilities-label">属性</div>
+        <select class="fe-enemy-select" style="width:120px" onchange="eeChangeElement('${uid}',${i},'${kind}',this.value)">${elemOpts}</select>
+      </div>
       <div class="ee-abilities-label">特殊能力</div>
       ${ABILITIES.map(ab=>`
         <div class="ee-ability-row">
@@ -1823,13 +2221,18 @@ function buildEeCard(e,uid,i,kind){
           <button class="ee-toggle${e[ab.id]?' on':''}" id="ee-tog-${uid}-${ab.id}"
             onclick="eeToggleAbility('${uid}',${i},'${kind}','${ab.id}')"></button>
         </div>`).join('')}
+      <div style="margin-top:10px">
+        <div class="ee-abilities-label">🎁 ドロップアイテム</div>
+        <div id="ee-drop-rows-${uid}">${dropRowsHtml}</div>
+        <button class="fe-add-btn" onclick="eeDropAdd('${uid}',${i},'${kind}')">＋ ドロップ追加</button>
+      </div>
     </div>`;
   return card;
 }
 
 function toggleEeCard(uid){
   const b=document.getElementById(`ee-body-${uid}`);
-  const a=document.querySelector(`#ee-card-${uid} .ee-card-head span:last-child`);
+  const a=document.querySelector(`#ee-card-${uid} .ee-arrow`);
   b.classList.toggle('open');
   if(a)a.textContent=b.classList.contains('open')?'▲':'▼';
 }
@@ -1865,8 +2268,61 @@ function eeResetOne(uid,i,kind){
   if(b)b.classList.add('open');
 }
 
+function eeChangeElement(uid,i,kind,val){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  arr[i].element=val;
+  // タグ更新
+  const tags=document.querySelector(`#ee-card-${uid} .ee-card-tags`);
+  if(tags){
+    const e=arr[i];
+    const isBoss=kind==='boss';
+    tags.innerHTML=`<span class="ee-tag" style="border-color:#555;color:#aaa">${ELEMENT_EMOJI[val]||''}${val}</span>`
+      +(e.poison?'<span class="ee-tag poison">毒</span>':'')
+      +(e.drain? '<span class="ee-tag drain">吸血</span>':'')
+      +(e.burn?  '<span class="ee-tag burn">炎</span>':'')
+      +(isBoss?  '<span class="ee-tag" style="border-color:var(--gold-dim);color:var(--gold)">BOSS</span>':'');
+  }
+}
+
+function eeDropAdd(uid,i,kind){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  if(!arr[i].drops)arr[i].drops=[];
+  arr[i].drops.push({itemId:'potion',rate:0});
+  renderEeDropRows(uid,i,kind);
+}
+function eeDropRemove(uid,i,kind,ri){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  arr[i].drops.splice(ri,1);
+  renderEeDropRows(uid,i,kind);
+}
+function eeDropChangeItem(uid,i,kind,ri,val){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  arr[i].drops[ri].itemId=val;
+}
+function eeDropChangeRate(uid,i,kind,ri,val){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  arr[i].drops[ri].rate=Math.max(0,Math.min(100,parseInt(val)||0));
+}
+function renderEeDropRows(uid,i,kind){
+  const arr=kind==='boss'?eeData.bosses:eeData.enemies;
+  const drops=arr[i].drops||[];
+  const cont=document.getElementById(`ee-drop-rows-${uid}`);
+  if(!cont)return;
+  cont.innerHTML=drops.map((d,ri)=>{
+    const itemOpts=SHOP_ITEMS.map(it=>`<option value="${it.id}"${it.id===d.itemId?' selected':''}>${it.emoji} ${it.name}</option>`).join('');
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      <select class="fe-enemy-select" style="flex:1" onchange="eeDropChangeItem('${uid}',${i},'${kind}',${ri},this.value)">${itemOpts}</select>
+      <div class="fe-weight-wrap">
+        <span class="fe-weight-label">確率</span>
+        <input class="fe-weight-input" type="number" min="0" max="100" value="${d.rate}" onchange="eeDropChangeRate('${uid}',${i},'${kind}',${ri},this.value)">
+        <span style="font-size:11px;color:var(--text-dim)">%</span>
+      </div>
+      <button class="fe-remove-btn" onclick="eeDropRemove('${uid}',${i},'${kind}',${ri})">✕</button>
+    </div>`;
+  }).join('');
+}
+
 function saveEnemySettings(){
-  // ALL_ENEMIESに通常敵反映
   eeData.enemies.forEach(s=>{
     const idx=ALL_ENEMIES.findIndex(e=>e.name===s.name);
     if(idx<0)return;
@@ -1874,6 +2330,8 @@ function saveEnemySettings(){
     if(s.poison)ALL_ENEMIES[idx].poison=true; else delete ALL_ENEMIES[idx].poison;
     if(s.drain) ALL_ENEMIES[idx].drain=true;  else delete ALL_ENEMIES[idx].drain;
     if(s.burn)  ALL_ENEMIES[idx].burn=true;   else delete ALL_ENEMIES[idx].burn;
+    ALL_ENEMIES[idx].element=s.element||'無';
+    ALL_ENEMIES[idx].drops=s.drops||[];
   });
   // DUNGEONSにボス反映
   eeData.bosses.forEach(s=>{
@@ -1883,12 +2341,18 @@ function saveEnemySettings(){
     if(s.poison)d.boss.poison=true; else delete d.boss.poison;
     if(s.drain) d.boss.drain=true;  else delete d.boss.drain;
     if(s.burn)  d.boss.burn=true;   else delete d.boss.burn;
+    d.boss.element=s.element||'無';
+    d.boss.drops=s.drops||[];
   });
   // CLASSESに職業反映
   eeData.classes.forEach(s=>{
     const c=CLASSES.find(c=>c.id===s.id);
     if(!c)return;
     c.stats={hp:s.hp,mp:s.mp,atk:s.atk,def:s.def,spd:s.spd,int:s.int};
+    if(s.skillParams)c.skillParams={...s.skillParams};
+    c.element=s.element||'無';
+    if(s.classSkills)c.classSkills=s.classSkills.map(x=>({...x}));
+    if(s.extraSkills) c.extraSkills=s.extraSkills.map(x=>({...x}));
   });
   localStorage.setItem(EE_SAVE_KEY,JSON.stringify(eeData));
   showScreen('create-screen');
@@ -1896,9 +2360,11 @@ function saveEnemySettings(){
 }
 
 function resetEnemySettings(){
-  if(!confirm('全敵・全ボス・職業を初期値に戻しますか？'))return;
-  localStorage.removeItem(EE_SAVE_KEY);
-  location.reload();
+  showModal('全敵・全ボス・職業・ドロップを初期値に戻しますか？',()=>{
+    localStorage.removeItem(EE_SAVE_KEY);
+    localStorage.removeItem(DROP_SAVE_KEY);
+    location.reload();
+  });
 }
 
 // ============================================================
@@ -2157,11 +2623,12 @@ function doLoad(slot){
 }
 
 function doDelete(slot){
-  if(!confirm(`スロット ${slot} のデータを削除しますか？`))return;
-  const saves=getSaves();
-  delete saves[slot];
-  setSaves(saves);
-  renderSlots();
+  showModal(`スロット ${slot} のデータを削除しますか？`,()=>{
+    const saves=getSaves();
+    delete saves[slot];
+    setSaves(saves);
+    renderSlots();
+  });
 }
 
 // ============================================================
@@ -2182,8 +2649,13 @@ function openStatus(){
     <tr><td>DEF（防御力）</td><td>${P.def}</td></tr>
     <tr><td>SPD（素早さ）</td><td>${P.spd}</td></tr>
     <tr><td>INT（魔力）</td><td>${P.int}</td></tr>`;
+  const allSkillIds=getActiveSkills();
   document.getElementById('statusSkills').innerHTML=
-    P.cls.skills.map(sk=>`<span class="skill-tag">${sk.icon} ${sk.name}${sk.cost>0?' (MP'+sk.cost+')':''}</span>`).join('');
+    allSkillIds.map(id=>{
+      const sk=getSkill(id);
+      const cost=getSkillCost(id);
+      return `<span class="skill-tag">${sk.icon} ${sk.name}${cost>0?' (MP'+cost+')':''}</span>`;
+    }).join('');
   document.getElementById('statusRecord').innerHTML=`
     <tr><td>総討伐数</td><td>${G.record.kills} 体</td></tr>
     <tr><td>ボス討伐</td><td>${G.record.dungeons} 体</td></tr>
