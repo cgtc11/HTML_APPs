@@ -614,6 +614,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
   <div class="ee-body" id="gsBody"></div>
   <div class="fe-save-bar">
     <button class="fe-save-btn" onclick="saveGameSettings()">💾 保存</button>
+    <button class="fe-save-btn" style="background:rgba(41,128,185,.15);border-color:#2980b9;color:#5dade2" onclick="exportGameSettings()">📤 書き出し</button>
     <button class="fe-reset-btn" onclick="resetGameSettings()">↩ 初期値</button>
   </div>
 </div>
@@ -2730,7 +2731,13 @@ function renderExportPanel(){
       </div>
     </div>
     <div class="export-card">
-      <div class="export-card-title">📦 まとめて書き出し</div>
+      <div class="export-card-title">🏪 ゲーム設定</div>
+      <div class="export-card-desc">宿屋料金・ショップアイテム・スキルMP消費の設定をJSONファイルに書き出します。</div>
+      <div class="export-btns">
+        <button class="exp-btn dl" onclick="exportGameSettings()">📤 書き出し (.json)</button>
+        <button class="exp-btn imp" onclick="triggerImport('gamesettings')">📥 読み込み</button>
+      </div>
+    </div>
       <div class="export-card-desc">セーブデータ＋階層設定を1ファイルにまとめて書き出します。</div>
       <div class="export-btns">
         <button class="exp-btn all" onclick="exportAll()">📤 全データ書き出し</button>
@@ -2768,7 +2775,13 @@ function exportAll(){
     saves:getSaves(),
     floors:loadFeData()||getDefaultFeData(),
     enemies:loadEeData()||getDefaultEeData(),
+    gamesettings:loadGameSettings()||getDefaultGameSettings(),
   },`dungeon_all_${dateTag()}.json`);
+}
+
+function exportGameSettings(){
+  const data=gsData||loadGameSettings()||getDefaultGameSettings();
+  downloadJson({type:'gamesettings',data},`dungeon_gamesettings_${dateTag()}.json`);
 }
 
 function exportEnemySettings(){
@@ -2834,10 +2847,17 @@ function handleImportFile(input){
         alert('敵設定を読み込みました。ページをリロードして反映します。');
         location.reload();
       }
+      if(importTarget==='gamesettings'||json.type==='gamesettings'){
+        const d=json.data||json.gamesettings||json;
+        localStorage.setItem(GAME_SETTINGS_KEY,JSON.stringify(d));
+        alert('ゲーム設定を読み込みました。ページをリロードして反映します。');
+        location.reload();
+      }
       if(json.type==='all'){
         if(json.saves)setSaves(json.saves);
         if(json.floors)localStorage.setItem(FE_SAVE_KEY,JSON.stringify(json.floors));
         if(json.enemies)localStorage.setItem(EE_SAVE_KEY,JSON.stringify(json.enemies));
+        if(json.gamesettings)localStorage.setItem(GAME_SETTINGS_KEY,JSON.stringify(json.gamesettings));
         alert('全データを読み込みました。ページをリロードして反映します。');
         location.reload();
       }
