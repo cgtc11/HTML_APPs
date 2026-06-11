@@ -749,6 +749,14 @@ function getItemVal(id,key,def){
       const si=s.shopItems.find(x=>x.id===id);
       if(si&&si[key]!=null)return si[key];
     }
+    // ゲーム設定がない場合はデフォルト値テーブルを参照
+    const defaults={
+      potion:{value:50}, potion_plus:{value:200},
+      manapotion:{value:50}, manapotion_plus:{value:200},
+      strengthstone:{value:3}, defstone:{value:3},
+      spdstone:{value:3}, intstone:{value:3},
+    };
+    if(defaults[id]&&defaults[id][key]!=null)return defaults[id][key];
   }catch{}
   return def;
 }
@@ -1293,7 +1301,7 @@ function openItemPanel(){
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:7px 10px">
       <div>
         <span style="font-size:14px">${item.emoji} ${item.name}</span>
-        <span style="font-size:11px;color:var(--text-dim);margin-left:6px">${item.desc}</span>
+        <span style="font-size:11px;color:var(--text-dim);margin-left:6px">${getItemDesc(item.id,getItemVal(item.id,'value',0))||item.desc}</span>
       </div>
       <button class="inv-use" onclick="selectBattleItem(${i})">使う</button>
     </div>`).join('');
@@ -1527,7 +1535,7 @@ function renderResultItems(){
   if(P.inventory.length===0) return '';
   const rows=P.inventory.map((item,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px">${item.emoji} ${item.name}</span>
+      <span style="font-size:13px">${item.emoji} ${item.name} <span style="font-size:11px;color:var(--text-dim)">${getItemDesc(item.id,getItemVal(item.id,'value',0))||item.desc}</span></span>
       <button class="inv-use" onclick="useItemResult(${i})">使う</button>
     </div>`).join('');
   return `<div style="margin-top:8px">
@@ -1598,7 +1606,7 @@ function openItems(){
     inv.innerHTML=P.inventory.map((item,i)=>{
       const sellPrice=Math.floor((item.price||0)/2);
       return `<div class="inv-row">
-        <div><div class="inv-name">${item.emoji} ${item.name}</div><div class="inv-desc">${item.desc}</div></div>
+        <div><div class="inv-name">${item.emoji} ${item.name}</div><div class="inv-desc">${getItemDesc(item.id,getItemVal(item.id,'value',0))||item.desc}</div></div>
         <div style="display:flex;gap:5px;align-items:center">
           <button class="inv-use" onclick="useItemTavern(${i})">使う</button>
           <button class="inv-use" style="color:#e67e22;border-color:#e67e22" onclick="sellItem(${i})">売(${sellPrice}G)</button>
@@ -1610,7 +1618,7 @@ function openItems(){
   document.getElementById('shopGrid').innerHTML=shopItems.map(item=>`
     <div class="sitem" onclick="buyItem('${item.id}')">
       <div class="sitem-top"><span class="sitem-name">${item.emoji} ${item.name}</span><span class="sitem-price">${item.price}G</span></div>
-      <div class="sitem-desc">${item.desc}</div>
+      <div class="sitem-desc">${getItemDesc(item.id,getItemVal(item.id,'value',0))||item.desc}</div>
     </div>`).join('');
   showScreen('items-screen');
 }
@@ -1661,15 +1669,35 @@ function buyItem(id){
 }
 
 // カスタム設定済みのショップアイテムリストを返す
+function getItemDesc(id, value){
+  switch(id){
+    case 'potion':         return `HP +${value} 回復`;
+    case 'potion_plus':    return `HP +${value} 回復`;
+    case 'elixir':         return 'HP/MP 全快';
+    case 'antidote':       return '毒を解除する';
+    case 'manapotion':     return `MP +${value} 回復`;
+    case 'manapotion_plus':return `MP +${value} 回復`;
+    case 'strengthstone':  return `ATK +${value} 永続強化`;
+    case 'defstone':       return `DEF +${value} 永続強化`;
+    case 'spdstone':       return `SPD +${value} 永続強化`;
+    case 'intstone':       return `INT +${value} 永続強化`;
+    default: return '';
+  }
+}
+
 function getShopItems(){
   const saved=loadGameSettings();
   if(saved&&saved.shopItems){
     return saved.shopItems.map(s=>{
       const base=SHOP_ITEMS.find(i=>i.id===s.id)||SHOP_ITEMS[0];
-      return {...base, price:s.price, desc:s.desc||base.desc, enabled:s.enabled!==false};
+      return {...base, price:s.price, desc:getItemDesc(s.id,s.value!=null?s.value:0), enabled:s.enabled!==false};
     }).filter(i=>i.enabled!==false);
   }
-  return SHOP_ITEMS;
+  // 設定なし時もデフォルト値で動的生成
+  return SHOP_ITEMS.map(item=>{
+    const v=getItemVal(item.id,'value',0);
+    return {...item, desc:getItemDesc(item.id,v)};
+  });
 }
 
 // ============================================================
@@ -1685,9 +1713,9 @@ function loadGameSettings(){
 function getDefaultGameSettings(){
   return {
     inn:[
-      {minLv:1, maxLv:5,  price:50},
-      {minLv:6, maxLv:15, price:150},
-      {minLv:16,maxLv:99, price:300},
+      {minLv:1,  maxLv:20, price:50},
+      {minLv:21, maxLv:50, price:100},
+      {minLv:51, maxLv:99, price:200},
     ],
     shopItems:[
       {id:'potion',         price:20,  value:50,  enabled:true},
@@ -1726,6 +1754,8 @@ function getInnPrice(){
       if(sk)sk.cost=s.cost;
     });
   }
+  // SHOP_ITEMSのuse関数はgetItemValを通じて動的参照するので追加処理不要
+  // ただしSHOP_ITEMS自体のprice/descはgetShopItems()経由で取得されるため問題なし
 })();
 const FE_SAVE_KEY='dungeon_rpg_floors';
 
@@ -2583,7 +2613,7 @@ function renderGsBody(){
         </div>
         <button class="ee-toggle${s.enabled!==false?' on':''}" onclick="gsToggleShopItem(${i})" title="販売ON/OFF"></button>
       </div>
-      <div style="padding:0 12px 8px;font-size:11px;color:var(--text-dim)">${base.desc}　売値: ${Math.floor(s.price/2)}G</div>`;
+      <div style="padding:0 12px 8px;font-size:11px;color:var(--text-dim)">${getItemDesc(s.id,s.value!=null?s.value:0)}　売値: ${Math.floor(s.price/2)}G</div>`;
     body.appendChild(row);
   });
 
