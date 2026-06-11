@@ -316,6 +316,24 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 .modal-btn.cancel{border-color:var(--border);color:var(--text-dim);background:none}
 .modal-btn.cancel:hover{border-color:var(--gold-dim);color:var(--text)}
 
+/* ===== GAME CONFIG EDITOR ===== */
+#gameconfig-screen{background:var(--dark2)}
+.gc-body{flex:1;overflow-y:auto;padding:12px 14px}
+.gc-section{background:var(--dark3);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden}
+.gc-section-head{padding:10px 13px;font-size:13px;color:var(--gold);font-weight:600;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.gc-section-body{padding:10px 13px}
+.gc-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.gc-row:last-child{margin-bottom:0}
+.gc-label{font-size:13px;flex:1;color:var(--text)}
+.gc-sub{font-size:11px;color:var(--text-dim)}
+.gc-input{background:var(--dark4);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-size:13px;border-radius:3px;font-family:'Crimson Pro',serif;width:72px;text-align:center}
+.gc-input:focus{outline:none;border-color:var(--gold-dim)}
+.gc-unit{font-size:12px;color:var(--text-dim);white-space:nowrap}
+.gc-add-btn{background:none;border:1px dashed var(--border);color:var(--text-dim);padding:5px 10px;font-size:12px;border-radius:3px;cursor:pointer;font-family:'Crimson Pro',serif;width:100%;margin-top:6px;transition:all .15s}
+.gc-add-btn:hover{border-color:var(--gold-dim);color:var(--gold)}
+.gc-remove-btn{background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:0 4px}
+.gc-remove-btn:hover{color:var(--hp-red)}
+
 #status-screen{background:var(--dark2)}
 .status-body{padding:14px 16px;flex:1;overflow-y:auto}
 .status-card{background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px}
@@ -384,6 +402,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
     <button class="start-btn" style="background:rgba(41,128,185,.15);border-color:#2980b9;color:#5dade2;margin-top:6px" onclick="openSaveLoad('load')">📂 セーブデータをロード</button>
     <button class="start-btn" style="background:rgba(192,57,43,.15);border-color:#c0392b;color:#e74c3c;margin-top:6px" onclick="openFloorEditor()">⚙ 階層設定</button>
     <button class="start-btn" style="background:rgba(192,57,43,.15);border-color:#c0392b;color:#e74c3c;margin-top:6px" onclick="openEnemyEditor()">👹 敵設定</button>
+    <button class="start-btn" style="background:rgba(192,57,43,.15);border-color:#c0392b;color:#e74c3c;margin-top:6px" onclick="openGameSettings()">🏪 ゲーム設定</button>
   </div>
 </div>
 
@@ -417,7 +436,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
       </button>
       <button class="menu-btn" onclick="doRest()">
         <span class="mi">🛏️</span>
-        <span><span class="ml">宿に泊まる</span><span class="ms">HP/MP全快 50G</span></span>
+        <span><span class="ml">宿に泊まる</span><span class="ms" id="innPriceLabel">HP/MP全快 50G</span></span>
       </button>
       <button class="menu-btn" onclick="openItems()">
         <span class="mi">🎒</span>
@@ -517,7 +536,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
   </div>
   <div class="items-body">
     <div id="shopMsg" style="font-size:13px;color:var(--gold);min-height:18px;margin-bottom:8px"></div>
-    <div class="section-label">所持アイテム</div>
+    <div class="section-label">所持アイテム（半額で売却可）</div>
     <div id="inventoryList" style="margin-bottom:14px"></div>
     <div class="section-label">購入</div>
     <div class="shop-grid" id="shopGrid"></div>
@@ -584,6 +603,19 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
     <button class="sl-tab" id="tabExport" onclick="switchSlTab('export')">📤 エクスポート</button>
   </div>
   <div class="slot-list" id="slotList"></div>
+</div>
+
+<!-- ===== GAME SETTINGS ===== -->
+<div id="gamesettings-screen" class="screen">
+  <div class="page-header">
+    <div class="page-title">ゲーム設定</div>
+    <button class="back-btn" onclick="showScreen('create-screen')">← 戻る</button>
+  </div>
+  <div class="ee-body" id="gsBody"></div>
+  <div class="fe-save-bar">
+    <button class="fe-save-btn" onclick="saveGameSettings()">💾 保存</button>
+    <button class="fe-reset-btn" onclick="resetGameSettings()">↩ 初期値</button>
+  </div>
 </div>
 
 <!-- ===== STATUS ===== -->
@@ -708,23 +740,39 @@ const DUNGEONS = [
    boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:1000,element:'闇',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
 ];
 
+// アイテムの効果量をゲーム設定から取得するヘルパー
+function getItemVal(id,key,def){
+  try{
+    const s=loadGameSettings();
+    if(s&&s.shopItems){
+      const si=s.shopItems.find(x=>x.id===id);
+      if(si&&si[key]!=null)return si[key];
+    }
+  }catch{}
+  return def;
+}
+
 const SHOP_ITEMS = [
-  {id:'potion',       name:'回復薬',  emoji:'🧪', desc:'HP +200 回復',      price:60,
-   use:(p)=>{const h=Math.min(p.maxHp,p.hp+200)-p.hp;p.hp+=h;return `HP が ${h} 回復した！`}},
-  {id:'elixir',       name:'エリクサー',emoji:'⚗️',desc:'HP/MP 全快',       price:200,
+  {id:'potion',        name:'回復薬',   emoji:'🧪', desc:'HP 回復（小）',      price:20,
+   use:(p)=>{const v=getItemVal('potion','value',50);const h=Math.min(p.maxHp,p.hp+v)-p.hp;p.hp+=h;return `HP が ${h} 回復した！`}},
+  {id:'potion_plus',   name:'回復薬＋', emoji:'🧪', desc:'HP 回復（大）',      price:60,
+   use:(p)=>{const v=getItemVal('potion_plus','value',200);const h=Math.min(p.maxHp,p.hp+v)-p.hp;p.hp+=h;return `HP が ${h} 回復した！`}},
+  {id:'elixir',        name:'エリクサー',emoji:'⚗️',desc:'HP/MP 全快',         price:120,
    use:(p)=>{p.hp=p.maxHp;p.mp=p.maxMp;return 'HP と MP が全快した！'}},
-  {id:'antidote',     name:'解毒薬',  emoji:'💊', desc:'毒を解除する',      price:20,
+  {id:'antidote',      name:'解毒薬',   emoji:'💊', desc:'毒を解除する',       price:20,
    use:(p)=>{p.poisoned=false;p.poisonTurns=0;return '毒が解けた！'}},
-  {id:'manapotion',   name:'魔法薬',  emoji:'💧', desc:'MP +200 回復',      price:60,
-   use:(p)=>{const m=Math.min(p.maxMp,p.mp+200)-p.mp;p.mp+=m;return `MP が ${m} 回復した！`}},
-  {id:'strengthstone',name:'力の石',  emoji:'💎', desc:'ATK +3 永続強化',   price:200,
-   use:(p)=>{p.atk+=3;return 'ATK が 3 上がった！'}},
-  {id:'defstone',     name:'守の石',  emoji:'🛡️', desc:'DEF +3 永続強化',   price:200,
-   use:(p)=>{p.def+=3;return 'DEF が 3 上がった！'}},
-  {id:'spdstone',     name:'速の石',  emoji:'💨', desc:'SPD +3 永続強化',   price:200,
-   use:(p)=>{p.spd+=3;return 'SPD が 3 上がった！'}},
-  {id:'intstone',     name:'魔の石',  emoji:'🔮', desc:'INT +3 永続強化',   price:200,
-   use:(p)=>{p.int+=3;return 'INT が 3 上がった！'}},
+  {id:'manapotion',    name:'魔法薬',   emoji:'💧', desc:'MP 回復（小）',      price:20,
+   use:(p)=>{const v=getItemVal('manapotion','value',50);const m=Math.min(p.maxMp,p.mp+v)-p.mp;p.mp+=m;return `MP が ${m} 回復した！`}},
+  {id:'manapotion_plus',name:'魔法薬＋',emoji:'💧', desc:'MP 回復（大）',      price:60,
+   use:(p)=>{const v=getItemVal('manapotion_plus','value',200);const m=Math.min(p.maxMp,p.mp+v)-p.mp;p.mp+=m;return `MP が ${m} 回復した！`}},
+  {id:'strengthstone', name:'力の石',   emoji:'💎', desc:'ATK 永続強化',       price:200,
+   use:(p)=>{const v=getItemVal('strengthstone','value',3);p.atk+=v;return `ATK が ${v} 上がった！`}},
+  {id:'defstone',      name:'守の石',   emoji:'🛡️', desc:'DEF 永続強化',       price:200,
+   use:(p)=>{const v=getItemVal('defstone','value',3);p.def+=v;return `DEF が ${v} 上がった！`}},
+  {id:'spdstone',      name:'速の石',   emoji:'💨', desc:'SPD 永続強化',       price:200,
+   use:(p)=>{const v=getItemVal('spdstone','value',3);p.spd+=v;return `SPD が ${v} 上がった！`}},
+  {id:'intstone',      name:'魔の石',   emoji:'🔮', desc:'INT 永続強化',       price:200,
+   use:(p)=>{const v=getItemVal('intstone','value',3);p.int+=v;return `INT が ${v} 上がった！`}},
 ];
 
 // ============================================================
@@ -946,14 +994,17 @@ function refreshTavern(){
     [{l:'ATK',v:P.atk},{l:'DEF',v:P.def},{l:'SPD',v:P.spd},{l:'INT',v:P.int}]
     .map(s=>`<div class="stat-box"><span class="stat-l">${s.l}</span><span class="stat-v">${s.v}</span></div>`).join('');
   updateStatusBar();
+  const innLabel=document.getElementById('innPriceLabel');
+  if(innLabel)innLabel.textContent=`HP/MP全快 ${getInnPrice()}G`;
 }
 
 function doRest(){
   if(P.hp>=P.maxHp&&P.mp>=P.maxMp){tlog('すでに万全の状態だ。');return;}
-  if(P.gold<50){tlog('宿代（50G）が足りない！','bad');return;}
-  P.gold-=50;P.hp=P.maxHp;P.mp=P.maxMp;P.poisoned=false;P.poisonTurns=0;
+  const price=getInnPrice();
+  if(P.gold<price){tlog(`宿代（${price}G）が足りない！`,'bad');return;}
+  P.gold-=price;P.hp=P.maxHp;P.mp=P.maxMp;P.poisoned=false;P.poisonTurns=0;
   refreshTavern();
-  tlog('一夜の休息を取った。HP・MPが全快した！','good');
+  tlog(`一夜の休息を取った（${price}G）。HP・MPが全快した！`,'good');
 }
 
 // ============================================================
@@ -1538,17 +1589,24 @@ function backToTavern(){refreshTavern();showScreen('tavern-screen');tlog('酒場
 // ============================================================
 function openItems(){
   document.getElementById('shopGold').textContent=P.gold;
+  document.getElementById('shopMsg').textContent='';
   const inv=document.getElementById('inventoryList');
   if(P.inventory.length===0){
     inv.innerHTML='<div class="no-items">アイテムを持っていない</div>';
   } else {
-    inv.innerHTML=P.inventory.map((item,i)=>`
-      <div class="inv-row">
+    inv.innerHTML=P.inventory.map((item,i)=>{
+      const sellPrice=Math.floor((item.price||0)/2);
+      return `<div class="inv-row">
         <div><div class="inv-name">${item.emoji} ${item.name}</div><div class="inv-desc">${item.desc}</div></div>
-        <button class="inv-use" onclick="useItemTavern(${i})">使う</button>
-      </div>`).join('');
+        <div style="display:flex;gap:5px;align-items:center">
+          <button class="inv-use" onclick="useItemTavern(${i})">使う</button>
+          <button class="inv-use" style="color:#e67e22;border-color:#e67e22" onclick="sellItem(${i})">売(${sellPrice}G)</button>
+        </div>
+      </div>`;
+    }).join('');
   }
-  document.getElementById('shopGrid').innerHTML=SHOP_ITEMS.map(item=>`
+  const shopItems=getShopItems();
+  document.getElementById('shopGrid').innerHTML=shopItems.map(item=>`
     <div class="sitem" onclick="buyItem('${item.id}')">
       <div class="sitem-top"><span class="sitem-name">${item.emoji} ${item.name}</span><span class="sitem-price">${item.price}G</span></div>
       <div class="sitem-desc">${item.desc}</div>
@@ -1564,8 +1622,23 @@ function useItemTavern(i){
   refreshTavern();openItems();
 }
 
+function sellItem(i){
+  const item=P.inventory[i];
+  const sellPrice=Math.floor((item.price||0)/2);
+  showModal(`${item.emoji} ${item.name} を ${sellPrice}G で売りますか？`,()=>{
+    P.inventory.splice(i,1);
+    P.gold+=sellPrice;
+    document.getElementById('shopGold').textContent=P.gold;
+    document.getElementById('shopMsg').textContent=`${item.name} を ${sellPrice}G で売った！`;
+    updateStatusBar();
+    openItems();
+  },'売却確認');
+}
+
 function buyItem(id){
-  const item=SHOP_ITEMS.find(i=>i.id===id);
+  const shopItems=getShopItems();
+  const item=shopItems.find(i=>i.id===id)||SHOP_ITEMS.find(i=>i.id===id);
+  if(!item)return;
   if(P.gold<item.price){
     document.getElementById('shopMsg').textContent=`💰 ゴールドが足りない！（${item.price}G 必要）`;
     return;
@@ -1574,14 +1647,85 @@ function buyItem(id){
     document.getElementById('shopMsg').textContent='🎒 荷物がいっぱいだ！（最大8個）';
     return;
   }
-  P.gold-=item.price;P.inventory.push({...item});
-  document.getElementById('shopMsg').textContent=`${item.name} を購入した！`;
-  openItems();
+  showModal(`${item.emoji} ${item.name} を ${item.price}G で購入しますか？`,()=>{
+    P.gold-=item.price;
+    // use関数をSHOP_ITEMSから取得（カスタム価格でもuseは元のまま）
+    const baseItem=SHOP_ITEMS.find(i=>i.id===item.id)||item;
+    P.inventory.push({...baseItem, price:item.price});
+    document.getElementById('shopGold').textContent=P.gold;
+    document.getElementById('shopMsg').textContent=`${item.name} を購入した！`;
+    updateStatusBar();
+    openItems();
+  },'購入確認');
+}
+
+// カスタム設定済みのショップアイテムリストを返す
+function getShopItems(){
+  const saved=loadGameSettings();
+  if(saved&&saved.shopItems){
+    return saved.shopItems.map(s=>{
+      const base=SHOP_ITEMS.find(i=>i.id===s.id)||SHOP_ITEMS[0];
+      return {...base, price:s.price, desc:s.desc||base.desc, enabled:s.enabled!==false};
+    }).filter(i=>i.enabled!==false);
+  }
+  return SHOP_ITEMS;
 }
 
 // ============================================================
-//  FLOOR EDITOR
+//  GAME SETTINGS（宿屋・ショップ・魔法）
 // ============================================================
+const GAME_SETTINGS_KEY='dungeon_rpg_gamesettings';
+
+function loadGameSettings(){
+  try{const s=localStorage.getItem(GAME_SETTINGS_KEY);return s?JSON.parse(s):null;}
+  catch{return null;}
+}
+
+function getDefaultGameSettings(){
+  return {
+    inn:[
+      {minLv:1, maxLv:5,  price:50},
+      {minLv:6, maxLv:15, price:150},
+      {minLv:16,maxLv:99, price:300},
+    ],
+    shopItems:[
+      {id:'potion',         price:20,  value:50,  enabled:true},
+      {id:'potion_plus',    price:60,  value:200, enabled:true},
+      {id:'elixir',         price:120, value:0,   enabled:true},
+      {id:'antidote',       price:20,  value:0,   enabled:true},
+      {id:'manapotion',     price:20,  value:50,  enabled:true},
+      {id:'manapotion_plus',price:60,  value:200, enabled:true},
+      {id:'strengthstone',  price:200, value:3,   enabled:true},
+      {id:'defstone',       price:200, value:3,   enabled:true},
+      {id:'spdstone',       price:200, value:3,   enabled:true},
+      {id:'intstone',       price:200, value:3,   enabled:true},
+    ],
+    skillCosts: SKILL_MASTER.filter(s=>!s.common).map(s=>({id:s.id,cost:s.cost})),
+  };
+}
+
+// 宿代を現在のレベルに応じて返す
+function getInnPrice(){
+  const saved=loadGameSettings();
+  const rules=(saved&&saved.inn)||getDefaultGameSettings().inn;
+  const lv=P?P.level:1;
+  for(const r of rules){
+    if(lv>=(r.minLv||1)&&lv<=(r.maxLv||99))return r.price;
+  }
+  return rules[rules.length-1]?.price||50;
+}
+
+// 起動時にゲーム設定をSKILL_MASTERに反映
+(function applyGameSettings(){
+  const saved=loadGameSettings();
+  if(!saved)return;
+  if(saved.skillCosts){
+    saved.skillCosts.forEach(s=>{
+      const sk=SKILL_MASTER.find(x=>x.id===s.id);
+      if(sk)sk.cost=s.cost;
+    });
+  }
+})();
 const FE_SAVE_KEY='dungeon_rpg_floors';
 
 // 全ダンジョンで使える敵マスター（選択肢用）
@@ -2368,8 +2512,143 @@ function resetEnemySettings(){
 }
 
 // ============================================================
-//  SAVE / LOAD  (localStorage, 4 slots)
+//  GAME SETTINGS EDITOR
 // ============================================================
+let gsData=null;
+
+function openGameSettings(){
+  const saved=loadGameSettings();
+  const def=getDefaultGameSettings();
+  gsData={
+    inn:   (saved&&saved.inn)   ? JSON.parse(JSON.stringify(saved.inn))   : JSON.parse(JSON.stringify(def.inn)),
+    shopItems:(saved&&saved.shopItems)? JSON.parse(JSON.stringify(saved.shopItems)): JSON.parse(JSON.stringify(def.shopItems)),
+    skillCosts:(saved&&saved.skillCosts)?JSON.parse(JSON.stringify(saved.skillCosts)):JSON.parse(JSON.stringify(def.skillCosts)),
+  };
+  renderGsBody();
+  showScreen('gamesettings-screen');
+}
+
+function renderGsBody(){
+  const body=document.getElementById('gsBody');
+  body.innerHTML='';
+
+  // --- 宿屋セクション ---
+  const innSec=document.createElement('div');
+  innSec.style.cssText='font-size:11px;color:#5dade2;text-transform:uppercase;letter-spacing:2px;padding:6px 2px 4px;border-bottom:1px solid #2980b9;margin-bottom:8px';
+  innSec.textContent='🛏️ 宿屋料金（LV条件）';
+  body.appendChild(innSec);
+
+  const innWrap=document.createElement('div');
+  innWrap.id='gs-inn-rows';
+  body.appendChild(innWrap);
+  renderGsInnRows();
+
+  const addInnBtn=document.createElement('button');
+  addInnBtn.className='fe-add-btn';
+  addInnBtn.textContent='＋ 料金帯を追加';
+  addInnBtn.onclick=()=>{gsData.inn.push({minLv:1,maxLv:99,price:100});renderGsInnRows();};
+  body.appendChild(addInnBtn);
+
+  // --- アイテム設定セクション ---
+  const shopSec=document.createElement('div');
+  shopSec.style.cssText='font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;padding:10px 2px 4px;border-bottom:1px solid var(--gold-dim);margin-bottom:8px;margin-top:10px';
+  shopSec.textContent='🏪 ショップアイテム設定';
+  body.appendChild(shopSec);
+
+  gsData.shopItems.forEach((s,i)=>{
+    const base=SHOP_ITEMS.find(x=>x.id===s.id)||SHOP_ITEMS[0];
+    const hasValue=['potion','potion_plus','manapotion','manapotion_plus'].includes(s.id);
+    const isStone=['strengthstone','defstone','spdstone','intstone'].includes(s.id);
+    const valueLabel=hasValue?'回復量':isStone?'強化値':'';
+    const valueLine=(hasValue||isStone)?`
+      <div class="fe-weight-wrap" style="margin-left:4px">
+        <span class="fe-weight-label">${valueLabel}</span>
+        <input class="fe-weight-input" type="number" min="1" max="99999" value="${s.value!=null?s.value:hasValue?200:3}"
+          onchange="gsData.shopItems[${i}].value=parseInt(this.value)||1" style="width:56px">
+      </div>`:'';
+    const row=document.createElement('div');
+    row.className='ee-card';
+    row.style.marginBottom='6px';
+    row.innerHTML=`
+      <div style="display:flex;align-items:center;gap:6px;padding:10px 12px;flex-wrap:wrap">
+        <span style="font-size:16px">${base.emoji}</span>
+        <span style="flex:1;font-size:13px;color:var(--gold);min-width:80px">${base.name}</span>
+        ${valueLine}
+        <div class="fe-weight-wrap">
+          <span class="fe-weight-label">価格</span>
+          <input class="fe-weight-input" type="number" min="0" max="99999" value="${s.price}"
+            onchange="gsData.shopItems[${i}].price=parseInt(this.value)||0" style="width:60px">
+          <span style="font-size:11px;color:var(--text-dim)">G</span>
+        </div>
+        <button class="ee-toggle${s.enabled!==false?' on':''}" onclick="gsToggleShopItem(${i})" title="販売ON/OFF"></button>
+      </div>
+      <div style="padding:0 12px 8px;font-size:11px;color:var(--text-dim)">${base.desc}　売値: ${Math.floor(s.price/2)}G</div>`;
+    body.appendChild(row);
+  });
+
+  // --- スキルMP消費セクション ---
+  const skillSec=document.createElement('div');
+  skillSec.style.cssText='font-size:11px;color:#e74c3c;text-transform:uppercase;letter-spacing:2px;padding:10px 2px 4px;border-bottom:1px solid #c0392b;margin-bottom:8px;margin-top:10px';
+  skillSec.textContent='⚡ スキルMP消費設定';
+  body.appendChild(skillSec);
+
+  gsData.skillCosts.forEach((s,i)=>{
+    const skm=getSkill(s.id);
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--border)';
+    row.innerHTML=`
+      <span style="font-size:16px">${skm.icon}</span>
+      <span style="flex:1;font-size:13px">${skm.name}</span>
+      <div class="fe-weight-wrap">
+        <span class="fe-weight-label">MP</span>
+        <input class="fe-weight-input" type="number" min="0" max="99" value="${s.cost}"
+          onchange="gsData.skillCosts[${i}].cost=parseInt(this.value)||0">
+      </div>`;
+    body.appendChild(row);
+  });
+}
+
+function renderGsInnRows(){
+  const wrap=document.getElementById('gs-inn-rows');
+  if(!wrap)return;
+  wrap.innerHTML=gsData.inn.map((r,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:8px;background:var(--dark3);border:1px solid var(--border);border-radius:4px">
+      <span style="font-size:11px;color:var(--text-dim)">Lv</span>
+      <input class="fe-weight-input" type="number" min="1" max="99" value="${r.minLv||1}"
+        onchange="gsData.inn[${i}].minLv=parseInt(this.value)||1" style="width:44px">
+      <span style="font-size:11px;color:var(--text-dim)">〜</span>
+      <input class="fe-weight-input" type="number" min="1" max="99" value="${r.maxLv||99}"
+        onchange="gsData.inn[${i}].maxLv=parseInt(this.value)||99" style="width:44px">
+      <span style="font-size:11px;color:var(--text-dim)">は</span>
+      <input class="fe-weight-input" type="number" min="0" max="99999" value="${r.price||50}"
+        onchange="gsData.inn[${i}].price=parseInt(this.value)||0" style="width:64px">
+      <span style="font-size:11px;color:var(--text-dim)">G</span>
+      <button class="fe-remove-btn" onclick="gsData.inn.splice(${i},1);renderGsInnRows()">✕</button>
+    </div>`).join('');
+}
+
+function gsToggleShopItem(i){
+  gsData.shopItems[i].enabled=!(gsData.shopItems[i].enabled!==false?true:false);
+  renderGsBody();
+}
+
+function saveGameSettings(){
+  // SKILL_MASTERにMP消費を反映
+  gsData.skillCosts.forEach(s=>{
+    const sk=SKILL_MASTER.find(x=>x.id===s.id);
+    if(sk)sk.cost=s.cost;
+  });
+  localStorage.setItem(GAME_SETTINGS_KEY,JSON.stringify(gsData));
+  showScreen('create-screen');
+  alert('ゲーム設定を保存しました。');
+}
+
+function resetGameSettings(){
+  showModal('ゲーム設定を初期値に戻しますか？',()=>{
+    localStorage.removeItem(GAME_SETTINGS_KEY);
+    location.reload();
+  });
+}
 const SAVE_KEY='dungeon_rpg_saves';
 const MAX_SLOTS=4;
 let slMode='save';
