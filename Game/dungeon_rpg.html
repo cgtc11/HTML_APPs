@@ -657,22 +657,22 @@ const CLASSES = [
    skillParams:{shinken_mult:2.0, defend_mult:0.3, defend_rand:0.1},
    element:'無',
    classSkills:[{id:'shinken',minLv:1},{id:'defend',minLv:1}],
-   extraSkills:[]},
+   extraSkills:[{id:'null_elem',minLv:10,cost:4},{id:'dark_magic',minLv:20,cost:4},{id:'holy',minLv:30,cost:4}]},
   {id:'mage',    name:'魔法使い',emoji:'🔮', desc:'MP高・魔法火力特化',
    stats:{hp:18,mp:35,atk:3,def:2,spd:5,int:14},
    element:'無',
    classSkills:[{id:'fireball',minLv:1},{id:'iceshot',minLv:1}],
-   extraSkills:[]},
+   extraSkills:[{id:'dark_magic',minLv:10,cost:4},{id:'holy',minLv:20,cost:4},{id:'mp_heal',minLv:30,cost:4}]},
   {id:'rogue',   name:'盗賊',  emoji:'🗡️', desc:'素早さ高・クリ特化',
    stats:{hp:26,mp:14,atk:8,def:4,spd:15,int:7},
    element:'無',
    classSkills:[{id:'combo',minLv:1}],
-   extraSkills:[]},
+   extraSkills:[{id:'null_elem',minLv:10,cost:4},{id:'heal',minLv:20,cost:4},{id:'dark_magic',minLv:30,cost:0}]},
   {id:'cleric',  name:'僧侶',  emoji:'✨', desc:'回復魔法・バランス型',
    stats:{hp:32,mp:24,atk:6,def:7,spd:6,int:10},
    element:'無',
    classSkills:[{id:'heal',minLv:1},{id:'holy',minLv:1}],
-   extraSkills:[]},
+   extraSkills:[{id:'mp_heal',minLv:10,cost:4},{id:'holy',minLv:20,cost:4},{id:'null_elem',minLv:30,cost:4}]},
 ];
 
 const DUNGEONS = [
@@ -1769,7 +1769,7 @@ const ALL_ENEMIES=[
   {name:'ゴブリン',   emoji:'👺',hp:28,atk:5,def:2,exp:15,gold:12, element:'火'},
   {name:'コボルト',   emoji:'🐾',hp:35,atk:6,def:3,exp:18,gold:14, element:'闇'},
   {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:8,def:6,exp:26,gold:22,element:'無'},
-  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,element:'闇',poison:true, drops:[{itemId:'antidote',rate:20}]},
+  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,element:'闇', poison:true, drops:[{itemId:'antidote',rate:20}]},
   {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22, element:'火', drops:[{itemId:'potion',rate:20}]},
   {name:'スケルトン', emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20, element:'闇'},
   {name:'ゾンビ',    emoji:'🧟',hp:60,atk:12,def:8,exp:30,gold:16, element:'闇'},
@@ -1778,7 +1778,7 @@ const ALL_ENEMIES=[
   {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45,element:'闇'},
   {name:'地獄の炎',  emoji:'🔥',hp:60,atk:28,def:5,exp:58,gold:32, element:'火', burn:true, drops:[{itemId:'potion',rate:50}]},
   {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52,element:'闇'},
-  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,element:'闇',drain:true, drops:[{itemId:'elixir',rate:20}]},
+  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,element:'闇', drain:true, drops:[{itemId:'elixir',rate:20}]},
 ];
 
 let feCurrentDungeon=0; // 編集中のダンジョンindex
