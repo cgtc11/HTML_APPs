@@ -160,6 +160,15 @@
 テキサスポーカー
 </td>
 
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/concentration.html">
+<img src="https://github.com/cgtc11/image/blob/main/12_ico.png" width="120"><br>
+<b>texas</b>
+</a>
+<br>
+神経衰弱
+</td>
+
 </tr>
 <tr>
   
@@ -238,3 +247,5 @@ https://cgtc11.github.io/HTML_APPs/Game/texas.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/F1Race.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/star_luster.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/dungeon_rpg.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/maze_game.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/concentration.html<br>
