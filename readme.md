@@ -174,7 +174,7 @@
 
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/maze_game.html">
-<img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/17_ico.png" width="120"><br>
 <b>2D迷路</b>
 </a>
 <br>
