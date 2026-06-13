@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神経衰弱</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: sans-serif;
+  background: #0d0d14;
+  color: #e8e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===== HEADER ===== */
+#app-header {
+  width: 100%;
+  text-align: center;
+  padding: 10px 0 4px;
+  flex-shrink: 0;
+}
+#app-header h1 {
+  font-family: 'Shippori Mincho', serif;
+  font-size: clamp(20px, 3vw, 36px);
+  color: #e8b86d;
+  letter-spacing: .2em;
+}
+#app-header .sub { font-size: 10px; color: #666; letter-spacing: .3em; }
+
+/* ===== SETUP ===== */
+#setup-screen {
+  width: 100%; max-width: 500px;
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
+}
+.sblock {
+  background: #16161f; border: 1px solid #2a2a3e;
+  border-radius: 10px; padding: 14px 18px;
+}
+.sblock label { display: block; font-size: 11px; letter-spacing: .2em; color: #666; margin-bottom: 10px; text-transform: uppercase; }
+.crow { display: flex; flex-wrap: wrap; gap: 7px; }
+.cbtn {
+  background: #1e1e2e; border: 1px solid #2a2a3e; color: #888;
+  border-radius: 6px; padding: 7px 14px; font-size: 13px;
+  cursor: pointer; transition: all .15s;
+}
+.cbtn:hover { border-color: #7eb8c9; color: #7eb8c9; }
+.cbtn.on { background: rgba(232,184,109,.12); border-color: #e8b86d; color: #e8b86d; font-weight: 700; }
+.pconf { display: flex; flex-direction: column; gap: 8px; }
+.prow { display: flex; gap: 8px; }
+.comrow { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+#com-row { display: none; }
+.go-btn {
+  background: linear-gradient(135deg,#e8b86d,#c8903a);
+  color: #1a0f00; border: none; border-radius: 10px;
+  padding: 14px; font-size: 15px; font-weight: 900;
+  letter-spacing: .2em; cursor: pointer; transition: all .2s;
+}
+.go-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,184,109,.3); }
+
+/* ===== GAME SCREEN ===== */
+#game-screen {
+  display: none; flex-direction: column; align-items: center;
+  width: 100%; flex: 1; min-height: 0;
+  padding: 6px 10px 6px;
+  gap: 5px;
+}
+
+/* controls */
+.gctrl {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; flex-shrink: 0; gap: 8px;
+}
+.cleft { display: flex; gap: 6px; }
+.gbtn {
+  background: none; border: 1px solid #2a2a3e; color: #888;
+  border-radius: 6px; padding: 5px 12px; font-size: 11px;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.gbtn:hover { border-color: #7eb8c9; color: #7eb8c9; }
+#fit-btn { border-color: #e8b86d; color: #e8b86d; }
+#fit-btn.on { background: rgba(232,184,109,.12); }
+#fit-btn:hover { background: rgba(232,184,109,.12); }
+
+/* scoreboard */
+#scoreboard {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  justify-content: center; width: 100%; flex-shrink: 0;
+}
+.pscore {
+  background: #16161f; border: 1px solid #2a2a3e;
+  border-radius: 8px; padding: 5px 14px; min-width: 85px;
+  text-align: center; transition: all .2s; position: relative; overflow: hidden;
+}
+.pscore.cur { border-color: #e8b86d; background: rgba(232,184,109,.07); }
+.pscore .pname { font-size: 10px; color: #666; letter-spacing: .15em; }
+.pscore .ppts  { font-size: 20px; font-weight: 900; color: #e8b86d; }
+.pscore .plbl  { font-size: 9px; color: #666; }
+.pscore .bar   { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #e8b86d; transform: scaleX(0); transition: transform .3s; }
+.pscore.cur .bar { transform: scaleX(1); }
+
+/* status */
+#status { font-size: 12px; color: #666; text-align: center; min-height: 16px; flex-shrink: 0; }
+#status .hl { color: #e8b86d; font-weight: 700; }
+
+/* com thinking */
+#com-think {
+  display: none; align-items: center; gap: 6px;
+  font-size: 12px; color: #c97eb8;
+}
+#com-think.show { display: flex; }
+.dots span {
+  display: inline-block; width: 4px; height: 4px;
+  background: #c97eb8; border-radius: 50%;
+  animation: db .9s infinite;
+}
+.dots span:nth-child(2) { animation-delay: .15s; }
+.dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes db { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-4px);opacity:1} }
+
+/* ===== CARD GRID ===== */
+#grid-wrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-start; justify-content: center; }
+
+#card-grid { display: grid; gap: 5px; }
+
+/*
+  カード：表も裏も同じ .card 要素に width/height を JS で直接セット。
+  3D transformは使わない。表裏は .face-up クラスで切り替え。
+*/
+.card {
+  position: relative;
+  cursor: pointer;
+  border-radius: 6px;
+  /* width / height は JS がセット */
+}
+
+/* 裏面（デフォルト） */
+.card-back, .card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  transition: opacity .25s;
+}
+
+.card-back {
+  background: #1a1a2e;
+  border: 1px solid #2a2a3e;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.card-back::before {
+  content: '';
+  position: absolute; inset: 3px; border-radius: 3px;
+  border: 1px solid rgba(126,184,201,.1);
+  background: repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.012) 3px,rgba(255,255,255,.012) 6px);
+}
+.card-back::after {
+  content: '？';
+  font-family: 'Shippori Mincho', serif;
+  font-size: var(--fback, 14px);
+  color: rgba(126,184,201,.2);
+  position: relative; z-index: 1;
+}
+
+/* 表面は最初 opacity:0 で非表示 */
+.card-face {
+  background: #faf7f0;
+  border: 1px solid #ccc8b8;
+  opacity: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+
+/* face-up で表面を表示、裏面を隠す */
+.card.face-up .card-back { opacity: 0; pointer-events: none; }
+.card.face-up .card-face { opacity: 1; }
+
+/* matched */
+.card.matched { cursor: default; }
+.card.matched .card-face { background: rgba(80,160,220,0.45); border-color: #4a9fd4; }
+
+/* カード内テキスト — JS が --frank/--fsuit/--fcenter をセット */
+.corner {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  font-family: 'Shippori Mincho', serif; font-weight: 700;
+  line-height: 1.05;
+}
+.corner.tl { top: 3px; left: 4px; }
+.corner.br { bottom: 3px; right: 4px; transform: rotate(180deg); }
+.cr { font-size: var(--frank, 13px); }
+.cs { font-size: var(--fsuit, 10px); }
+.cc { font-size: var(--fcenter, 26px); line-height: 1; user-select: none; }
+
+.red  .cr, .red  .cs, .red  .cc { color: #c0392b; }
+.blk  .cr, .blk  .cs, .blk  .cc { color: #1a1a1a; }
+
+/* hover 裏面のみ */
+.card:not(.face-up):not(.matched):hover .card-back {
+  border-color: #7eb8c9;
+  box-shadow: 0 0 10px rgba(126,184,201,.25);
+}
+
+/* ===== COUNTDOWN BANNER ===== */
+#cd-banner {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: none; align-items: center; justify-content: center; gap: 14px;
+  padding: 8px 20px;
+  background: rgba(13,13,20,.55); backdrop-filter: blur(3px);
+  border-bottom: 1px solid rgba(232,184,109,.2);
+  z-index: 50;
+}
+#cd-banner.show { display: flex; }
+#cd-txt { font-size: 13px; letter-spacing: .3em; color: #e8b86d; }
+#cd-num {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 40px; font-weight: 700; color: #e8b86d;
+  text-shadow: 0 0 30px rgba(232,184,109,.6);
+  min-width: 44px; text-align: center;
+  animation: pn 1s ease-in-out infinite;
+}
+@keyframes pn { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+/* ===== RESULT ===== */
+#result-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.85);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+}
+#result-overlay.show { display: flex; }
+.rbox {
+  background: #16161f; border: 1px solid #2a2a3e;
+  border-radius: 14px; padding: 30px 40px;
+  text-align: center; max-width: 360px; width: 100%;
+}
+.rtitle { font-family:'Shippori Mincho',serif; font-size: 28px; color: #e8b86d; margin-bottom: 6px; }
+.rwinner { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+.rscores { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; text-align: left; }
+.rsrow {
+  display: flex; justify-content: space-between;
+  padding: 6px 12px; background: #1e1e2e; border-radius: 6px; font-size: 13px;
+}
+.rsrow.win { border: 1px solid #e8b86d; color: #e8b86d; font-weight: 700; }
+.rbtns { display: flex; gap: 10px; justify-content: center; }
+.rbtn {
+  background: #e8b86d; color: #1a0f00; border: none;
+  border-radius: 8px; padding: 10px 22px; font-size: 13px;
+  font-weight: 700; cursor: pointer; transition: all .2s;
+}
+.rbtn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(232,184,109,.3); }
+.rbtn.sec { background: #1e1e2e; color: #888; border: 1px solid #2a2a3e; }
+.rbtn.sec:hover { border-color: #7eb8c9; color: #7eb8c9; }
+</style>
+</head>
+<body>
+
+<div id="app-header">
+  <h1>神経衰弱</h1>
+  <div class="sub">CONCENTRATION</div>
+</div>
+
+<!-- SETUP -->
+<div id="setup-screen">
+  <div class="sblock">
+    <label>ペア数</label>
+    <div class="crow" id="pair-g">
+      <button class="cbtn on" data-v="2">2ペア</button>
+      <button class="cbtn" data-v="3">3ペア</button>
+      <button class="cbtn" data-v="4">4ペア</button>
+      <button class="cbtn" data-v="5">5ペア</button>
+      <button class="cbtn" data-v="6">6ペア</button>
+      <button class="cbtn" data-v="8">8ペア</button>
+      <button class="cbtn" data-v="10">10ペア</button>
+      <button class="cbtn" data-v="12">12ペア</button>
+      <button class="cbtn" data-v="16">16ペア</button>
+      <button class="cbtn" data-v="20">20ペア</button>
+    </div>
+  </div>
+  <div class="sblock">
+    <label>プレイヤー設定</label>
+    <div class="pconf">
+      <div class="prow">
+        <button class="cbtn on" id="ms">一人プレイ</button>
+        <button class="cbtn" id="mc">COMと対戦</button>
+      </div>
+      <div class="comrow" id="com-row">
+        <span>COM：</span>
+        <div class="crow" id="com-g">
+          <button class="cbtn on" data-v="1">1体</button>
+          <button class="cbtn" data-v="2">2体</button>
+          <button class="cbtn" data-v="3">3体</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="go-btn" id="go-btn">ゲームスタート</button>
+</div>
+
+<!-- GAME -->
+<div id="game-screen">
+  <div class="gctrl">
+    <div class="cleft">
+      <button class="gbtn" id="back-btn">← 設定に戻る</button>
+      <button class="gbtn on" id="fit-btn">⊡ 画面に合わせる</button>
+    </div>
+    <div id="com-think">COM思考中<div class="dots"><span></span><span></span><span></span></div></div>
+    <div style="width:60px"></div>
+  </div>
+  <div id="scoreboard"></div>
+  <div id="status"></div>
+  <div id="grid-wrap"><div id="card-grid"></div></div>
+</div>
+
+<!-- COUNTDOWN -->
+<div id="cd-banner">
+  <span id="cd-txt">カードを覚えてね！</span>
+  <div id="cd-num">5</div>
+</div>
+
+<!-- RESULT -->
+<div id="result-overlay">
+  <div class="rbox">
+    <div class="rtitle">ゲーム終了！</div>
+    <div class="rwinner" id="r-winner"></div>
+    <div class="rscores" id="r-scores"></div>
+    <div class="rbtns">
+      <button class="rbtn" id="retry-btn">もう一度</button>
+      <button class="rbtn sec" id="bsetup-btn">設定に戻る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DECK =====
+const SUITS = [{s:'♠',c:'blk'},{s:'♥',c:'red'},{s:'♦',c:'red'},{s:'♣',c:'blk'}];
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const POOL  = SUITS.flatMap(su => RANKS.map(r => ({rank:r, suit:su.s, col:su.c, key:r+su.s})));
+
+// ===== CONFIG =====
+const cfg = { pairs:2, mode:'solo', coms:1 };
+
+// ===== SETUP UI =====
+function radioGroup(id, key) {
+  const g = document.getElementById(id);
+  g.querySelectorAll('.cbtn').forEach(b => b.addEventListener('click', () => {
+    g.querySelectorAll('.cbtn').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    cfg[key] = parseInt(b.dataset.v);
+  }));
+}
+radioGroup('pair-g', 'pairs');
+radioGroup('com-g',  'coms');
+
+document.getElementById('ms').addEventListener('click', () => {
+  cfg.mode = 'solo';
+  document.getElementById('ms').classList.add('on');
+  document.getElementById('mc').classList.remove('on');
+  document.getElementById('com-row').style.display = 'none';
+});
+document.getElementById('mc').addEventListener('click', () => {
+  cfg.mode = 'com';
+  document.getElementById('mc').classList.add('on');
+  document.getElementById('ms').classList.remove('on');
+  document.getElementById('com-row').style.display = 'flex';
+});
+
+document.getElementById('go-btn').addEventListener('click', startGame);
+document.getElementById('back-btn').addEventListener('click', goSetup);
+document.getElementById('retry-btn').addEventListener('click', () => {
+  document.getElementById('result-overlay').classList.remove('show');
+  startGame();
+});
+document.getElementById('bsetup-btn').addEventListener('click', () => {
+  document.getElementById('result-overlay').classList.remove('show');
+  goSetup();
+});
+
+// ===== FIT =====
+let fitOn = true;
+const fitBtn = document.getElementById('fit-btn');
+fitBtn.addEventListener('click', () => {
+  fitOn = !fitOn;
+  fitBtn.classList.toggle('on', fitOn);
+  applyFit();
+});
+
+function applyFit() {
+  const n = ST.deck ? ST.deck.length : 0;
+  if (!n) return;
+  const grid = document.getElementById('card-grid');
+  const gs   = document.getElementById('game-screen');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const gap = 5;
+    let cw, ch, cols;
+    if (fitOn) {
+      const ctrl  = gs.querySelector('.gctrl').offsetHeight;
+      const sb    = document.getElementById('scoreboard').offsetHeight;
+      const stbar = document.getElementById('status').offsetHeight;
+      const hdr   = document.getElementById('app-header').offsetHeight;
+      const availH = window.innerHeight - hdr - ctrl - sb - stbar - gap*4 - 16;
+      const availW = gs.offsetWidth - 20;
+      const best = bestLayout(n, availW, availH, gap);
+      cols = best.cols;
+      cw   = Math.floor(best.cw);
+      ch   = Math.round(cw * 1.5);
+    } else {
+      cols = n <= 12 ? 4 : n <= 20 ? 5 : n <= 24 ? 6 : 8;
+      cw   = Math.floor((gs.offsetWidth - 20 - gap*(cols-1)) / cols);
+      ch   = Math.round(cw * 1.5);
+    }
+    grid.style.gridTemplateColumns = `repeat(${cols}, ${cw}px)`;
+    grid.style.gridAutoRows        = `${ch}px`;
+    setSize(cw, ch);
+  }));
+}
+
+function bestLayout(n, availW, availH, gap) {
+  let best = null;
+  for (let c = 2; c <= 10; c++) {
+    const rows = Math.ceil(n / c);
+    let cw = (availW - gap*(c-1)) / c;
+    let ch = cw * 1.5;
+    if (ch * rows + gap*(rows-1) > availH) {
+      ch = (availH - gap*(rows-1)) / rows;
+      cw = ch / 1.5;
+    }
+    if (!best || cw * ch > best.cw * best.ch) best = { cols:c, cw, ch };
+  }
+  return best;
+}
+
+function setSize(cw, ch) {
+  const grid = document.getElementById('card-grid');
+  // CSS変数でフォントをカードサイズに比例させる
+  grid.style.setProperty('--frank',   Math.max(8,  Math.round(ch * 0.13)) + 'px');
+  grid.style.setProperty('--fsuit',   Math.max(7,  Math.round(ch * 0.10)) + 'px');
+  grid.style.setProperty('--fcenter', Math.max(11, Math.round(ch * 0.28)) + 'px');
+  grid.style.setProperty('--fback',   Math.max(8,  Math.round(ch * 0.12)) + 'px');
+  // 全カード要素に同じ width / height を直接セット
+  grid.querySelectorAll('.card').forEach(c => {
+    c.style.width  = cw + 'px';
+    c.style.height = ch + 'px';
+  });
+}
+
+// ===== STATE =====
+let ST = {};
+
+function goSetup() {
+  clearTimeout(ST.comTimer);
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+function startGame() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+
+  // players
+  const players = [{name:'あなた', com:false, score:0, mem:{}}];
+  if (cfg.mode === 'com') {
+    ['COM α','COM β','COM γ'].slice(0, cfg.coms).forEach((nm,i) => {
+      players.push({name:nm, com:true, score:0, mem:{}, skill:[.85,.65,.55][i]});
+    });
+  }
+
+  // deck：各ランクの4スートから2枚をランダムに選びペアとする
+  const pairs = Math.min(cfg.pairs, 13); // ランクは13種まで
+  const ranks = [...RANKS].sort(()=>Math.random()-.5).slice(0, pairs);
+  const deckCards = [];
+  ranks.forEach(rank => {
+    const suits = [...SUITS].sort(()=>Math.random()-.5).slice(0, 2);
+    suits.forEach(su => deckCards.push({rank, suit:su.s, col:su.c, key:rank+su.s}));
+  });
+  const deck = deckCards.sort(()=>Math.random()-.5).map((c,i) => ({
+    id:i, rank:c.rank, suit:c.suit, col:c.col, key:c.key, up:false, matched:false
+  }));
+
+  ST = { players, deck, cur:0, flipped:[], locked:true, comTimer:null,
+         total:pairs, done:0 };
+
+  buildGrid();
+  buildSB();
+  fitBtn.classList.toggle('on', fitOn);
+  applyFit();
+  countdown();
+}
+
+// ===== GRID =====
+function buildGrid() {
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+  ST.deck.forEach(card => {
+    const el = document.createElement('div');
+    el.className = 'card face-up'; // 最初は表向き
+    el.dataset.id = card.id;
+    el.innerHTML = `
+      <div class="card-back"></div>
+      <div class="card-face ${card.col}">
+        <div class="corner tl"><span class="cr">${card.rank}</span><span class="cs">${card.suit}</span></div>
+        <span class="cc">${card.suit}</span>
+        <div class="corner br"><span class="cr">${card.rank}</span><span class="cs">${card.suit}</span></div>
+      </div>`;
+    el.addEventListener('click', () => onCardClick(card.id));
+    grid.appendChild(el);
+  });
+}
+
+// ===== SCOREBOARD =====
+function buildSB() {
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML = '';
+  ST.players.forEach((p,i) => {
+    const el = document.createElement('div');
+    el.className = 'pscore' + (i===0 ? ' cur' : '');
+    el.id = 'ps'+i;
+    el.innerHTML = `<div class="bar"></div><div class="pname">${p.name}</div><div class="ppts" id="sc${i}">0</div><div class="plbl">ペア</div>`;
+    sb.appendChild(el);
+  });
+}
+
+function updateSB() {
+  ST.players.forEach((p,i) => {
+    document.getElementById('sc'+i).textContent = p.score;
+    document.getElementById('ps'+i).classList.toggle('cur', i===ST.cur);
+  });
+}
+
+function setStatus(html) { document.getElementById('status').innerHTML = html; }
+
+// ===== COUNTDOWN =====
+function countdown() {
+  const banner = document.getElementById('cd-banner');
+  const numEl  = document.getElementById('cd-num');
+  banner.classList.add('show');
+  let sec = 5;
+  numEl.textContent = sec;
+  setStatus('');
+  const t = setInterval(() => {
+    sec--;
+    numEl.textContent = sec;
+    if (sec <= 0) {
+      clearInterval(t);
+      banner.classList.remove('show');
+      faceAllDown();
+    }
+  }, 1000);
+}
+
+function faceAllDown() {
+  document.querySelectorAll('.card').forEach(el => el.classList.remove('face-up'));
+  ST.deck.forEach(c => { c.up = false; });
+  ST.locked = false;
+  setTurnStatus();
+  if (ST.players[ST.cur].com) schedCom();
+}
+
+// ===== CARD CLICK =====
+function onCardClick(id) {
+  if (ST.locked) return;
+  if (ST.players[ST.cur].com) return;
+  const card = ST.deck[id];
+  if (card.matched || card.up) return;
+  if (ST.flipped.length >= 2) return;
+  flip(id, true);
+  ST.flipped.push(id);
+  if (ST.flipped.length === 2) { ST.locked = true; setTimeout(checkMatch, 300); }
+}
+
+function flip(id, up) {
+  ST.deck[id].up = up;
+  const el = document.querySelector(`.card[data-id="${id}"]`);
+  el.classList.toggle('face-up', up);
+}
+
+// ===== MATCH =====
+function checkMatch() {
+  const [a, b] = ST.flipped;
+  const ca = ST.deck[a], cb = ST.deck[b];
+  const player = ST.players[ST.cur];
+
+  // COM の記憶更新（rankで記憶）
+  if (cfg.mode === 'com') {
+    ST.players.forEach(p => {
+      if (!p.com) return;
+      if (Math.random() < p.skill) p.mem[a] = ca.rank;
+      if (Math.random() < p.skill) p.mem[b] = cb.rank;
+    });
+  }
+
+  if (ca.rank === cb.rank) {
+    ca.matched = cb.matched = true;
+    ST.done++;
+    player.score++;
+    updateSB();
+    document.querySelector(`.card[data-id="${a}"]`).classList.add('matched');
+    document.querySelector(`.card[data-id="${b}"]`).classList.add('matched');
+    ST.players.forEach(p => { if(p.com){delete p.mem[a]; delete p.mem[b];} });
+    ST.flipped = [];
+    if (ST.done >= ST.total) { setTimeout(showResult, 600); return; }
+    ST.locked = false;
+    setTurnStatus();
+    if (player.com) schedCom();
+  } else {
+    setTimeout(() => {
+      flip(a, false); flip(b, false);
+      ST.flipped = [];
+      nextPlayer();
+    }, 300);
+  }
+}
+
+function nextPlayer() {
+  ST.cur = (ST.cur + 1) % ST.players.length;
+  updateSB();
+  ST.locked = false;
+  setTurnStatus();
+  if (ST.players[ST.cur].com) schedCom();
+}
+
+function setTurnStatus() {
+  const p = ST.players[ST.cur];
+  setStatus(p.com
+    ? `<span class="hl">${p.name}</span> のターン`
+    : `<span class="hl">あなた</span> のターン — カードを2枚選んでね`);
+}
+
+// ===== COM =====
+function schedCom() {
+  document.getElementById('com-think').classList.add('show');
+  ST.comTimer = setTimeout(comMove, 900 + Math.random()*600);
+}
+
+function comMove() {
+  document.getElementById('com-think').classList.remove('show');
+  const p  = ST.players[ST.cur];
+  const um = ST.deck.filter(c => !c.matched);
+
+  // 記憶からペアを探す
+  let pair = knownPair(p, um);
+  let first = pair ? pair[0] : pickFirst(p, um);
+
+  flip(first, true);
+  ST.flipped.push(first);
+  if (Math.random() < p.skill) p.mem[first] = ST.deck[first].rank;
+
+  setTimeout(() => {
+    const frank = ST.deck[first].rank;
+    let second = pair ? pair[1] : null;
+    if (second === null) {
+      const hit = Object.entries(p.mem).find(([id,k]) => k===frank && parseInt(id)!==first && !ST.deck[parseInt(id)].matched);
+      if (hit && Math.random() < p.skill) second = parseInt(hit[0]);
+      else {
+        const rest = ST.deck.filter(c => !c.matched && c.id !== first);
+        second = rest[Math.floor(Math.random()*rest.length)].id;
+      }
+    }
+    flip(second, true);
+    ST.flipped.push(second);
+    if (Math.random() < p.skill) p.mem[second] = ST.deck[second].rank;
+    ST.locked = true;
+    setTimeout(checkMatch, 300);
+  }, 700);
+}
+
+function knownPair(p, um) {
+  const ids = new Set(um.map(c=>c.id));
+  const g   = {};
+  for (const [id,k] of Object.entries(p.mem)) {
+    const n = parseInt(id);
+    if (!ids.has(n)) continue;
+    (g[k] = g[k]||[]).push(n);
+  }
+  for (const arr of Object.values(g))
+    if (arr.length >= 2 && Math.random() < p.skill + .1) return [arr[0],arr[1]];
+  return null;
+}
+
+function pickFirst(p, um) {
+  const unseen = um.filter(c => !(c.id in p.mem));
+  const seen   = um.filter(c =>  (c.id in p.mem));
+  if (unseen.length && Math.random() > .3) return unseen[Math.floor(Math.random()*unseen.length)].id;
+  if (seen.length)  return seen[Math.floor(Math.random()*seen.length)].id;
+  return um[Math.floor(Math.random()*um.length)].id;
+}
+
+// ===== RESULT =====
+function showResult() {
+  const max = Math.max(...ST.players.map(p=>p.score));
+  const wins = ST.players.filter(p=>p.score===max);
+  document.getElementById('r-winner').textContent =
+    cfg.mode==='solo' ? `${max}ペア獲得！` :
+    wins.length>1     ? '🤝 引き分け！'   :
+                        `🏆 ${wins[0].name} の勝ち！`;
+  const sorted = [...ST.players].sort((a,b)=>b.score-a.score);
+  document.getElementById('r-scores').innerHTML = sorted.map(p=>`
+    <div class="rsrow ${p.score===max&&cfg.mode!=='solo'?'win':''}">
+      <span>${p.name}</span><span>${p.score}ペア</span>
+    </div>`).join('');
+  document.getElementById('result-overlay').classList.add('show');
+}
+</script>
+</body>
+</html>
