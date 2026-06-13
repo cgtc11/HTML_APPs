@@ -76,7 +76,7 @@ html, body {
   flex: 1 1 auto;
   position: relative;
   overflow: hidden;
-  cursor: none;
+  cursor: default;
 }
 #c {
   display: block;
@@ -99,7 +99,7 @@ html, body {
     <span id="stage-label">ステージ 1</span>
     <span id="msg">S の駒をドラッグしてゴールへ</span>
     <div id="btn-row">
-      <button id="cursor-btn">👆 カーソルOFF</button>
+      <button id="cursor-btn" class="active">👆 カーソルON</button>
       <button id="reset-btn">やり直す</button>
       <button id="next-btn">次のステージ →</button>
     </div>
@@ -128,7 +128,7 @@ let maze, trail, piecePx, pieceCell;
 let dragging    = false;
 let cleared     = false;
 let cursorPx    = null;
-let showCursor  = true;  /* カーソル表示フラグ */
+let showCursor  = false;  /* カーソル表示フラグ（デフォルト非表示） */
 
 const PAL = {
   bg:          '#0d0d1a',
@@ -151,21 +151,24 @@ function computeLayout() {
   const areaW = canvasArea.clientWidth;
   const areaH = canvasArea.clientHeight;
 
-  /* ステージごとの目標セルサイズ（px）: 大きい→少ないマス→簡単 */
-  const targetCell = stageTargetCellSize(stage);
+  /* セルサイズはステージで固定（広い画面でもステージ1は大きいマスのまま） */
+  cellSize = stageTargetCellSize(stage);
 
-  /* 画面いっぱいに収まる奇数グリッド数を算出 */
-  let c = Math.floor(areaW / targetCell);
-  let r = Math.floor(areaH / targetCell);
-  if (c < 3) c = 3;
-  if (r < 3) r = 3;
+  /* 画面に収まる奇数グリッド数を算出 */
+  let c = Math.floor(areaW / cellSize);
+  let r = Math.floor(areaH / cellSize);
+  if (c < 5) c = 5;
+  if (r < 5) r = 5;
+
+  /* ステージ別の上限を適用（画面が広くてもマス数を増やしすぎない） */
+  const {maxCols, maxRows} = stageMaxGrid(stage);
+  if (c > maxCols) c = maxCols;
+  if (r > maxRows) r = maxRows;
+
   if (c % 2 === 0) c--;  /* 奇数に */
   if (r % 2 === 0) r--;
 
   cols = c; rows = r;
-
-  /* 実際のセルサイズ：縦横ともぴったり埋まるよう再計算 */
-  cellSize = Math.min(Math.floor(areaW / cols), Math.floor(areaH / rows));
 
   const W = cols * cellSize;
   const H = rows * cellSize;
@@ -178,8 +181,16 @@ function computeLayout() {
 
 /* セルサイズはステージ5相当で固定（難易度はループ数で制御） */
 function stageTargetCellSize(s) {
-  const sizes = [60, 46, 36, 28, 22, 22, 22, 22, 22];
+  const sizes = [90, 70, 56, 44, 34, 28, 24, 20, 18];
   return sizes[Math.min(s - 1, sizes.length - 1)];
+}
+
+/* ステージ別の最大マス数（画面が広くてもこれ以上は増やさない） */
+function stageMaxGrid(s) {
+  const maxCols = [9, 11, 13, 17, 21, 25, 29, 33, 99];
+  const maxRows = [7,  9, 11, 13, 17, 19, 21, 23, 99];
+  const idx = Math.min(s - 1, maxCols.length - 1);
+  return {maxCols: maxCols[idx], maxRows: maxRows[idx]};
 }
 
 /* ---- 迷路生成 ----
@@ -495,16 +506,7 @@ function tryMove(targetR, targetC) {
   const cr = pieceCell.r, cc = pieceCell.c;
   if (targetR === cr && targetC === cc) return;
 
-  /* 通過済みセルへのワープ：trailに含まれていれば壁チェックなしで直接移動 */
-  if (inTrail(targetR, targetC)) {
-    pieceCell = {r: targetR, c: targetC};
-    piecePx   = cellCenter(targetR, targetC);
-    /* trailには追加しない（既に記録済み） */
-    checkGoal(targetR, targetC);
-    return;
-  }
-
-  /* 通常移動：隣接1マス＋壁なし */
+  /* 移動は必ず隣接1マス＋壁なしのみ（ワープなし＝斜め線にならない） */
   if (!canMove(cr, cc, targetR, targetC)) return;
   pieceCell = {r: targetR, c: targetC};
   piecePx   = cellCenter(targetR, targetC);
