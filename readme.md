@@ -208,6 +208,15 @@ F1Face
 ダンジョンRPG
 </td>
 
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/HeroDispatch.html">
+<img src="https://github.com/cgtc11/image/blob/main/14_ico.png" width="120"><br>
+<b>HeroDispatch</b>
+</a>
+<br>
+勇者派遣
+</td>
+
 </tr>
 </table>
 
@@ -258,3 +267,4 @@ https://cgtc11.github.io/HTML_APPs/Game/star_luster.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/dungeon_rpg.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/maze_game.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/concentration.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/HeroDispatch.html<br>
