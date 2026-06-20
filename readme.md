@@ -210,7 +210,7 @@ F1Face
 
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/HeroDispatch.html">
-<img src="https://github.com/cgtc11/image/blob/main/14_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/18_ico.png" width="120"><br>
 <b>HeroDispatch</b>
 </a>
 <br>
