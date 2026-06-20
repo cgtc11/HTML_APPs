@@ -160,7 +160,10 @@
         <div class="panel-title">キャラクター作成</div>
         <div class="sec">
           <div class="sec-label">名前</div>
-          <input class="name-input" id="name-input" type="text" placeholder="名前を入力…" maxlength="14">
+          <div style="display:flex;gap:6px">
+            <input class="name-input" id="name-input" type="text" placeholder="名前を入力…" maxlength="14" style="flex:1">
+            <button onclick="randomName()" title="ランダム名前" style="padding:0 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:15px;cursor:pointer;transition:border-color .15s;flex-shrink:0" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">🎲</button>
+          </div>
         </div>
         <div class="sec">
           <div class="sec-label">性別</div>
@@ -600,6 +603,65 @@ function generateStory(name, gender, race, job, personality, sv, heroCount, prev
 // ═══════════════════════════════════════════
 //  状態
 // ═══════════════════════════════════════════
+const RANDOM_NAMES_M = [
+  'アルス','レイン','ガルド','ゼノス','クロード','ライガ','ブレイン','ソル','カイン','リオン',
+  'ダリウス','シン','ヴァイス','アッシュ','ルーク','ゾルグ','バルト','グレイ','エイス','ユーグ',
+  'トール','ジーク','ロード','フェン','アイゼン','ナイト','ガイ','ゼファー','ラグナ','バルカ',
+];
+const RANDOM_NAMES_F = [
+  'リア','セラ','アリア','ナディア','エルシア','ルナ','ミア','フィア','ソフィア','カリン',
+  'ヴェラ','アイリス','シルフ','ティナ','リリス','エレナ','クレア','ユナ','フィオナ','レナ',
+  'ノア','アミラ','シャナ','リリア','セレス','イリス','アスカ','レイン','ミレイ','エヴァ',
+];
+const RANDOM_NAMES_N = [
+  'シャドウ','ゼロ','クロス','ファントム','エコー','リフレイン','ボイド','ネビュラ','オラクル','ルーン',
+  'ヴェール','コード','ミスト','カオス','グリム','アーク','ダウン','ネクサス','フォルス','ヴィクス',
+];
+
+// 職業ごとのステータス重み
+const JOB_STAT_WEIGHT = {
+  戦士:    {腕力:5, 体力:4, 魔力:1, 素早:2, 知恵:1, 運:2},
+  魔法使い:{腕力:1, 体力:1, 魔力:5, 素早:2, 知恵:4, 運:2},
+  盗賊:    {腕力:2, 体力:2, 魔力:1, 素早:5, 知恵:2, 運:4},
+  聖職者:  {腕力:1, 体力:2, 魔力:3, 素早:1, 知恵:5, 運:3},
+  弓使い:  {腕力:2, 体力:2, 魔力:2, 素早:4, 知恵:3, 運:3},
+  錬金術師:{腕力:1, 体力:1, 魔力:3, 素早:2, 知恵:5, 運:3},
+};
+
+function randomName(){
+  const g = sel.gender;
+  const pool = g==='男' ? RANDOM_NAMES_M : g==='女' ? RANDOM_NAMES_F : RANDOM_NAMES_N;
+  document.getElementById('name-input').value = pool[Math.floor(Math.random()*pool.length)];
+  randomStats();
+}
+
+function randomStats(){
+  const weights = JOB_STAT_WEIGHT[sel.job] || {腕力:1,体力:1,魔力:1,素早:1,知恵:1,運:1};
+  const stats = ['腕力','体力','魔力','素早','知恵','運'];
+  // 重みにランダムブレを加えて毎回変化
+  const w = stats.map(s => weights[s] * (0.5 + Math.random() * 1.0));
+  const wTotal = w.reduce((a,b)=>a+b, 0);
+  // TOTAL=36を重みで按分（最低1、最大18）
+  let pts = stats.map((s,i) => Math.max(1, Math.min(18, Math.round(TOTAL * w[i] / wTotal))));
+  // 合計をTOTALに調整
+  let diff = TOTAL - pts.reduce((a,b)=>a+b, 0);
+  let guard = 100;
+  while(diff !== 0 && guard-- > 0){
+    const idx = Math.floor(Math.random() * stats.length);
+    if(diff > 0 && pts[idx] < 18){ pts[idx]++; diff--; }
+    else if(diff < 0 && pts[idx] > 1){ pts[idx]--; diff++; }
+  }
+  // sv に反映してスライダーUIも更新
+  stats.forEach((s,i) => {
+    sv[s] = pts[i];
+    const input = document.getElementById('sl-'+s);
+    const valEl = document.getElementById('sv-'+s);
+    if(input) input.value = pts[i];
+    if(valEl) valEl.textContent = pts[i];
+  });
+  updateRemain();
+}
+
 let sel = {gender:'男',race:'人間',job:'戦士',personality:'勇敢'};
 let sv  = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
 let heroes = [];
