@@ -196,6 +196,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <button class="tbtn" id="cropBtn" onclick="cropToSel()" style="display:none">⬚トリミング</button>
   <button class="tbtn" onclick="showMouseCfg()">🖱設定</button>
   <button class="tbtn" onclick="showFilter()">フィルター▾</button>
+  <button class="tbtn" id="tilingBtn" onclick="toggleTiling()" title="タイリングモード：端を超えると反対側から続けて描画">⬛ タイリング</button>
   <span style="margin-left:auto;font-size:10px;color:var(--dim)" id="zLbl">100%</span>
   <button class="tbtn" onclick="setZ(1)">1:1</button>
   <button class="tbtn" onclick="fitView()">全体</button>
@@ -484,6 +485,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
         <button class="lb" onclick="mvDn()">↓</button>
         <button class="lb" onclick="mergeDn()" style="font-size:9px;padding:0 4px">統合</button>
         <button class="lb" onclick="addMask()" title="マスク追加" style="font-size:9px;padding:0 4px">🎭追加</button>
+        <button class="lb" id="alphaLockBtn" onclick="toggleAlphaLock()" title="透過ロック（透明部分に描画しない）" style="font-size:9px;padding:0 4px">🔒透過</button>
         <button class="lb" onclick="addFolder()" title="フォルダ追加" style="font-size:9px;padding:0 4px">📁</button>
       </div>
     </div>
@@ -759,7 +761,6 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <div class="fmitem" onclick="applyFlip('h')">左右反転</div>
   <div class="fmitem" onclick="applyFlip('v')">上下反転</div>
   <div class="fmitem" onclick="applyInvert()">階調の反転</div>
-  <div class="fmitem" onclick="openFilter('tile')">タイル / オフセット</div>
   <div class="fmitem" onclick="openFilter('resize')">解像度変更</div>
   <div class="fmitem" onclick="openFilter('trim')">トリミング（位置指定）</div>
 </div>
@@ -1075,7 +1076,7 @@ function setSz(w,h){
 function drawBrushCursor(cx, cy){
   bcx.clearRect(0,0,W,H);
   if(!G('showBrushCursor')?.checked) return;
-  const r=bSz/2;
+  const r=bSz; // 実際のブラシ半径と同じ
   bcx.save();
   bcx.strokeStyle='rgba(255,255,255,0.9)';
   bcx.lineWidth=1;
@@ -1158,6 +1159,50 @@ function delLayer(){
   const next=layers[Math.min(idx,layers.length-1)];
   activeLayerId=next?next.id:null;
   renderLL(); comp();
+}
+
+// ─── タイリングモード ─────────────────────────────
+let tilingMode=false;
+
+function toggleTiling(){
+  tilingMode=!tilingMode;
+  const btn=G('tilingBtn');
+  if(btn){
+    btn.style.color=tilingMode?'var(--acc)':'';
+    btn.style.background=tilingMode?'var(--sel)':'';
+    btn.textContent=tilingMode?'⬛ タイリング ON':'⬛ タイリング';
+  }
+}
+
+// タイリングモード用のブラシ描画ラッパー
+// fn(ox, oy) : オフセット付きで描画する関数を最大9箇所呼ぶ
+function withTiling(fn){
+  fn(0,0);
+  if(!tilingMode) return;
+  // 端に近い場合のみ反対側にも描画（±W, ±H）
+  const r=bSz;
+  const cx=arguments[1]||0, cy=arguments[2]||0;
+  if(cx-r<0)  fn(W,0);
+  if(cx+r>W)  fn(-W,0);
+  if(cy-r<0)  fn(0,H);
+  if(cy+r>H)  fn(0,-H);
+  if(cx-r<0 &&cy-r<0)  fn(W,H);
+  if(cx+r>W &&cy-r<0)  fn(-W,H);
+  if(cx-r<0 &&cy+r>H)  fn(W,-H);
+  if(cx+r>W &&cy+r>H)  fn(-W,-H);
+}
+function toggleAlphaLock(){
+  const l=aL(); if(!l) return;
+  l.alphaLock=!l.alphaLock;
+  renderLL();
+  updateAlphaLockBtn();
+}
+function updateAlphaLockBtn(){
+  const l=aL();
+  const btn=G('alphaLockBtn'); if(!btn) return;
+  const on=!!(l&&l.alphaLock);
+  btn.style.color=on?'var(--acc)':'';
+  btn.title=on?'透過ロック: ON（クリックで解除）':'透過ロック: OFF（クリックで有効）';
 }
 
 // ─── マスク ──────────────────────────────────────
@@ -1472,9 +1517,9 @@ function makeLI(l, isChild, parentFolderId){
   const maskBtns=l.mask
     ?`<span class="lmsk-toggle" style="cursor:pointer;font-size:10px;padding:0 2px;color:${l.maskEnabled?'#6af':'#888'}">${l.maskEnabled?'●':'○'}</span><span class="lmsk-del" style="cursor:pointer;font-size:10px;padding:0 2px;color:#f88">🗑</span><span class="lmsk-apply" style="cursor:pointer;font-size:10px;padding:0 2px;color:#8f8">✔</span>`
     :'';
-  d.innerHTML=`<span class="lvis">${l.vis?'👁':'○'}</span><canvas class="lth" width="30" height="22" style="cursor:pointer;border:2px solid ${!maskEditMode&&isActive?'#6af':'transparent'}"></canvas>${maskHtml}${maskBtns}<span class="lnm">${l.name}${maskEditMode&&isActive?'<span style="color:#6af;font-size:9px"> [マスク]</span>':''}</span><input class="lop" type="number" value="${l.opac}" min="0" max="100"><select class="lblend">${blendOpts}</select>`;
+  d.innerHTML=`<span class="lvis">${l.vis?'👁':'○'}</span><canvas class="lth" width="30" height="22" style="cursor:pointer;border:2px solid ${!maskEditMode&&isActive?'#6af':'transparent'}"></canvas>${maskHtml}${maskBtns}<span class="lnm">${l.name}${maskEditMode&&isActive?'<span style="color:#6af;font-size:9px"> [マスク]</span>':''}${l.alphaLock?'<span style="color:var(--acc);font-size:9px" title="透過ロック"> 🔒</span>':''}</span><input class="lop" type="number" value="${l.opac}" min="0" max="100"><select class="lblend">${blendOpts}</select>`;
 
-  d.addEventListener('click',()=>{ activeLayerId=l.id; activeFolderId=null; maskEditMode=false; renderLL(); });
+  d.addEventListener('click',()=>{ activeLayerId=l.id; activeFolderId=null; maskEditMode=false; renderLL(); updateAlphaLockBtn(); });
   d.querySelector('.lvis').addEventListener('click',e=>{ e.stopPropagation(); l.vis=!l.vis; renderLL(); comp(); });
   d.querySelector('.lnm').addEventListener('dblclick',e=>{ e.stopPropagation(); const n=prompt('レイヤー名:',l.name.replace(/ \[マスク\]/,'')); if(n!==null){l.name=n;renderLL();} });
   const lth=d.querySelector('.lth');
@@ -1842,22 +1887,39 @@ function resizeH(hid,cx,cy){
 
 // ═══ CLIP
 function wClip(ctx,fn){
+  const curLayer=aL();
+  const hasAlphaLock=curLayer&&curLayer.alphaLock;
+
   if(sel.active&&sel.maskData){
-    // Mask-based clipping: snapshot → draw → blend by mask
     const before=ctx.getImageData(0,0,W,H);
     ctx.save();fn();ctx.restore();
     const after=ctx.getImageData(0,0,W,H);
     const m=sel.maskData;
     for(let i=0;i<before.data.length;i+=4){
       const t=m[i]/255;
-      after.data[i]  =before.data[i]  *(1-t)+after.data[i]  *t;
-      after.data[i+1]=before.data[i+1]*(1-t)+after.data[i+1]*t;
-      after.data[i+2]=before.data[i+2]*(1-t)+after.data[i+2]*t;
-      after.data[i+3]=before.data[i+3]*(1-t)+after.data[i+3]*t;
+      // alphaLockがONの場合、元のアルファが0のピクセルは描画しない
+      const aLock=hasAlphaLock&&before.data[i+3]===0?0:t;
+      after.data[i]  =before.data[i]  *(1-aLock)+after.data[i]  *aLock;
+      after.data[i+1]=before.data[i+1]*(1-aLock)+after.data[i+1]*aLock;
+      after.data[i+2]=before.data[i+2]*(1-aLock)+after.data[i+2]*aLock;
+      after.data[i+3]=before.data[i+3]*(1-aLock)+after.data[i+3]*aLock;
     }
     ctx.putImageData(after,0,0);
     return;
   }
+
+  if(hasAlphaLock){
+    // alphaLock: 描画前のアルファを保存→描画→描画後にアルファを元に戻す
+    const before=ctx.getImageData(0,0,W,H);
+    ctx.save();if(sel.active&&sel.path)ctx.clip(sel.path);fn();ctx.restore();
+    const after=ctx.getImageData(0,0,W,H);
+    for(let i=3;i<before.data.length;i+=4){
+      after.data[i]=before.data[i]; // アルファを元に戻す
+    }
+    ctx.putImageData(after,0,0);
+    return;
+  }
+
   ctx.save();if(sel.active&&sel.path)ctx.clip(sel.path);fn();ctx.restore();
 }
 function mkMask(path){
@@ -2002,6 +2064,24 @@ function getBrushStamp(r,type,hardness,col){
   return cv;
 }
 
+// タイリング対応ブラシ描画
+function applyBrushTiled(ctx,x0,y0,x1,y1,col){
+  applyBrush(ctx,x0,y0,x1,y1,col);
+  if(!tilingMode) return;
+  const r=bSz;
+  const offsets=[];
+  if(x1-r<0||x0-r<0)  offsets.push([W,0]);
+  if(x1+r>W||x0+r>W)  offsets.push([-W,0]);
+  if(y1-r<0||y0-r<0)  offsets.push([0,H]);
+  if(y1+r>H||y0+r>H)  offsets.push([0,-H]);
+  if((x1-r<0||x0-r<0)&&(y1-r<0||y0-r<0))  offsets.push([W,H]);
+  if((x1+r>W||x0+r>W)&&(y1-r<0||y0-r<0))  offsets.push([-W,H]);
+  if((x1-r<0||x0-r<0)&&(y1+r>H||y0+r>H))  offsets.push([W,-H]);
+  if((x1+r>W||x0+r>W)&&(y1+r>H||y0+r>H))  offsets.push([-W,-H]);
+  offsets.forEach(([ox,oy])=>{
+    applyBrush(ctx,x0+ox,y0+oy,x1+ox,y1+oy,col);
+  });
+}
 function applyBrush(ctx,x0,y0,x1,y1,col){
   const isDot=tool==='dotpen';
   if(isDot){
@@ -2266,48 +2346,112 @@ function drawShape(ctx,x0,y0,x1,y1,col,sh){
 }
 
 // ═══ MOVE
+// 移動中レイヤーのID
+let _moveLayerId=null;
+
 function beginMove(cx,cy){
-  const ctx=aC2();if(!ctx)return;
-  if(float_)commitMove();
+  const srcLayer=aL(); if(!srcLayer) return;
+  const ctx=srcLayer.ctx;
+
+  // すでに移動中レイヤーがある場合はoffXだけ更新
+  if(_moveLayerId!==null){
+    float_.offX=cx-float_.x; float_.offY=cy-float_.y;
+    return;
+  }
+
   if(sel.active&&sel.w>1&&sel.h>1){
     const{x,y,w,h}=sel;
+    saveH();
+
+    // 選択範囲をコピー
     const id2=ctx.getImageData(x,y,w,h);
     if(sel.path&&(sel.type==='lasso'||(sel.type==='rect'&&sel.r>0))){
       const md=mkMask(sel.path).getImageData(x,y,w,h).data;
       for(let i=0;i<id2.data.length;i+=4)id2.data[i+3]=Math.round(id2.data[i+3]*(md[i]/255));
     }
-    const fcv=document.createElement('canvas');fcv.width=w;fcv.height=h;
-    fcv.getContext('2d').putImageData(id2,0,0);
+
+    // 元レイヤーから切り抜き
     ctx.save();ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(255,255,255,1)';
-    if(sel.path&&(sel.type==='lasso'||(sel.type==='rect'&&sel.r>0)))ctx.fill(sel.path);else ctx.fillRect(x,y,w,h);
+    if(sel.path&&(sel.type==='lasso'||(sel.type==='rect'&&sel.r>0)))ctx.fill(sel.path);
+    else ctx.fillRect(x,y,w,h);
     ctx.restore();
-    float_={cv:fcv,origCv:fcv,x,y,w,h,angle:0,offX:cx-x,offY:cy-y,fromSel:true,selX:x,selY:y};
+
+    // 新規「移動中」レイヤーを元レイヤーの直上に作成
+    const mcv=document.createElement('canvas');mcv.width=W;mcv.height=H;
+    const mctx=mcv.getContext('2d');
+    mctx.putImageData(id2,x,y);
+    const ml={id:lid++,name:'移動中',cv:mcv,ctx:mctx,vis:true,opac:100,
+              blend:'source-over',mask:null,maskEnabled:true,_moving:true};
+    const srcIdx=layers.findIndex(x=>x.id===srcLayer.id);
+    layers.splice(srcIdx,0,ml);
+    _moveLayerId=ml.id;
+    activeLayerId=ml.id;
+    float_={x,y,w,h,angle:0,offX:cx-x,offY:cy-y,fromSel:true,selX:x,selY:y,cv:mcv};
+    renderLL();comp();
   }else{
+    saveH();
     const fcv=document.createElement('canvas');fcv.width=W;fcv.height=H;
-    fcv.getContext('2d').drawImage(aL().cv,0,0);
+    fcv.getContext('2d').drawImage(srcLayer.cv,0,0);
     ctx.clearRect(0,0,W,H);
     float_={cv:fcv,origCv:fcv,x:0,y:0,w:W,h:H,angle:0,offX:cx,offY:cy,fromLayer:true};
+    comp();
   }
-  comp();
 }
+
 function updateMove(cx,cy,shiftKey){
   if(!float_) return;
   if(shiftKey){
-    // Shift: 水平か垂直どちらか大きい方に制限
-    const dx=Math.abs(cx-startX), dy=Math.abs(cy-startY);
-    if(dx>dy) cy=startY; else cx=startX;
+    const ddx=Math.abs(cx-startX),ddy=Math.abs(cy-startY);
+    if(ddx>ddy)cy=startY;else cx=startX;
   }
-  float_.x=cx-float_.offX; float_.y=cy-float_.offY; comp();
+  if(_moveLayerId!==null){
+    const ml=layers.find(x=>x.id===_moveLayerId);
+    if(ml){
+      const newX=cx-float_.offX, newY=cy-float_.offY;
+      const dx=newX-float_.x, dy=newY-float_.y;
+      const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+      tmp.getContext('2d').drawImage(ml.cv,0,0);
+      ml.ctx.clearRect(0,0,W,H);
+      ml.ctx.drawImage(tmp,dx,dy);
+      float_.x=newX;float_.y=newY;
+      float_.selX+=dx;float_.selY+=dy;
+      comp();
+    }
+  }else{
+    float_.x=cx-float_.offX;float_.y=cy-float_.offY;comp();
+  }
 }
+
 function commitMove(){
+  if(_moveLayerId!==null){
+    const ml=layers.find(x=>x.id===_moveLayerId);
+    const mlIdx=layers.findIndex(x=>x.id===_moveLayerId);
+    if(ml&&mlIdx>=0){
+      const base=layers[mlIdx+1];
+      if(base){
+        base.ctx.save();
+        base.ctx.globalAlpha=ml.opac/100;
+        base.ctx.globalCompositeOperation=ml.blend;
+        base.ctx.drawImage(ml.cv,0,0);
+        base.ctx.restore();
+        activeLayerId=base.id;
+      }
+      layers.splice(mlIdx,1);
+    }
+    _moveLayerId=null;
+    if(float_&&float_.fromSel){
+      sel.x=float_.selX;sel.y=float_.selY;
+      sel.path=mkRP(sel.x,sel.y,sel.w||0,sel.h||0,sel.r||0);
+    }
+    float_=null;px.clearRect(0,0,W,H);renderLL();comp();
+    return;
+  }
   if(!float_)return;
   const ctx=aC2();
   if(ctx){
     ctx.save();
-    const fcx=float_.x+float_.w/2;
-    const fcy=float_.y+float_.h/2;
-    ctx.translate(fcx,fcy);
-    ctx.rotate(float_.angle||0);
+    const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
+    ctx.translate(fcx,fcy);ctx.rotate(float_.angle||0);
     ctx.drawImage(float_.origCv||float_.cv,-float_.w/2,-float_.h/2,float_.w,float_.h);
     ctx.restore();
   }
@@ -2319,6 +2463,7 @@ function commitMove(){
   }
   float_=null;px.clearRect(0,0,W,H);comp();renderLL();
 }
+
 
 // アンカーからオフセット計算
 // アンカー位置 = 元画像のどの点を固定するか
@@ -2620,7 +2765,10 @@ function updCur(c){
 }
 function syncO(t,v){
   v=parseInt(v);
-  if(t==='sz'){bSz=v;G('sSz').value=v;G('nSz').value=v;if(txW.style.display!=='none'){txIn.style.fontSize=v+'px';_updateTxStyle();}}
+  if(t==='sz'){bSz=v;G('sSz').value=v;G('nSz').value=v;if(txW.style.display!=='none'){txIn.style.fontSize=v+'px';_updateTxStyle();}
+    // ブラシカーソルを最新サイズで再描画
+    if(typeof _lastBrushX==='number') drawBrushCursor(_lastBrushX,_lastBrushY);
+  }
   else if(t==='op'){bOp=v;G('sOp').value=v;G('nOp').value=v;if(typeof _updateTxStyle==='function')_updateTxStyle();}
   else if(t==='hd'){bHd=v;G('sHd').value=v;G('nHd').value=v;}
 }
@@ -2660,9 +2808,12 @@ function cPos(e){
 // ═══ EVENTS
 eC.addEventListener('pointerdown',onDown);
 eC.addEventListener('pointerup',onUp);
+let _lastBrushX=0, _lastBrushY=0;
 eC.addEventListener('pointermove',e=>{
+  const cp=cPos(e);
+  _lastBrushX=cp.x; _lastBrushY=cp.y;
   if(['brush','dotpen','eraser','blur'].includes(tool)){
-    const cp=cPos(e); drawBrushCursor(cp.x,cp.y);
+    drawBrushCursor(cp.x,cp.y);
   } else { clearBrushCursor(); }
 });
 eC.addEventListener('pointerleave',()=>{ clearBrushCursor(); });
@@ -2770,7 +2921,7 @@ function onDown(e){
   if(actTool==='select'){if(float_)commitMove();clearSel();lassoPts=[];}
   else if(actTool==='lasso'){if(float_)commitMove();clearSel();lassoPts=[{x:cp.x,y:cp.y}];}
   else if(actTool==='wand'){if(float_)commitMove();wandSelect(cp.x,cp.y);drawing=false;}
-  else if(actTool==='move'){saveH();beginMove(cp.x,cp.y);}
+  else if(actTool==='move'){beginMove(cp.x,cp.y);}
   else if(actTool==='rotate'){saveH();beginRotate(cp.x,cp.y);}
   else if(actTool==='scale'){saveH();beginScale(cp.x,cp.y);}
   else if(actTool==='fill'){
@@ -2792,7 +2943,7 @@ function onDown(e){
     // Shift+クリックで前回終点から直線（e.shiftKeyで確実に取得）
     if(e.shiftKey&&lastStrokeX!==null&&(actTool==='brush'||actTool==='dotpen'||actTool==='eraser')){
       if(actTool==='eraser') withPressure(()=>applyErase(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y));
-      else withPressure(()=>applyBrush(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y,dc));
+      else withPressure(()=>applyBrushTiled(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y,dc));
       lastStrokeX=cp.x;lastStrokeY=cp.y;
       comp();drawing=false;return;
     }
@@ -2800,7 +2951,7 @@ function onDown(e){
     else if(actTool==='blur')applyBlur(aC2(),cp.x,cp.y);
     else{
       if(useWet()&&!maskEditMode){initWet();addWetPt(cp.x,cp.y,bSz,bOp/100);}
-      else withPressure(()=>applyBrush(aC2(),cp.x,cp.y,cp.x,cp.y,dc));
+      else withPressure(()=>applyBrushTiled(aC2(),cp.x,cp.y,cp.x,cp.y,dc));
     }
     comp();
   }
@@ -2876,7 +3027,7 @@ function onMove(e){
       px.save();px.drawImage(wetCv,0,0);px.restore();
       scheduleComp();
     }else{
-      withPressure(()=>{applyBrush(ctx,prevX,prevY,cp.x,cp.y,dc);});
+      withPressure(()=>{applyBrushTiled(ctx,prevX,prevY,cp.x,cp.y,dc);});
       prevX=cp.x;prevY=cp.y;scheduleComp();
     }
   }}
@@ -2889,7 +3040,7 @@ function onUp(e){
   if(panning){endPan();return;}
   if(hDrag){
     if(hDrag==='float-rot'){_selRotOrigCv=null;}
-    if(float_)commitMove();
+    // ハンドル操作（リサイズ・回転）はそのまま継続。commitMoveしない
     hDrag=null;hDragO=null;updCur();return;
   }
   if(!drawing)return;drawing=false;
@@ -2904,8 +3055,8 @@ function onUp(e){
   }
   else if(actTool==='lasso'){px.clearRect(0,0,W,H);setSL(lassoPts);lassoPts=[];}
   else if(actTool==='move'){
+    // 移動ツールはマウスを離しても確定しない（選択解除・ツール切替まで継続）
     if(_movingSelOnly){_movingSelOnly=false;sel._basePts=null;}
-    else commitMove();
   }
   else if(actTool==='rotate'){commitRotate();}
   else if(actTool==='scale'){commitScale();}
@@ -2976,8 +3127,14 @@ document.addEventListener('keydown',e=>{
     const dx=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;
     const dy=e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;
     if(float_){
+      // float_があれば直接移動
       float_.x+=dx;float_.y+=dy;comp();drawSelOv();
+    }else if(tool==='move'&&sel.active&&sel.w>1&&sel.h>1){
+      // 移動ツール+選択範囲あり → float_化してから移動
+      beginMove(sel.x+sel.w/2, sel.y+sel.h/2);
+      if(float_){ float_.x+=dx;float_.y+=dy;comp();drawSelOv(); }
     }else if(sel.active){
+      // 選択ツール時は選択範囲だけ移動
       sel.x+=dx;sel.y+=dy;
       if(sel.pts.length)sel.pts=sel.pts.map(p=>({x:p.x+dx,y:p.y+dy}));
       if(sel.path)sel.path=sel.type==='lasso'?mkLP(sel.pts):mkRP(sel.x,sel.y,sel.w,sel.h,sel.r||0);
@@ -3761,41 +3918,65 @@ function _applyFilterToLayer(l,commit){
     const iter=Math.max(1,parseInt(G('fBlurIter').value)||1);
     const str=(parseInt(G('fBlurStr').value)||100)/100;
     const origSnap=ctx.getImageData(rx,ry,rw,rh);
-    // 余白を持って元画像から広めに切り出し（四隅の矩形問題を防ぐ）
-    const pad=Math.ceil(r*3);
-    const ex=Math.max(0,rx-pad),ey=Math.max(0,ry-pad);
-    const ew=Math.min(W-ex,rw+pad*2),eh=Math.min(H-ey,rh+pad*2);
-    const tmp=document.createElement('canvas');tmp.width=ew;tmp.height=eh;
-    const tc=tmp.getContext('2d');
-    tc.drawImage(l.cv,ex,ey,ew,eh,0,0,ew,eh);
-    for(let i=0;i<iter;i++){
-      const t2=document.createElement('canvas');t2.width=ew;t2.height=eh;
-      const tc2=t2.getContext('2d');
-      tc2.filter=`blur(${r}px)`;tc2.drawImage(tmp,0,0);
-      tc.clearRect(0,0,ew,eh);tc.drawImage(t2,0,0);
-    }
-    // 選択範囲分だけ元レイヤーに書き戻す
-    ctx.drawImage(tmp,rx-ex,ry-ey,rw,rh,rx,ry,rw,rh);
-    if(str<1){
-      const blurred=ctx.getImageData(rx,ry,rw,rh);
-      const bd=blurred.data,od=origSnap.data;
-      for(let i=0;i<bd.length;i+=4){
-        bd[i  ]=Math.round(bd[i  ]*str+od[i  ]*(1-str));
-        bd[i+1]=Math.round(bd[i+1]*str+od[i+1]*(1-str));
-        bd[i+2]=Math.round(bd[i+2]*str+od[i+2]*(1-str));
-        bd[i+3]=Math.round(bd[i+3]*str+od[i+3]*(1-str));
+
+    if(tilingMode){
+      // タイリングモード：3×3グリッドに並べてぼかし→中央を取り出す
+      const tileW=W, tileH=H;
+      const bigW=tileW*3, bigH=tileH*3;
+      const big=document.createElement('canvas');big.width=bigW;big.height=bigH;
+      const bc=big.getContext('2d');
+      // 3×3に同じ画像を並べる
+      for(let dy=-1;dy<=1;dy++){
+        for(let dx=-1;dx<=1;dx++){
+          bc.drawImage(l.cv, tileW*(dx+1), tileH*(dy+1));
+        }
       }
-      ctx.putImageData(blurred,rx,ry);
-    }
-  }else if(type==='tile'){
-    const ox=((parseInt(G('fTX').value)%W)+W)%W;
-    const oy=((parseInt(G('fTY').value)%H)+H)%H;
-    if(ox===0&&oy===0)return;
-    const src=l.cv;
-    ctx.clearRect(0,0,W,H);
-    for(let dx2=-1;dx2<=1;dx2++)for(let dy2=-1;dy2<=1;dy2++){
-      ctx.drawImage(src,ox+dx2*W,oy+dy2*H);
-    }
+      // ぼかし適用
+      for(let i=0;i<iter;i++){
+        const t2=document.createElement('canvas');t2.width=bigW;t2.height=bigH;
+        const tc2=t2.getContext('2d');
+        tc2.filter=`blur(${r}px)`;tc2.drawImage(big,0,0);
+        bc.clearRect(0,0,bigW,bigH);bc.drawImage(t2,0,0);
+      }
+      // 中央（元のキャンバスに対応する部分）を取り出して書き戻す
+      const id=bc.getImageData(tileW+rx, tileH+ry, rw, rh);
+      if(str<1){
+        const od=origSnap.data;
+        for(let i=0;i<id.data.length;i+=4){
+          id.data[i  ]=Math.round(id.data[i  ]*str+od[i  ]*(1-str));
+          id.data[i+1]=Math.round(id.data[i+1]*str+od[i+1]*(1-str));
+          id.data[i+2]=Math.round(id.data[i+2]*str+od[i+2]*(1-str));
+          id.data[i+3]=Math.round(id.data[i+3]*str+od[i+3]*(1-str));
+        }
+      }
+      ctx.putImageData(id, rx, ry);
+    } else {
+      // 通常モード：余白を持って広めに切り出し
+      const pad=Math.ceil(r*3);
+      const ex=Math.max(0,rx-pad),ey=Math.max(0,ry-pad);
+      const ew=Math.min(W-ex,rw+pad*2),eh=Math.min(H-ey,rh+pad*2);
+      const tmp=document.createElement('canvas');tmp.width=ew;tmp.height=eh;
+      const tc=tmp.getContext('2d');
+      tc.drawImage(l.cv,ex,ey,ew,eh,0,0,ew,eh);
+      for(let i=0;i<iter;i++){
+        const t2=document.createElement('canvas');t2.width=ew;t2.height=eh;
+        const tc2=t2.getContext('2d');
+        tc2.filter=`blur(${r}px)`;tc2.drawImage(tmp,0,0);
+        tc.clearRect(0,0,ew,eh);tc.drawImage(t2,0,0);
+      }
+      ctx.drawImage(tmp,rx-ex,ry-ey,rw,rh,rx,ry,rw,rh);
+      if(str<1){
+        const blurred=ctx.getImageData(rx,ry,rw,rh);
+        const bd=blurred.data,od=origSnap.data;
+        for(let i=0;i<bd.length;i+=4){
+          bd[i  ]=Math.round(bd[i  ]*str+od[i  ]*(1-str));
+          bd[i+1]=Math.round(bd[i+1]*str+od[i+1]*(1-str));
+          bd[i+2]=Math.round(bd[i+2]*str+od[i+2]*(1-str));
+          bd[i+3]=Math.round(bd[i+3]*str+od[i+3]*(1-str));
+        }
+        ctx.putImageData(blurred,rx,ry);
+      }
+    } // end else(通常モード)
   }else if(type==='punchthrough'){
     const thresh=parseInt(G('fPtThresh').value)||128;
     const idPT=ctx.getImageData(rx,ry,rw,rh);const dPT=idPT.data;
@@ -4521,12 +4702,12 @@ function uvCallDown(cx, cy, button, shiftKey, altKey){
     applyBlur(ctx,Math.round(cx),Math.round(cy));
   } else {
     if(shiftKey && lastStrokeX!==null){
-      withPressure(()=>applyBrush(ctx,lastStrokeX,lastStrokeY,cx,cy,dc));
+      withPressure(()=>applyBrushTiled(ctx,lastStrokeX,lastStrokeY,cx,cy,dc));
       lastStrokeX=cx; lastStrokeY=cy;
       comp(); drawing=false; return;
     }
     if(useWet()&&!maskEditMode){ initWet(); addWetPt(cx,cy,bSz,bOp/100); }
-    else withPressure(()=>applyBrush(ctx,cx,cy,cx,cy,dc));
+    else withPressure(()=>applyBrushTiled(ctx,cx,cy,cx,cy,dc));
   }
   comp();
 }
@@ -4551,7 +4732,7 @@ function uvCallMove(cx, cy){
       px.clearRect(0,0,W,H); px.save(); px.drawImage(wetCv,0,0); px.restore();
       scheduleComp();
     } else {
-      withPressure(()=>applyBrush(ctx,prevX,prevY,cx,cy,dc));
+      withPressure(()=>applyBrushTiled(ctx,prevX,prevY,cx,cy,dc));
       prevX=cx; prevY=cy; scheduleComp();
     }
   } else if(['line','rect','ellipse'].includes(actTool)){
