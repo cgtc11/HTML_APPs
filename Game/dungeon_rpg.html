@@ -136,7 +136,7 @@ button{cursor:pointer;font-family:'Crimson Pro',serif}
 .abtn .al{font-size:10px;display:block}
 
 /* ===== RESULT ===== */
-#result-screen{background:var(--dark2);align-items:center;text-align:center;padding:16px 16px 24px;overflow-y:auto}
+#result-screen{background:var(--dark2);align-items:center;text-align:center;padding:16px 16px 24px;overflow-y:auto;position:relative;z-index:1}
 .result-title{font-family:'UnifrakturMaguntia',cursive;font-size:32px;margin-bottom:4px}
 .result-title.win{color:var(--gold)}
 .result-title.lose{color:var(--hp-red)}
@@ -657,22 +657,26 @@ const CLASSES = [
    skillParams:{shinken_mult:2.0, defend_mult:0.3, defend_rand:0.1},
    element:'無',
    classSkills:[{id:'shinken',minLv:1},{id:'defend',minLv:1}],
-   extraSkills:[{id:'null_elem',minLv:10,cost:4},{id:'dark_magic',minLv:20,cost:4},{id:'holy',minLv:30,cost:4}]},
+   extraSkills:[{id:'null_elem',minLv:10,cost:4},{id:'dark_magic',minLv:20,cost:4},{id:'holy',minLv:30,cost:4}],
+   levelUp:{hp:{min:6,max:12},mp:{min:0,max:4},atk:{min:3,max:4},def:{min:1,max:2},spd:{min:1,max:2},int:{min:1,max:2}}},
   {id:'mage',    name:'魔法使い',emoji:'🔮', desc:'MP高・魔法火力特化',
    stats:{hp:18,mp:35,atk:3,def:2,spd:5,int:14},
    element:'無',
    classSkills:[{id:'fireball',minLv:1},{id:'iceshot',minLv:1}],
-   extraSkills:[{id:'dark_magic',minLv:10,cost:4},{id:'holy',minLv:20,cost:4},{id:'mp_heal',minLv:30,cost:4}]},
+   extraSkills:[{id:'dark_magic',minLv:10,cost:4},{id:'holy',minLv:20,cost:4},{id:'mp_heal',minLv:30,cost:4}],
+   levelUp:{hp:{min:4,max:9},mp:{min:4,max:8},atk:{min:1,max:2},def:{min:1,max:2},spd:{min:1,max:2},int:{min:3,max:4}}},
   {id:'rogue',   name:'盗賊',  emoji:'🗡️', desc:'素早さ高・クリ特化',
    stats:{hp:26,mp:14,atk:8,def:4,spd:15,int:7},
    element:'無',
    classSkills:[{id:'combo',minLv:1}],
-   extraSkills:[{id:'null_elem',minLv:10,cost:4},{id:'heal',minLv:20,cost:4},{id:'dark_magic',minLv:30,cost:0}]},
+   extraSkills:[{id:'null_elem',minLv:10,cost:4},{id:'heal',minLv:20,cost:4},{id:'dark_magic',minLv:30,cost:0}],
+   levelUp:{hp:{min:5,max:10},mp:{min:3,max:6},atk:{min:0,max:2},def:{min:0,max:2},spd:{min:3,max:4},int:{min:0,max:2}}},
   {id:'cleric',  name:'僧侶',  emoji:'✨', desc:'回復魔法・バランス型',
    stats:{hp:32,mp:24,atk:6,def:7,spd:6,int:10},
    element:'無',
    classSkills:[{id:'heal',minLv:1},{id:'holy',minLv:1}],
-   extraSkills:[{id:'mp_heal',minLv:10,cost:4},{id:'holy',minLv:20,cost:4},{id:'null_elem',minLv:30,cost:4}]},
+   extraSkills:[{id:'mp_heal',minLv:10,cost:4},{id:'holy',minLv:20,cost:4},{id:'null_elem',minLv:30,cost:4}],
+   levelUp:{hp:{min:4,max:9},mp:{min:4,max:8},atk:{min:1,max:2},def:{min:1,max:2},spd:{min:1,max:2},int:{min:3,max:4}}},
 ];
 
 const DUNGEONS = [
@@ -705,7 +709,7 @@ const DUNGEONS = [
      [{e:{name:'毒キノコ',  emoji:'🍄',hp:22,atk:4,def:2,exp:12,gold:8,poison:true},w:20},
       {e:{name:'ゴブリン',  emoji:'👺',hp:28,atk:7,def:3,exp:15,gold:12},       w:80}],
    ],
-   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:200,element:'火',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
+   boss:{name:'森の番人', emoji:'🌳',hp:80,atk:12,def:5,exp:50,gold:200,element:'火',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:100},{itemId:'potion',rate:30}],isBoss:true}},
 
   {id:'caves',  name:'銀の洞窟', minLv:3, floors:7,
    desc:'鉱石が光る地下洞窟。岩石の怪物が棲む。',
@@ -716,7 +720,7 @@ const DUNGEONS = [
      {name:'毒蜘蛛',     emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,poison:true},
      {name:'オーク',     emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22},
    ],
-   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:400,element:'火',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
+   boss:{name:'ロックワーム',emoji:'🐍',hp:160,atk:20,def:10,exp:110,gold:400,element:'火',drops:[{itemId:'defstone',rate:100},{itemId:'elixir',rate:100},{itemId:'potion',rate:30}],isBoss:true}},
 
   {id:'castle', name:'呪われた古城', minLv:7, floors:10,
    desc:'魔王の遺した黒魔術が漂う廃城。強敵揃い。',
@@ -727,7 +731,7 @@ const DUNGEONS = [
      {name:'魔法騎士', emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32},
      {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,drain:true},
    ],
-   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:600,element:'氷',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
+   boss:{name:'魔城の番人',emoji:'🏰',hp:260,atk:30,def:15,exp:200,gold:600,element:'氷',drops:[{itemId:'spdstone',rate:100},{itemId:'elixir',rate:100},{itemId:'manapotion',rate:30}],isBoss:true}},
 
   {id:'abyss',  name:'深淵の奈落', minLv:14, floors:15,
    desc:'世界の底に続く終わりなき闇。最高の試練。',
@@ -738,7 +742,7 @@ const DUNGEONS = [
      {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52},
      {name:'リッチ',   emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,drain:true},
    ],
-   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:1000,element:'闇',drops:[{itemId:'strengthstone',rate:100},{itemId:'elixir',rate:20}],isBoss:true}},
+   boss:{name:'深淵の魔神',emoji:'👁️',hp:500,atk:52,def:26,exp:520,gold:1000,element:'闇',drops:[{itemId:'intstone',rate:100},{itemId:'elixir',rate:100},{itemId:'manapotion',rate:30}],isBoss:true}},
 ];
 
 // アイテムの効果量をゲーム設定から取得するヘルパー
@@ -802,6 +806,10 @@ const SKILL_MASTER=[
   {id:'null_elem',   name:'属性無効', icon:'🔰', elem:'無', cost:8,  minLv:1,  desc:'1ターン属性無効化'},
   {id:'dark_magic',  name:'闇魔法',   icon:'🌑', elem:'闇', cost:10, minLv:1,  desc:'INT×3 闇属性魔法ダメ'},
   {id:'mp_heal',     name:'魔法回復', icon:'💙', elem:'無', cost:0,  minLv:1,  desc:'MP +INT×2+10 回復（HP消費なし）'},
+  {id:'detox',       name:'毒消し',   icon:'💊', elem:'光', cost:6,  minLv:1,  desc:'毒を取り除く魔法'},
+  {id:'mirror',      name:'鏡魔法',   icon:'🪞', elem:'無', cost:12, minLv:1,  desc:'2ターン全攻撃を跳ね返す'},
+  {id:'escape_magic',name:'逃魔法',   icon:'🌀', elem:'無', cost:8,  minLv:1,  desc:'必ず戦闘から逃げられる'},
+  {id:'speed_magic', name:'速魔法',   icon:'⚡', elem:'無', cost:6,  minLv:1,  desc:'今戦闘中、敵の攻撃が30%ミスしやすくなる'},
 ];
 function getSkill(id){return SKILL_MASTER.find(s=>s.id===id)||SKILL_MASTER[0];}
 
@@ -864,10 +872,10 @@ let G = {
   dungeon:null, floor:1,
   enemy:null, battleActive:false,
   defending:false, exposed:false, counterBoost:false, runFailed:false, poisonTurns:0,
-  lastHit:null, nullElemTurn:0,
+  lastHit:null, nullElemTurn:0, mirrorTurn:0, speedMagicTurn:0,
   floorKills:0, floorKillsNeeded:3,
   isBoss:false,
-  record:{kills:0,dungeons:0,gold:0}
+  record:{kills:0,dungeons:0,gold:0,clearedDungeons:[]}
 };
 
 // ============================================================
@@ -982,7 +990,7 @@ function startGame(){
     gold:100,inventory:[{...SHOP_ITEMS[0]}],
     poisoned:false,poisonTurns:0,
   };
-  G.record={kills:0,dungeons:0,gold:0};
+  G.record={kills:0,dungeons:0,gold:0,clearedDungeons:[]};
   refreshTavern();
   showScreen('tavern-screen');
   tlog(`${name}、冒険の旅が始まった！`,'imp');
@@ -1022,10 +1030,12 @@ function doRest(){
 function openDungeonSelect(){
   const el=document.getElementById('dungeonList');
   const tagMap={e:'初級',m:'中級',h:'上級',x:'経験値↑',g:'高報酬',l:'🔒'};
-  el.innerHTML=DUNGEONS.map(d=>{
-    const locked=P.level<d.minLv;
+  const cleared=G.record.clearedDungeons||[];
+  el.innerHTML=DUNGEONS.map((d,idx)=>{
+    // 最初のダンジョンは常に開放、それ以外は前のダンジョンの最上階到達が条件
+    const locked=idx>0&&!cleared.includes(DUNGEONS[idx-1].id);
     const tags=d.tags.map(t=>`<span class="tag tag-${t}">${tagMap[t]||t}</span>`).join('');
-    const lockTag=locked?`<span class="tag tag-l">Lv${d.minLv}〜</span>`:'';
+    const lockTag=locked?`<span class="tag tag-l">🔒 ${DUNGEONS[idx-1].name} ${DUNGEONS[idx-1].floors}F到達で解放</span>`:'';
     const clickAttr=locked?'':'onclick="enterDungeon(\''+d.id+'\')"';
     return`<div class="dcard${locked?' locked':''}" ${clickAttr}>
       <div class="dcard-head">
@@ -1096,6 +1106,11 @@ function nextEncounter(){
     G.floorKillsNeeded=G.dungeon.floorKills?.[G.floor-1]??rand(2,4);
     G.isBoss=false;
     document.getElementById('battleFloor').textContent=G.floor;
+    // 最上階到達を記録
+    if(G.floor===d.floors){
+      if(!G.record.clearedDungeons)G.record.clearedDungeons=[];
+      if(!G.record.clearedDungeons.includes(d.id))G.record.clearedDungeons.push(d.id);
+    }
     enemy=scaledEnemy();
     blog(`── ${G.floor}F に到達 ──`,'system');
   } else {
@@ -1276,6 +1291,19 @@ function doSkill(skillId){
   } else if(skillId==='mp_heal'){
     const heal=Math.round(P.int*2+10);P.mp=Math.min(P.maxMp,P.mp+heal);
     blog(`💙 魔法回復！ MP ${heal} 回復！`,'good');updatePlayerHud();setTimeout(enemyTurn,700);
+  } else if(skillId==='detox'){
+    P.poisoned=false;P.poisonTurns=0;
+    blog(`💊 毒消し！ 毒が解けた！`,'good');updatePlayerHud();setTimeout(enemyTurn,700);
+  } else if(skillId==='mirror'){
+    G.mirrorTurn=2;
+    blog(`🪞 鏡魔法！ 2ターン全ての攻撃を跳ね返す！`,'good');setTimeout(enemyTurn,700);
+  } else if(skillId==='escape_magic'){
+    blog(`🌀 逃魔法！ 戦闘から脱出した！`,'good');
+    G.battleActive=false;
+    setTimeout(()=>showEscapeResult(),800);
+  } else if(skillId==='speed_magic'){
+    G.speedMagicTurn=999;// 戦闘終了まで持続
+    blog(`⚡ 速魔法！ 敵の攻撃が30%ミスしやすくなった！`,'good');setTimeout(enemyTurn,700);
   }
 }
 
@@ -1363,7 +1391,9 @@ function showEscapeResult(){
 function enemyTurn(){
   if(!G.battleActive)return;
   const e=G.enemy;
+  const wasMirror=G.mirrorTurn>0;
   if(G.nullElemTurn>0)G.nullElemTurn--;
+  if(G.mirrorTurn>0)G.mirrorTurn--;
   const wasDefending=G.defending;
   const defMult=G.exposed?0.5:1;
   const runFailed=G.runFailed||false;
@@ -1384,6 +1414,25 @@ function enemyTurn(){
   }
 
   let dmg=calcEnemyDmg(e.atk,P.def*defMult);
+
+  // 鏡魔法：全攻撃を跳ね返す
+  if(wasMirror){
+    const reflect=Math.round(dmg*0.8);
+    e.hp=Math.max(0,e.hp-reflect);
+    blog(`🪞 鏡魔法！ ${e.name} の攻撃を跳ね返した！ ${reflect} ダメージ！`,'good');
+    updateEnemyUI();
+    if(e.hp<=0){P.hp=Math.max(0,P.hp);updatePlayerHud();setTimeout(checkResult,400);return;}
+    const remaining=G.mirrorTurn>0?`残り${G.mirrorTurn}ターン`:'効果終了';
+    blog(`🪞 鏡魔法 ${remaining}`,'system');
+    P.hp=Math.max(0,P.hp);updatePlayerHud();setActions(true);return;
+  }
+
+  // 速魔法：30%でミス
+  if(G.speedMagicTurn>0&&Math.random()<0.3){
+    blog(`⚡ ${e.name} の攻撃はミスした！`,'good');
+    P.hp=Math.max(0,P.hp);updatePlayerHud();setActions(true);return;
+  }
+
   // 属性弱点チェック（敵の属性 vs プレイヤーの属性）
   const eElem=e.element||'無';
   const pElem=P.cls.element||'無';
@@ -1468,7 +1517,15 @@ function giveRewards(e){
   while(P.exp>=P.expNext){
     P.exp-=P.expNext;P.level++;
     P.expNext=Math.round(P.expNext*1.6);
-    const inc={hp:rand(4,9),mp:rand(2,5),atk:rand(0,1),def:rand(0,1),spd:rand(0,1),int:rand(0,1)};
+    const lu=P.cls.levelUp||{hp:{min:4,max:9},mp:{min:2,max:5},atk:{min:1,max:2},def:{min:1,max:2},spd:{min:1,max:2},int:{min:1,max:2}};
+    const inc={
+      hp: rand(lu.hp.min,  lu.hp.max),
+      mp: rand(lu.mp.min,  lu.mp.max),
+      atk:rand(lu.atk.min, lu.atk.max),
+      def:rand(lu.def.min, lu.def.max),
+      spd:rand(lu.spd.min, lu.spd.max),
+      int:rand(lu.int.min, lu.int.max),
+    };
     P.maxHp+=inc.hp;P.maxMp+=inc.mp;
     P.hp=Math.min(P.maxHp,P.hp+Math.round(inc.hp/2));
     P.atk+=inc.atk;P.def+=inc.def;P.spd+=inc.spd;P.int+=inc.int;
@@ -1765,20 +1822,20 @@ const ALL_ENEMIES=[
   {name:'スライム青', emoji:'🔵',hp:24,atk:1,def:1,exp:11,gold:7,  element:'氷'},
   {name:'スライム赤', emoji:'🔴',hp:28,atk:2,def:1,exp:14,gold:9,  element:'火'},
   {name:'コウモリ',   emoji:'🦇',hp:18,atk:3,def:0,exp:10,gold:6,  element:'火'},
-  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:3,def:1,exp:12,gold:8,  element:'火', poison:true, drops:[{itemId:'antidote',rate:20}]},
-  {name:'ゴブリン',   emoji:'👺',hp:28,atk:5,def:2,exp:15,gold:12, element:'火'},
+  {name:'毒キノコ',   emoji:'🍄',hp:22,atk:3,def:1,exp:12,gold:8,  element:'火', poison:true, drops:[{itemId:'antidote',rate:60}]},
+  {name:'ゴブリン',   emoji:'👺',hp:28,atk:5,def:2,exp:15,gold:12, element:'火', drops:[{itemId:'potion',rate:30}]},
   {name:'コボルト',   emoji:'🐾',hp:35,atk:6,def:3,exp:18,gold:14, element:'闇'},
   {name:'岩石ゴーレム',emoji:'🪨',hp:55,atk:8,def:6,exp:26,gold:22,element:'無'},
-  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,element:'闇', poison:true, drops:[{itemId:'antidote',rate:20}]},
-  {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22, element:'火', drops:[{itemId:'potion',rate:20}]},
+  {name:'毒蜘蛛',    emoji:'🕷️',hp:32,atk:10,def:2,exp:20,gold:15,element:'闇', poison:true, drops:[{itemId:'antidote',rate:60}]},
+  {name:'オーク',    emoji:'👹',hp:45,atk:13,def:5,exp:28,gold:22, element:'火', drops:[{itemId:'potion',rate:30}]},
   {name:'スケルトン', emoji:'💀',hp:45,atk:14,def:6,exp:32,gold:20, element:'闇'},
   {name:'ゾンビ',    emoji:'🧟',hp:60,atk:12,def:8,exp:30,gold:16, element:'闇'},
-  {name:'魔法騎士',  emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32, element:'氷'},
-  {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,element:'火', drain:true, drops:[{itemId:'potion',rate:20}]},
-  {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45,element:'闇'},
+  {name:'魔法騎士',  emoji:'🧙',hp:52,atk:18,def:9,exp:42,gold:32, element:'氷', drops:[{itemId:'potion',rate:30}]},
+  {name:'ヴァンパイア',emoji:'🧛',hp:65,atk:20,def:7,exp:52,gold:36,element:'火', drain:true, drops:[{itemId:'potion',rate:30}]},
+  {name:'デーモン',  emoji:'😈',hp:80,atk:24,def:12,exp:65,gold:45,element:'闇', drops:[{itemId:'manapotion',rate:30}]},
   {name:'地獄の炎',  emoji:'🔥',hp:60,atk:28,def:5,exp:58,gold:32, element:'火', burn:true, drops:[{itemId:'potion',rate:50}]},
-  {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52,element:'闇'},
-  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,element:'闇', drain:true, drops:[{itemId:'elixir',rate:20}]},
+  {name:'暗黒騎士',  emoji:'🖤',hp:90,atk:26,def:16,exp:72,gold:52,element:'闇', drops:[{itemId:'manapotion',rate:30}]},
+  {name:'リッチ',    emoji:'☠️',hp:100,atk:30,def:10,exp:82,gold:62,element:'闇', drain:true, drops:[{itemId:'elixir',rate:30}]},
 ];
 
 let feCurrentDungeon=0; // 編集中のダンジョンindex
@@ -2086,6 +2143,7 @@ function getDefaultEeData(){
       element:c.element||'無',
       classSkills:(c.classSkills||[]).map(s=>({...s})),
       extraSkills:(c.extraSkills||[]).map(s=>({...s})),
+      levelUp:c.levelUp||{hp:{min:4,max:9},mp:{min:2,max:5},atk:{min:1,max:2},def:{min:1,max:2},spd:{min:1,max:2},int:{min:1,max:2}},
     })),
   };
 }
@@ -2141,6 +2199,7 @@ function getEnemyMaster(name){
       c.element=s.element||'無';
       if(s.classSkills)c.classSkills=s.classSkills.map(x=>({...x}));
       if(s.extraSkills) c.extraSkills=s.extraSkills.map(x=>({...x}));
+      if(s.levelUp) c.levelUp={...s.levelUp};
     });
   }
 })();
@@ -2244,6 +2303,28 @@ function buildClassCard(c,i){
         <select class="fe-enemy-select" style="width:120px" onchange="eeChangeClassElement(${i},this.value)">${elemOpts}</select>
       </div>
       <div style="margin-top:10px">
+        <div class="ee-abilities-label">⬆ LVアップ上昇値（最小〜最大）</div>
+        ${['hp','mp','atk','def','spd','int'].map(k=>{
+          const icons={hp:'❤️',mp:'💙',atk:'⚔️',def:'🛡️',spd:'💨',int:'🔮'};
+          const lu=c.levelUp||{};
+          const cur=lu[k]||{min:k==='hp'?4:k==='mp'?2:1, max:k==='hp'?9:k==='mp'?5:2};
+          return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:14px">${icons[k]}</span>
+            <span style="flex:1;font-size:12px;color:var(--text-dim)">${k.toUpperCase()}</span>
+            <div class="fe-weight-wrap">
+              <span class="fe-weight-label">最小</span>
+              <input class="fe-weight-input" type="number" min="0" max="99" value="${cur.min}"
+                onchange="eeChangeClassLevelUp(${i},'${k}','min',this.value)" style="width:44px">
+            </div>
+            <div class="fe-weight-wrap">
+              <span class="fe-weight-label">最大</span>
+              <input class="fe-weight-input" type="number" min="0" max="99" value="${cur.max}"
+                onchange="eeChangeClassLevelUp(${i},'${k}','max',this.value)" style="width:44px">
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:10px">
         <div class="ee-abilities-label">職業固有スキル（LV条件設定）</div>
         ${(c.classSkills||[]).map((s,si)=>{
           const skm=getSkill(s.id);
@@ -2295,6 +2376,12 @@ function eeChangeClassStat(i,key,val){
 
 function eeChangeClassElement(i,val){
   eeData.classes[i].element=val;
+}
+
+function eeChangeClassLevelUp(i,key,minmax,val){
+  if(!eeData.classes[i].levelUp)eeData.classes[i].levelUp={};
+  if(!eeData.classes[i].levelUp[key])eeData.classes[i].levelUp[key]={min:0,max:0};
+  eeData.classes[i].levelUp[key][minmax]=Math.max(0,Math.min(99,parseInt(val)||0));
 }
 
 function eeChangeClassSkillLv(ci,kind,si,val){
@@ -2713,7 +2800,7 @@ function deserializePlayer(d){
     inventory:(d.inventory||[]).map(id=>SHOP_ITEMS.find(i=>i.id===id)).filter(Boolean).map(i=>({...i})),
     poisoned:false,poisonTurns:0,
   };
-  G.record=d.record||{kills:0,dungeons:0,gold:0};
+  G.record=d.record||{kills:0,dungeons:0,gold:0,clearedDungeons:[]};
 }
 
 function openSaveLoad(mode){
@@ -2945,6 +3032,7 @@ function doLoad(slot){
   if(!d){return;}
   deserializePlayer(d);
   G.dungeon=null;G.battleActive=false;G.defending=false;G.exposed=false;
+  G.nullElemTurn=0;G.mirrorTurn=0;G.speedMagicTurn=0;
   G.poisonTurns=0;G.floorKills=0;G.isBoss=false;
   refreshTavern();
   showScreen('tavern-screen');
