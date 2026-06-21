@@ -211,6 +211,12 @@
   .score-total{font-size:14px;font-weight:700;color:var(--accent2);text-align:right;margin-top:6px}
   .result-prob{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
   .prob-chip{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600}
+  /* チップ補正表示 */
+  .chip-bonus{
+    display:block;font-size:9px;font-weight:600;margin-top:2px;
+    color:rgba(100,220,160,0.9);letter-spacing:.02em;line-height:1.3;
+  }
+  .chip{padding:5px 11px 5px;text-align:center}
   .breakdown-box{
     margin-top:10px;background:rgba(0,0,0,0.3);
     border:1px solid rgba(124,111,255,0.15);
@@ -296,42 +302,42 @@
         <div class="sec">
           <div class="sec-label">性別</div>
           <div class="chips">
-            <div class="chip sel" data-g="gender" data-v="男">男性</div>
-            <div class="chip" data-g="gender" data-v="女">女性</div>
-            <div class="chip" data-g="gender" data-v="謎">不明</div>
+            <div class="chip sel" data-g="gender" data-v="男">男性<span class="chip-bonus">腕力+2</span></div>
+            <div class="chip" data-g="gender" data-v="女">女性<span class="chip-bonus">運+2</span></div>
+            <div class="chip" data-g="gender" data-v="謎">不明<span class="chip-bonus">腕力+1 運+1</span></div>
           </div>
         </div>
         <div class="sec">
           <div class="sec-label">種族</div>
           <div class="chips">
-            <div class="chip sel" data-g="race" data-v="人間">🧑 人間</div>
-            <div class="chip" data-g="race" data-v="エルフ">🧝 エルフ</div>
-            <div class="chip" data-g="race" data-v="ドワーフ">⛏ ドワーフ</div>
-            <div class="chip" data-g="race" data-v="獣人">🐾 獣人</div>
-            <div class="chip" data-g="race" data-v="魔族">😈 魔族</div>
-            <div class="chip" data-g="race" data-v="竜人">🐉 竜人</div>
+            <div class="chip sel" data-g="race" data-v="人間">🧑 人間<span class="chip-bonus">体力+1 素早+1 運+1</span></div>
+            <div class="chip" data-g="race" data-v="エルフ">🧝 エルフ<span class="chip-bonus">魔力+3 知恵+2</span></div>
+            <div class="chip" data-g="race" data-v="ドワーフ">⛏ ドワーフ<span class="chip-bonus">腕力+3 体力+2</span></div>
+            <div class="chip" data-g="race" data-v="獣人">🐾 獣人<span class="chip-bonus">腕力+2 素早+3</span></div>
+            <div class="chip" data-g="race" data-v="魔族">😈 魔族<span class="chip-bonus">魔力+4 知恵+1</span></div>
+            <div class="chip" data-g="race" data-v="竜人">🐉 竜人<span class="chip-bonus">腕力+2 体力+2 魔力+1</span></div>
           </div>
         </div>
         <div class="sec">
           <div class="sec-label">職業</div>
           <div class="chips">
-            <div class="chip sel" data-g="job" data-v="戦士">⚔ 戦士</div>
-            <div class="chip" data-g="job" data-v="魔法使い">🔮 魔法使い</div>
-            <div class="chip" data-g="job" data-v="盗賊">🗡 盗賊</div>
-            <div class="chip" data-g="job" data-v="聖職者">✨ 聖職者</div>
-            <div class="chip" data-g="job" data-v="弓使い">🏹 弓使い</div>
-            <div class="chip" data-g="job" data-v="錬金術師">⚗ 錬金術師</div>
+            <div class="chip sel" data-g="job" data-v="戦士">⚔ 戦士<span class="chip-bonus">腕力+3 体力+2</span></div>
+            <div class="chip" data-g="job" data-v="魔法使い">🔮 魔法使い<span class="chip-bonus">魔力+3 知恵+2</span></div>
+            <div class="chip" data-g="job" data-v="盗賊">🗡 盗賊<span class="chip-bonus">素早+3 運+2</span></div>
+            <div class="chip" data-g="job" data-v="聖職者">✨ 聖職者<span class="chip-bonus">知恵+3 魔力+1</span></div>
+            <div class="chip" data-g="job" data-v="弓使い">🏹 弓使い<span class="chip-bonus">素早+2 知恵+1 運+1</span></div>
+            <div class="chip" data-g="job" data-v="錬金術師">⚗ 錬金術師<span class="chip-bonus">知恵+3 魔力+1</span></div>
           </div>
         </div>
         <div class="sec">
           <div class="sec-label">性格</div>
           <div class="chips">
-            <div class="chip sel" data-g="personality" data-v="勇敢">勇敢</div>
-            <div class="chip" data-g="personality" data-v="慎重">慎重</div>
-            <div class="chip" data-g="personality" data-v="好奇心旺盛">好奇心旺盛</div>
-            <div class="chip" data-g="personality" data-v="義侠心">義侠心</div>
-            <div class="chip" data-g="personality" data-v="強欲">強欲</div>
-            <div class="chip" data-g="personality" data-v="孤高">孤高</div>
+            <div class="chip sel" data-g="personality" data-v="勇敢">勇敢<span class="chip-bonus">腕力+2 体力+1</span></div>
+            <div class="chip" data-g="personality" data-v="慎重">慎重<span class="chip-bonus">知恵+2 運+1</span></div>
+            <div class="chip" data-g="personality" data-v="好奇心旺盛">好奇心旺盛<span class="chip-bonus">知恵+1 魔力+1</span></div>
+            <div class="chip" data-g="personality" data-v="義侠心">義侠心<span class="chip-bonus">体力+1 運+2</span></div>
+            <div class="chip" data-g="personality" data-v="強欲">強欲<span class="chip-bonus">運+2 素早+1</span></div>
+            <div class="chip" data-g="personality" data-v="孤高">孤高<span class="chip-bonus">腕力+1 魔力+1</span></div>
           </div>
         </div>
         <div class="sec">
@@ -1538,6 +1544,8 @@ function applySettings(){
   FAME_DELTA.great2=CFG.fGreat2; FAME_DELTA.great1=CFG.fGreat1; FAME_DELTA.honor=CFG.fHonor;
   FAME_DELTA.mixed=CFG.fMixed; FAME_DELTA.flee=CFG.fFlee; FAME_DELTA.captured=CFG.fCaptured;
   FAME_DELTA.missing=CFG.fMissing; FAME_DELTA.dead=CFG.fDead;
+  // 補正値をBONUSオブジェクトに反映
+  applyBonusFromSettings();
   closeSettings();
 }
 function resetSettings(){
@@ -1562,6 +1570,79 @@ function resetSettings(){
   document.getElementById('cfg-f-dead').value=CFG.fDead;
   FAME_DELTA.great2=30;FAME_DELTA.great1=15;FAME_DELTA.honor=10;FAME_DELTA.mixed=5;
   FAME_DELTA.flee=-10;FAME_DELTA.captured=-15;FAME_DELTA.missing=-20;FAME_DELTA.dead=-25;
+  // 補正値リセット
+  const DEF_BONUS = {
+    gender:{'男':{腕力:2},'女':{運:2},'謎':{腕力:1,運:1}},
+    race:{人間:{体力:1,素早:1,運:1},エルフ:{魔力:3,知恵:2},ドワーフ:{腕力:3,体力:2},獣人:{腕力:2,素早:3},魔族:{魔力:4,知恵:1},竜人:{腕力:2,体力:2,魔力:1}},
+    job:{戦士:{腕力:3,体力:2},魔法使い:{魔力:3,知恵:2},盗賊:{素早:3,運:2},聖職者:{知恵:3,魔力:1},弓使い:{素早:2,知恵:1,運:1},錬金術師:{知恵:3,魔力:1}},
+    per:{勇敢:{腕力:2,体力:1},慎重:{知恵:2,運:1},好奇心旺盛:{知恵:1,魔力:1},義侠心:{体力:1,運:2},強欲:{運:2,素早:1},孤高:{腕力:1,魔力:1}},
+  };
+  // input欄をデフォルト値に戻す
+  Object.entries(DEF_BONUS.gender).forEach(([g,b])=>Object.entries(b).forEach(([s,v])=>{ const el=document.getElementById('cb-gender-'+g+'-'+s); if(el) el.value=v; }));
+  Object.entries(DEF_BONUS.race).forEach(([r,b])=>Object.entries(b).forEach(([s,v])=>{ const el=document.getElementById('cb-race-'+r+'-'+s); if(el) el.value=v; }));
+  Object.entries(DEF_BONUS.job).forEach(([j,b])=>Object.entries(b).forEach(([s,v])=>{ const el=document.getElementById('cb-job-'+j+'-'+s); if(el) el.value=v; }));
+  Object.entries(DEF_BONUS.per).forEach(([p,b])=>Object.entries(b).forEach(([s,v])=>{ const el=document.getElementById('cb-per-'+p+'-'+s); if(el) el.value=v; }));
+  applyBonusFromSettings();
+}
+
+// 設定画面の補正値inputからBONUSオブジェクトに反映＆チップ表示更新
+function readVal(id, def){ const el=document.getElementById(id); return el ? +el.value : def; }
+
+function applyBonusFromSettings(){
+  GENDER_BONUS['男']  = {腕力: readVal('cb-gender-男-腕力',2)};
+  GENDER_BONUS['女']  = {運:   readVal('cb-gender-女-運',2)};
+  GENDER_BONUS['謎']  = {腕力: readVal('cb-gender-謎-腕力',1), 運: readVal('cb-gender-謎-運',1)};
+  RACE_BONUS['人間']    = {体力:readVal('cb-race-人間-体力',1), 素早:readVal('cb-race-人間-素早',1), 運:readVal('cb-race-人間-運',1)};
+  RACE_BONUS['エルフ']  = {魔力:readVal('cb-race-エルフ-魔力',3), 知恵:readVal('cb-race-エルフ-知恵',2)};
+  RACE_BONUS['ドワーフ']= {腕力:readVal('cb-race-ドワーフ-腕力',3), 体力:readVal('cb-race-ドワーフ-体力',2)};
+  RACE_BONUS['獣人']    = {腕力:readVal('cb-race-獣人-腕力',2), 素早:readVal('cb-race-獣人-素早',3)};
+  RACE_BONUS['魔族']    = {魔力:readVal('cb-race-魔族-魔力',4), 知恵:readVal('cb-race-魔族-知恵',1)};
+  RACE_BONUS['竜人']    = {腕力:readVal('cb-race-竜人-腕力',2), 体力:readVal('cb-race-竜人-体力',2), 魔力:readVal('cb-race-竜人-魔力',1)};
+  JOB_BONUS['戦士']     = {腕力:readVal('cb-job-戦士-腕力',3), 体力:readVal('cb-job-戦士-体力',2)};
+  JOB_BONUS['魔法使い'] = {魔力:readVal('cb-job-魔法使い-魔力',3), 知恵:readVal('cb-job-魔法使い-知恵',2)};
+  JOB_BONUS['盗賊']     = {素早:readVal('cb-job-盗賊-素早',3), 運:readVal('cb-job-盗賊-運',2)};
+  JOB_BONUS['聖職者']   = {知恵:readVal('cb-job-聖職者-知恵',3), 魔力:readVal('cb-job-聖職者-魔力',1)};
+  JOB_BONUS['弓使い']   = {素早:readVal('cb-job-弓使い-素早',2), 知恵:readVal('cb-job-弓使い-知恵',1), 運:readVal('cb-job-弓使い-運',1)};
+  JOB_BONUS['錬金術師'] = {知恵:readVal('cb-job-錬金術師-知恵',3), 魔力:readVal('cb-job-錬金術師-魔力',1)};
+  PERSONALITY_BONUS['勇敢']      = {腕力:readVal('cb-per-勇敢-腕力',2), 体力:readVal('cb-per-勇敢-体力',1)};
+  PERSONALITY_BONUS['慎重']      = {知恵:readVal('cb-per-慎重-知恵',2), 運:readVal('cb-per-慎重-運',1)};
+  PERSONALITY_BONUS['好奇心旺盛']= {知恵:readVal('cb-per-好奇心旺盛-知恵',1), 魔力:readVal('cb-per-好奇心旺盛-魔力',1)};
+  PERSONALITY_BONUS['義侠心']    = {体力:readVal('cb-per-義侠心-体力',1), 運:readVal('cb-per-義侠心-運',2)};
+  PERSONALITY_BONUS['強欲']      = {運:readVal('cb-per-強欲-運',2), 素早:readVal('cb-per-強欲-素早',1)};
+  PERSONALITY_BONUS['孤高']      = {腕力:readVal('cb-per-孤高-腕力',1), 魔力:readVal('cb-per-孤高-魔力',1)};
+  updateChipBonusText();
+}
+
+function onBonusInput(){
+  applyBonusFromSettings();
+  updateViz();
+}
+
+function bonusToText(obj){
+  return Object.entries(obj||{}).filter(([,v])=>v!==0).map(([s,v])=>s+(v>=0?'+':'')+v).join(' ');
+}
+
+function updateChipBonusText(){
+  // 性別
+  [['男',GENDER_BONUS['男']],['女',GENDER_BONUS['女']],['謎',GENDER_BONUS['謎']]].forEach(([v,b])=>{
+    const chip = document.querySelector('[data-g="gender"][data-v="'+v+'"] .chip-bonus');
+    if(chip) chip.textContent = bonusToText(b);
+  });
+  // 種族
+  Object.entries(RACE_BONUS).forEach(([r,b])=>{
+    const chip = document.querySelector('[data-g="race"][data-v="'+r+'"] .chip-bonus');
+    if(chip) chip.textContent = bonusToText(b);
+  });
+  // 職業
+  Object.entries(JOB_BONUS).forEach(([j,b])=>{
+    const chip = document.querySelector('[data-g="job"][data-v="'+j+'"] .chip-bonus');
+    if(chip) chip.textContent = bonusToText(b);
+  });
+  // 性格
+  Object.entries(PERSONALITY_BONUS).forEach(([p,b])=>{
+    const chip = document.querySelector('[data-g="personality"][data-v="'+p+'"] .chip-bonus');
+    if(chip) chip.textContent = bonusToText(b);
+  });
 }
 
 function showSettingsMsg(msg, color){
@@ -1595,6 +1676,9 @@ function saveSettings(){
     fMissing: +document.getElementById('cfg-f-missing').value,
     fDead:    +document.getElementById('cfg-f-dead').value,
   };
+  // 補正値も保存
+  const bonusIds = Array.from(document.querySelectorAll('[id^="cb-"]')).map(el=>({id:el.id,v:+el.value}));
+  data._bonuses = bonusIds;
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1629,6 +1713,8 @@ function loadSettings(){
             document.getElementById(id).value = data[key];
           }
         });
+        // 補正値も復元
+        if(data._bonuses) data._bonuses.forEach(({id,v})=>{ const el=document.getElementById(id); if(el) el.value=v; });
         showSettingsMsg('📂 読み込みました。「設定を適用」で反映されます', 'var(--accent2)');
       } catch(err){
         showSettingsMsg('⚠ 読み込み失敗: ファイルが正しくありません', '#ff7777');
@@ -1716,6 +1802,116 @@ updateFameBar();
         <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-f-captured" type="number" value="-15"></div>
         <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-f-missing" type="number" value="-20"></div>
         <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-f-dead" type="number" value="-25"></div>
+      </div>
+    </div>
+
+    <!-- 補正値セクション -->
+    <div class="settings-section">
+      <div class="settings-section-title">性別補正</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">男性</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-男-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">女性</div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-女-運" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">不明</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-謎-腕力" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-謎-運" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">種族補正</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧑 人間</div>
+          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-人間-体力" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-人間-素早" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-人間-運" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧝 エルフ</div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-エルフ-魔力" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-エルフ-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⛏ ドワーフ</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-ドワーフ-腕力" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-ドワーフ-体力" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐾 獣人</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-獣人-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-獣人-素早" type="number" value="3" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">😈 魔族</div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-魔族-魔力" type="number" value="4" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-魔族-知恵" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐉 竜人</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-竜人-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-竜人-体力" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-竜人-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">職業補正</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔ 戦士</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-戦士-腕力" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-戦士-体力" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🔮 魔法使い</div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-魔法使い-魔力" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-魔法使い-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🗡 盗賊</div>
+          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-盗賊-素早" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-盗賊-運" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">✨ 聖職者</div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-聖職者-知恵" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-聖職者-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🏹 弓使い</div>
+          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-弓使い-素早" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-弓使い-知恵" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-弓使い-運" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚗ 錬金術師</div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-錬金術師-知恵" type="number" value="3" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-錬金術師-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">性格補正</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">勇敢</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-勇敢-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-勇敢-体力" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">慎重</div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-慎重-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-慎重-運" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">好奇心旺盛</div>
+          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-好奇心旺盛-知恵" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-好奇心旺盛-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">義侠心</div>
+          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-義侠心-体力" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-義侠心-運" type="number" value="2" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">強欲</div>
+          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-強欲-運" type="number" value="2" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-強欲-素早" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">孤高</div>
+          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-孤高-腕力" type="number" value="1" oninput="onBonusInput()"></div>
+          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-孤高-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+        </div>
       </div>
     </div>
 
