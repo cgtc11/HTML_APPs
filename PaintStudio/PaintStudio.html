@@ -1624,7 +1624,8 @@ function comp(){
       dx.save();dx.globalAlpha=l.opac/100;dx.globalCompositeOperation=l.blend;dx.drawImage(l.cv,0,0);dx.restore();
     }
   }
-  if(float_){
+  // 移動中レイヤーがある場合はそのレイヤー自体が描画されるのでpxには描かない
+  if(float_&&_moveLayerId===null){
     px.clearRect(0,0,W,H);px.save();
     const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
     px.translate(fcx,fcy);px.rotate(float_.angle||0);
@@ -2384,9 +2385,16 @@ function beginMove(cx,cy){
               blend:'source-over',mask:null,maskEnabled:true,_moving:true};
     const srcIdx=layers.findIndex(x=>x.id===srcLayer.id);
     layers.splice(srcIdx,0,ml);
+    // 元画像を保持（移動しても消えないように）
+    const origCv=document.createElement('canvas');origCv.width=W;origCv.height=H;
+    origCv.getContext('2d').putImageData(id2,x,y);
+
     _moveLayerId=ml.id;
     activeLayerId=ml.id;
-    float_={x,y,w,h,angle:0,offX:cx-x,offY:cy-y,fromSel:true,selX:x,selY:y,cv:mcv};
+    float_={x,y,w,h,angle:0,offX:cx-x,offY:cy-y,fromSel:true,
+            selX:x,selY:y,startSelX:x,startSelY:y,
+            startX:x,startY:y,cv:mcv,origCv};
+    px.clearRect(0,0,W,H);
     renderLL();comp();
   }else{
     saveH();
@@ -2408,13 +2416,13 @@ function updateMove(cx,cy,shiftKey){
     const ml=layers.find(x=>x.id===_moveLayerId);
     if(ml){
       const newX=cx-float_.offX, newY=cy-float_.offY;
-      const dx=newX-float_.x, dy=newY-float_.y;
-      const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
-      tmp.getContext('2d').drawImage(ml.cv,0,0);
+      const totalDX=newX-float_.startX, totalDY=newY-float_.startY;
+      // 元画像から累積移動量で描画（キャンバス外にはみ出ても元画像は保持）
       ml.ctx.clearRect(0,0,W,H);
-      ml.ctx.drawImage(tmp,dx,dy);
-      float_.x=newX;float_.y=newY;
-      float_.selX+=dx;float_.selY+=dy;
+      ml.ctx.drawImage(float_.origCv, totalDX, totalDY);
+      float_.x=newX; float_.y=newY;
+      float_.selX=float_.startSelX+totalDX;
+      float_.selY=float_.startSelY+totalDY;
       comp();
     }
   }else{
@@ -2429,10 +2437,12 @@ function commitMove(){
     if(ml&&mlIdx>=0){
       const base=layers[mlIdx+1];
       if(base){
+        const totalDX=float_.x-float_.startX, totalDY=float_.y-float_.startY;
         base.ctx.save();
         base.ctx.globalAlpha=ml.opac/100;
         base.ctx.globalCompositeOperation=ml.blend;
-        base.ctx.drawImage(ml.cv,0,0);
+        // origCvから最終移動量で描画（はみ出た分も正確に）
+        base.ctx.drawImage(float_.origCv||ml.cv, totalDX, totalDY);
         base.ctx.restore();
         activeLayerId=base.id;
       }
@@ -2591,6 +2601,7 @@ let _selRotStart=0,_selRotOrigCv=null;
 
 // ─── 拡縮ツール
 let _scaleOrigCv=null,_scaleCX=0,_scaleCY=0,_scaleStartDist=1,_scaleCurSX=1,_scaleCurSY=1,_scaleStartX=0,_scaleStartY=0;
+let _scaleFromSel=false,_scaleSelX=0,_scaleSelY=0,_scaleSelW=0,_scaleSelH=0;
 
 function _getRotCenter(l){
   // 1. 選択範囲がある → 選択中心
@@ -2682,25 +2693,46 @@ function commitRotate(){
 // ─── 拡縮ツール関数
 function beginScale(cx,cy){
   const l=aL();if(!l)return;
-  _scaleOrigCv=document.createElement('canvas');
-  _scaleOrigCv.width=W;_scaleOrigCv.height=H;
-  _scaleOrigCv.getContext('2d').drawImage(l.cv,0,0);
-  const c=_getRotCenter(l); // 回転と同じ中心計算を流用
-  _scaleCX=c.x;_scaleCY=c.y;
+  saveH();
+  if(sel.active&&sel.w>1&&sel.h>1){
+    const{x,y,w,h}=sel;
+    // 選択範囲のみコピー
+    const id2=l.ctx.getImageData(x,y,w,h);
+    if(sel.path&&(sel.type==='lasso'||(sel.type==='rect'&&sel.r>0))){
+      const md=mkMask(sel.path).getImageData(x,y,w,h).data;
+      for(let i=0;i<id2.data.length;i+=4)id2.data[i+3]=Math.round(id2.data[i+3]*(md[i]/255));
+    }
+    _scaleOrigCv=document.createElement('canvas');_scaleOrigCv.width=w;_scaleOrigCv.height=h;
+    _scaleOrigCv.getContext('2d').putImageData(id2,0,0);
+    // 元レイヤーから選択範囲を切り抜き
+    l.ctx.save();l.ctx.globalCompositeOperation='destination-out';l.ctx.fillStyle='rgba(255,255,255,1)';
+    if(sel.path&&(sel.type==='lasso'||(sel.type==='rect'&&sel.r>0)))l.ctx.fill(sel.path);
+    else l.ctx.fillRect(x,y,w,h);
+    l.ctx.restore();
+    _scaleCX=x+w/2;_scaleCY=y+h/2;
+    _scaleSelX=x;_scaleSelY=y;_scaleSelW=w;_scaleSelH=h;
+    _scaleFromSel=true;
+  }else{
+    _scaleOrigCv=document.createElement('canvas');
+    _scaleOrigCv.width=W;_scaleOrigCv.height=H;
+    _scaleOrigCv.getContext('2d').drawImage(l.cv,0,0);
+    l.ctx.clearRect(0,0,W,H);
+    const c=_getRotCenter(l);
+    _scaleCX=c.x;_scaleCY=c.y;
+    _scaleFromSel=false;
+  }
   _scaleStartX=cx;_scaleStartY=cy;
   _scaleStartDist=Math.max(1,Math.hypot(cx-_scaleCX,cy-_scaleCY));
   _scaleCurSX=1;_scaleCurSY=1;
-  updCur('nwse-resize');
+  comp();updCur('nwse-resize');
 }
 function updateScale(cx,cy){
   if(!_scaleOrigCv)return;
   const dist=Math.max(1,Math.hypot(cx-_scaleCX,cy-_scaleCY));
   const s=dist/_scaleStartDist;
-  // Shift: 縦横比維持（等倍）、通常: ドラッグ方向で縦横独立
   let sx,sy;
-  if(_shiftDown){
-    sx=s;sy=s;
-  }else{
+  if(_shiftDown){sx=s;sy=s;}
+  else{
     const dx=cx-_scaleCX,dy=cy-_scaleCY;
     const ox=_scaleStartX-_scaleCX,oy=_scaleStartY-_scaleCY;
     sx=Math.abs(ox)>4?dx/ox:s;
@@ -2711,9 +2743,12 @@ function updateScale(cx,cy){
   px.save();
   px.translate(_scaleCX,_scaleCY);
   px.scale(sx,sy);
-  px.drawImage(_scaleOrigCv,-_scaleCX,-_scaleCY);
+  if(_scaleFromSel){
+    px.drawImage(_scaleOrigCv,-_scaleOrigCv.width/2,-_scaleOrigCv.height/2);
+  }else{
+    px.drawImage(_scaleOrigCv,-_scaleCX,-_scaleCY);
+  }
   px.restore();
-  // 中心マーカー＋情報表示
   px.save();
   px.strokeStyle='rgba(100,160,255,0.9)';px.lineWidth=1;
   px.beginPath();px.moveTo(_scaleCX-8,_scaleCY);px.lineTo(_scaleCX+8,_scaleCY);
@@ -2725,15 +2760,23 @@ function updateScale(cx,cy){
 function commitScale(){
   if(!_scaleOrigCv)return;
   const l=aL();if(!l)return;
-  const c=l.cv.getContext('2d');
-  c.clearRect(0,0,W,H);
-  c.save();
-  c.translate(_scaleCX,_scaleCY);
-  c.scale(_scaleCurSX,_scaleCurSY);
-  c.drawImage(_scaleOrigCv,-_scaleCX,-_scaleCY);
-  c.restore();
+  const c=l.ctx;
+  if(_scaleFromSel){
+    c.save();
+    c.translate(_scaleCX,_scaleCY);
+    c.scale(_scaleCurSX,_scaleCurSY);
+    c.drawImage(_scaleOrigCv,-_scaleOrigCv.width/2,-_scaleOrigCv.height/2);
+    c.restore();
+  }else{
+    c.clearRect(0,0,W,H);
+    c.save();
+    c.translate(_scaleCX,_scaleCY);
+    c.scale(_scaleCurSX,_scaleCurSY);
+    c.drawImage(_scaleOrigCv,-_scaleCX,-_scaleCY);
+    c.restore();
+  }
   px.clearRect(0,0,W,H);
-  _scaleOrigCv=null;
+  _scaleOrigCv=null;_scaleFromSel=false;
   comp();renderLL();
 }
 
