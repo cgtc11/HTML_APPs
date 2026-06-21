@@ -140,6 +140,70 @@
   }
 
   .empty-log{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;border:1px dashed var(--border);border-radius:var(--radius-lg);line-height:2}
+  /* 8段階バッジ */
+  .ob-great2{background:rgba(79,201,126,.2);color:#4fc97e;border:1px solid rgba(79,201,126,.3)}
+  .ob-great1{background:rgba(136,224,168,.15);color:#88e0a8;border:1px solid rgba(136,224,168,.25)}
+  .ob-honor{background:rgba(255,215,0,.15);color:#ffd700;border:1px solid rgba(255,215,0,.3)}
+  .ob-mixed{background:rgba(240,192,64,.15);color:#f0c040;border:1px solid rgba(240,192,64,.25)}
+  .ob-flee{background:rgba(255,153,102,.15);color:#ff9966;border:1px solid rgba(255,153,102,.25)}
+  .ob-captured{background:rgba(255,119,119,.15);color:#ff7777;border:1px solid rgba(255,119,119,.25)}
+  .ob-missing{background:rgba(204,102,204,.15);color:#cc66cc;border:1px solid rgba(204,102,204,.25)}
+  .ob-dead{background:rgba(255,68,68,.2);color:#ff4444;border:1px solid rgba(255,68,68,.35)}
+  /* 知名度バー */
+  .fame-bar-wrap{
+    background:var(--bg3);border:1px solid var(--border);
+    border-radius:var(--radius);padding:10px 14px;
+    margin-bottom:14px;
+  }
+  .fame-bar-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .fame-bar-title{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+  .fame-bar-val{font-size:14px;font-weight:700}
+  .fame-track{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative}
+  .fame-fill{height:100%;border-radius:4px;transition:width .4s ease,background .4s}
+  /* 設定画面 */
+  .settings-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+    align-items:center;justify-content:center;
+  }
+  .settings-overlay.open{display:flex}
+  .settings-panel{
+    background:var(--panel);border:1px solid var(--border2);
+    border-radius:var(--radius-lg);padding:24px;
+    width:min(560px,95vw);max-height:85vh;overflow-y:auto;
+  }
+  .settings-panel h2{font-size:16px;font-weight:600;color:var(--accent2);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+  .settings-close{cursor:pointer;color:var(--text3);font-size:20px;line-height:1}
+  .settings-section{margin-bottom:20px}
+  .settings-section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+  .settings-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .settings-row label{font-size:12px;color:var(--text2);flex:1;min-width:0}
+  .settings-input{
+    width:70px;padding:4px 8px;background:var(--bg3);
+    border:1px solid var(--border);border-radius:6px;
+    color:var(--text);font-size:12px;text-align:right;outline:none;
+  }
+  .settings-input:focus{border-color:var(--accent)}
+  .btn-settings{
+    padding:5px 12px;background:var(--bg3);border:1px solid var(--border);
+    border-radius:var(--radius);color:var(--text2);font-size:12px;cursor:pointer;
+    transition:border-color .15s;
+  }
+  .btn-settings:hover{border-color:var(--border2);color:var(--text)}
+  .btn-reset-settings{
+    width:100%;padding:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);
+    border-radius:var(--radius);color:#ff7777;font-size:12px;cursor:pointer;margin-top:8px;
+  }
+  .breakdown-box{
+    margin-top:10px;background:rgba(0,0,0,0.3);
+    border:1px solid rgba(124,111,255,0.15);
+    border-radius:8px;padding:10px 12px;font-size:11px;
+  }
+  .breakdown-title{color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;font-weight:600}
+  .breakdown-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+  .bd-tag{padding:2px 7px;border-radius:4px;background:rgba(124,111,255,0.1);color:var(--text3)}
+  .bd-match{background:rgba(79,201,126,0.12);color:#6ed89a}
+  .bd-score{font-size:13px;font-weight:700;color:var(--accent2);margin-top:4px}
+  .bd-tier{font-size:11px;color:var(--text3)}
   .total-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);padding-bottom:4px}
   .total-bar b{color:var(--text2)}
   .outcome-dots{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
@@ -151,6 +215,16 @@
   <div class="header">
     <h1>⚔ 勇者派遣クロニクル</h1>
     <span class="sub">世界のトラブルに立ち向かう勇者を送り出せ</span>
+    <button class="btn-settings" onclick="openSettings()" style="margin-left:auto">⚙ 設定</button>
+  </div>
+  <!-- 知名度バー -->
+  <div class="fame-bar-wrap" id="fame-bar-wrap">
+    <div class="fame-bar-label">
+      <span class="fame-bar-title">⭐ 派遣所の知名度</span>
+      <span class="fame-bar-val" id="fame-val">0</span>
+    </div>
+    <div class="fame-track"><div class="fame-fill" id="fame-fill" style="width:50%;background:#7c6fff"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px"><span>-100</span><span>0</span><span>∞</span></div>
   </div>
 
   <div class="two-col">
@@ -233,148 +307,226 @@ const STATS = ['腕力','体力','魔力','素早','知恵','運'];
 const TOTAL = 36;
 const RACE_EMOJI = {人間:'🧑',エルフ:'🧝',ドワーフ:'⛏',獣人:'🐾',魔族:'😈',竜人:'🐉'};
 const JOB_EMOJI  = {戦士:'⚔',魔法使い:'🔮',盗賊:'🗡',聖職者:'✨',弓使い:'🏹',錬金術師:'⚗'};
-const OL = {great:'大成功',good:'成功',mixed:'波乱',bad:'失敗'};
-const OC = {great:'ob-great',good:'ob-good',mixed:'ob-mixed',bad:'ob-bad'};
-const ODOT = {great:'#4fc97e',good:'#5bb8ff',mixed:'#f0c040',bad:'#ff6b6b'};
+const OL = {
+  great2:'大成功', great1:'成功', honor:'名誉の戦死',
+  mixed:'波乱',
+  flee:'逃げ帰る', captured:'捕虜', missing:'行方不明', dead:'死亡'
+};
+const OC = {
+  great2:'ob-great2', great1:'ob-great1', honor:'ob-honor',
+  mixed:'ob-mixed',
+  flee:'ob-flee', captured:'ob-captured', missing:'ob-missing', dead:'ob-dead'
+};
+const ODOT = {
+  great2:'#4fc97e', great1:'#88e0a8', honor:'#ffd700',
+  mixed:'#f0c040',
+  flee:'#ff9966', captured:'#ff7777', missing:'#cc66cc', dead:'#ff4444'
+};
+// クリア系かどうか
+const IS_CLEAR = {great2:true,great1:true,honor:true,mixed:true,flee:false,captured:false,missing:false,dead:false};
+// 知名度変動量
+const FAME_DELTA = {great2:30,great1:15,honor:10,mixed:5,flee:-10,captured:-15,missing:-20,dead:-25};
 
 // ═══════════════════════════════════════════
 //  世界トラブルデータ
 //  各トラブルに「対抗に有効なキャラ像」のヒントを持たせる
 // ═══════════════════════════════════════════
-const WORLD_TROUBLES = [
+// ═══════════════════════════════════════════
+//  トラブル自動生成エンジン（無限生成）
+// ═══════════════════════════════════════════
+const T_PLACES = [
+  {name:'王都の城下町',   area:'城下町'},
+  {name:'東部の港町アルミア', area:'港町'},
+  {name:'北方の山岳要塞', area:'山岳'},
+  {name:'西部の禁断の森', area:'森'},
+  {name:'古代遺跡の地下', area:'遺跡'},
+  {name:'砂漠の交易都市', area:'砂漠'},
+  {name:'浮遊島の神殿',   area:'空中'},
+  {name:'深海の神殿',     area:'海底'},
+  {name:'雪原の修道院',   area:'雪原'},
+  {name:'魔族の支配領域', area:'魔界'},
+  {name:'辺境の開拓村',   area:'辺境'},
+  {name:'竜の巣がある峡谷', area:'峡谷'},
+  {name:'地下迷宮の最深部', area:'地下'},
+  {name:'湖畔の精霊郷',  area:'湖畔'},
+  {name:'廃墟となった王国', area:'廃墟'},
+];
+
+const T_THREATS = [
   {
-    icon:'🔥',
-    text:'魔王軍の大将軍「暗黒卿ザルガス」が千年の封印を破り復活した。王都から3日の距離まで軍勢が迫り、村々は次々と灰燼に帰している。正面突破できる者が急ぎ必要だ。',
+    name:'魔王軍の将軍「{N}」', icon:'🔥',
+    names:['暗黒卿ザルガス','炎将バルドス','鋼鉄卿グロム','影将ヴェイン','死神卿アバドン'],
+    desc:'が千年の封印を破り復活した。軍勢が{PLACE}に迫り、村々を次々と灰燼に帰している。',
+    need:'正面突破できる強力な戦士が必要だ。',
+    favorJob:['戦士'], favorRace:['竜人','ドワーフ'], favorStat:'腕力',
     hints:[
-      '派遣した者は正面突破を試みたが歯が立たなかった。とにかく打撃力が足りないようだ。',
-      'ザルガスは鎧ごと敵を叩き潰す力攻めを好む。腕力と体力で正面から押し返せる者でないと話にならない。',
-      '竜人かドワーフの血を引く者なら鎧の堅さで踏みとどまれる。戦士職で腕力・体力を重点的に鍛えた者が理想だ。',
+      '派遣した者は正面突破を試みたが、圧倒的な力の差に歯が立たなかった。打撃力が決定的に不足している。',
+      '敵は力攻めを好む。腕力と体力で正面から押し返せる者でないと話にならない。',
+      '竜人かドワーフの頑強さで踏みとどまりながら、戦士職で腕力・体力を重点的に鍛えた者が理想だ。',
     ],
-    hintCount:0,
-    tag:'combat', favorJob:['戦士'], favorRace:['竜人','ドワーフ'], favorStat:'腕力'
   },
   {
-    icon:'☠️',
-    text:'東部の港町アルミアを発端に、黒い斑点が浮かぶ奇病が広がっている。感染した者は3日で動けなくなり、7日で息絶える。薬師も手を焼いており、原因の究明と治療薬の調合が急務だ。',
+    name:'謎の疫病「{N}」', icon:'☠️',
+    names:['黒斑熱','腐食熱','呪い風邪','死の眠り病','蒼白の病'],
+    desc:'が{PLACE}から広がっている。感染した者は数日で動けなくなり、治療できる者が求められている。',
+    need:'病因の究明と治療薬の調合が急務だ。',
+    favorJob:['聖職者','錬金術師'], favorRace:['エルフ'], favorStat:'知恵',
     hints:[
       '派遣した者は病因を突き止めようとしたが、知識が足りず解析できなかった。',
-      'この疫病は魔的な汚染が原因らしい。魔力と知恵の両方が高くないと治療薬の調合が困難なようだ。',
-      '聖職者か錬金術師の職であれば対処法の手がかりをつかめる。エルフの古薬学と組み合わせると完治薬を作れるという話だ。',
+      'この疫病は魔的な汚染が原因らしい。知恵が高くないと治療薬の調合が困難なようだ。',
+      '聖職者か錬金術師の職で知恵を重点的に伸ばした者が有効だ。エルフの古薬学との組み合わせが最善という。',
     ],
-    hintCount:0,
-    tag:'heal', favorJob:['聖職者','錬金術師'], favorRace:['エルフ'], favorStat:'知恵'
   },
   {
-    icon:'💀',
-    text:'北方の古代遺跡「嘆きの塔」から、数千体とも言われる呪われた亡者が溢れ出している。街道は完全封鎖され、近隣3つの町が孤立。亡者は夜ごとに数を増やしている。',
+    name:'古龍「{N}」', icon:'🐉',
+    names:['炎帝ヴォルガン','氷竜ブリザルド','毒竜ヴェノマス','闇竜シャドウファング','雷竜ストームレックス'],
+    desc:'が目覚め、{PLACE}周辺を縄張りとして荒らし始めた。その力は城壁すら容易く破壊する。',
+    need:'討伐もしくは眠らせる手段を持つ者が必要だ。',
+    favorJob:['弓使い','戦士'], favorRace:['竜人'], favorStat:'素早',
     hints:[
-      '派遣した者は亡者を斬っても斬っても再生するため撤退を余儀なくされた。物理攻撃はほぼ無効のようだ。',
-      '亡者は聖なる力か魔力でしか完全に消滅させられない。魔力を高く積んだ者でないと歯が立たない。',
-      '聖職者か魔法使いの職で、魔力を重点的に鍛えた者が有効だ。エルフや人間の血を引く者は聖属性との相性が良い。',
+      '派遣した者は炎を避けようとしたが、動きが遅く手も足も出なかった。素早さが決定的に足りない。',
+      '古龍の攻撃は回避が基本だ。素早さを極限まで高めた者でないと生き残れない。',
+      '弓使いが離れた位置から急所を射抜く戦法が有効だという。竜人なら龍語で動きを一時止めることもできる。',
     ],
-    hintCount:0,
-    tag:'undead', favorJob:['聖職者','魔法使い'], favorRace:['エルフ','人間'], favorStat:'魔力'
   },
   {
-    icon:'🐉',
-    text:'クロノス山脈の最奥で眠っていた古龍「炎帝ヴォルガン」が数百年ぶりに目覚めた。体長50メートルを超えるとされ、その炎息は城壁すら溶かす。山麓の町3つがすでに壊滅した。',
-    hints:[
-      '派遣した者は炎を避けようとしたが、動きが遅く丸焼けにされた。素早さが決定的に足りない。',
-      '古龍の炎は正面では避けられない。素早さを極限まで上げて炎の合間を縫う機動力が必要なようだ。',
-      '弓使いが離れた位置から急所を射抜く戦法が有効だという。素早さに特化し、竜人なら龍語で動きを止めることもできるらしい。',
-    ],
-    hintCount:0,
-    tag:'dragon', favorJob:['弓使い','戦士'], favorRace:['竜人'], favorStat:'素早'
-  },
-  {
-    icon:'🌑',
-    text:'「影の牙」と名乗る暗殺者集団が王都で暗躍している。先月だけで大臣2名と将軍1名が暗殺され、依頼主の黒幕はまだ不明だ。証拠を掴み、黒幕を追い詰める追跡者が必要だ。',
+    name:'暗殺集団「{N}」', icon:'🌑',
+    names:['影の牙','黒刃団','死の使者','霧の暗殺者','沈黙の刃'],
+    desc:'が{PLACE}で暗躍している。要人が次々と暗殺され、依頼主の黒幕はまだ不明だ。',
+    need:'証拠を掴み黒幕を追い詰める追跡者が必要だ。',
+    favorJob:['盗賊'], favorRace:['獣人','魔族'], favorStat:'素早',
     hints:[
       '派遣した者は追跡を試みたが、尾行に気づかれて返り討ちに遭った。気配を消す技術が足りない。',
-      '影の牙は接触した者の顔を即座に記憶し、翌日には抹殺しに来る。こちらも素早さで上回らないと生き残れない。',
-      '盗賊職で素早さを極めた者が有利だ。獣人や魔族の鋭い気配察知能力があれば潜入と追跡を同時にこなせる。',
+      '相手は接触した者の顔を即座に記憶し翌日には抹殺しに来る。素早さで上回らないと生き残れない。',
+      '盗賊職で素早さを極めた者が有利だ。獣人や魔族の鋭い感覚があれば潜入と追跡を同時にこなせる。',
     ],
-    hintCount:0,
-    tag:'stealth', favorJob:['盗賊'], favorRace:['獣人','魔族'], favorStat:'素早'
   },
   {
-    icon:'🌊',
-    text:'沿岸都市ネリアの沖合に古代海底神殿が隆起し、封印されていた水の魔神が半覚醒した。津波と豪雨が繰り返し発生し、港湾施設は壊滅。魔神の封印を再び施す儀式士が必要だ。',
+    name:'封印された邪神「{N}」', icon:'💀',
+    names:['死の神オシリアス','混沌神カオスプライム','虚無神ヴォイドマスター','腐敗神ロットゴッド','怨念神ゴーストロード'],
+    desc:'の封印が{PLACE}で解けかけており、配下の亡者が溢れ出している。街道が封鎖され孤立した町がある。',
+    need:'亡者を祓い封印を補強できる者が必要だ。',
+    favorJob:['聖職者','魔法使い'], favorRace:['エルフ','人間'], favorStat:'魔力',
     hints:[
-      '派遣した者は神殿内の罠と術式に阻まれ、核心部に辿り着けなかった。術式の読解力が足りないようだ。',
-      '海底神殿の封印は古代魔法語で書かれた複雑な術式でできている。知恵と魔力がともに高くないと解読も再封印もできない。',
-      '錬金術師か魔法使いが知恵を重点的に伸ばした構成が有効だ。エルフなら古代語の素養があり術式解読が格段に速い。',
+      '派遣した者は亡者を斬っても斬っても再生するため撤退を余儀なくされた。物理攻撃はほぼ無効だ。',
+      '亡者は聖なる力か魔力でしか消滅させられない。魔力を高く積んだ者でないと歯が立たない。',
+      '聖職者か魔法使いで魔力を重点的に鍛えた者が有効だ。エルフや人間は聖属性との相性が良い。',
     ],
-    hintCount:0,
-    tag:'magic', favorJob:['錬金術師','魔法使い'], favorRace:['エルフ','人間'], favorStat:'知恵'
   },
   {
-    icon:'⚡',
-    text:'突如として空に現れた浮遊要塞「雷神城」が、各都市に雷撃を降らせている。地上からの攻撃はまったく届かず、すでに4つの都市が壊滅的な被害を受けた。要塞の中枢を破壊する必要がある。',
+    name:'精霊の暴走', icon:'🌿',
+    names:['大精霊の怒り','自然の反乱','精霊王の狂乱','森の意志の覚醒','大地の悲鳴'],
+    desc:'が{PLACE}で起きており、周囲が急速に変容している。近づいた者は方向感覚を失って帰ってこない。',
+    need:'精霊を鎮められる者が必要だ。',
+    favorJob:['弓使い','錬金術師'], favorRace:['獣人','エルフ'], favorStat:'運',
     hints:[
-      '派遣した者は要塞へ近づこうとしたが、防衛網の雷撃に阻まれて辿り着けなかった。',
-      '雷神城への接近には素早さと軌道予測の読みが必要だ。遠距離から的確に弱点を狙える者でないと中枢まで届かない。',
-      '弓使いか魔法使いで素早さを鍛えた者が有利だ。エルフか獣人なら本能的に雷撃のタイミングを読める。',
-    ],
-    hintCount:0,
-    tag:'aerial', favorJob:['弓使い','魔法使い'], favorRace:['エルフ','獣人'], favorStat:'素早'
-  },
-  {
-    icon:'🧪',
-    text:'王都の錬金術師ギルドで爆発事故が起き、変異促進薬が下水道に流出した。ネズミや野良犬が次々と巨大変異し、街中を徘徊している。変異を止める中和薬の調合者が急ぎ必要だ。',
-    hints:[
-      '派遣した者は変異体を倒し続けたが、次から次へと湧いて埒が明かなかった。根本的な解決には薬の知識が要る。',
-      '変異促進薬の成分は極めて複雑で、下水から回収して中和するには高度な知恵と錬金技術が必要だ。',
-      '錬金術師か聖職者の職で知恵を重点的に伸ばした者が最適だ。ドワーフは毒耐性と薬草知識が生まれつき高い。',
-    ],
-    hintCount:0,
-    tag:'alchemy', favorJob:['錬金術師','聖職者'], favorRace:['人間','ドワーフ'], favorStat:'知恵'
-  },
-  {
-    icon:'👁️',
-    text:'東の大国から来た使節団の中に混じっていた邪眼の魔族「瞳の司祭」が、各地の領主たちを精神支配し始めた。すでに7人の領主が傀儡と化し、王国の政治機能が麻痺しつつある。',
-    hints:[
-      '派遣した者は司祭に近づいた瞬間に精神を侵食され、支配されてしまった。精神耐性がまったく足りない。',
-      '邪眼による精神支配は魔力の防壁でのみ防げる。魔力が低い者は近づくだけで操られる。',
-      '魔法使いか聖職者で魔力を極めた者が有効だ。魔族か精神系に耐性を持つエルフなら自力で邪眼を跳ね返せる。',
-    ],
-    hintCount:0,
-    tag:'mental', favorJob:['魔法使い','聖職者'], favorRace:['魔族','エルフ'], favorStat:'魔力'
-  },
-  {
-    icon:'🏔️',
-    text:'北部山岳地帯のドワーフ要塞「鉄壁城砦」が、地底から湧いた岩巨人の群れに占拠された。籠城中のドワーフ500人の救出と、岩巨人の討伐が同時に求められる困難な任務だ。',
-    hints:[
-      '派遣した者は岩巨人の頑強さに圧倒され、ダメージをほぼ与えられなかった。生半可な腕力では岩肌を傷つけられない。',
-      '岩巨人は体力と腕力で正面から削り倒すしかない。鉄壁城砦の狭い通路では逃げ場もなく、力勝負になる。',
-      '戦士か盗賊の職でドワーフか獣人の血を引く者が有利だ。体力と腕力をしっかり積んだ者でないと話にならない。',
-    ],
-    hintCount:0,
-    tag:'rescue', favorJob:['戦士','盗賊'], favorRace:['ドワーフ','獣人'], favorStat:'体力'
-  },
-  {
-    icon:'🌿',
-    text:'西部の「翠嵐の森」が急速に外側へ拡大し、1週間で農地3つを飲み込んだ。森の奥では精霊が狂い暴走しており、近づいた者は方向感覚を失って帰ってこない。精霊を鎮める者が必要だ。',
-    hints:[
-      '派遣した者は森に入ったが、迷いの霧にはまって脱出もできなかった。勘や運が足りない。',
+      '派遣した者は迷いの霧にはまって脱出もできなかった。勘や運が足りない。',
       '精霊の迷宮は論理では抜けられない。高い運と直感で道を見出せる者でないと永遠に彷徨い続ける。',
       '弓使いか錬金術師で運を重点的に積んだ者が有利だ。獣人なら本能で精霊の気配を感じとり、エルフなら精霊語で対話できる。',
     ],
-    hintCount:0,
-    tag:'nature', favorJob:['弓使い','錬金術師'], favorRace:['獣人','エルフ'], favorStat:'運'
   },
   {
-    icon:'💣',
-    text:'地下迷宮「奈落の底」の最深部にある封印が何者かによって破られ、伝説の破壊神器「終焉の鍵」が盗み出された。使用されれば都市一つが消滅するとされる。奪還が急務だ。',
+    name:'邪術師「{N}」の呪い', icon:'👁️',
+    names:['瞳の司祭','精神支配者ミルド','洗脳術師ゾルク','夢魔使いレヴナント','幻惑師カルマ'],
+    desc:'が{PLACE}に現れ、人々を精神支配し始めた。すでに数名の領主が傀儡と化している。',
+    need:'邪術師を打ち倒し呪いを解ける者が必要だ。',
+    favorJob:['魔法使い','聖職者'], favorRace:['魔族','エルフ'], favorStat:'魔力',
     hints:[
-      '派遣した者は神器の追跡を試みたが、罠だらけの隠し通路で先へ進めなかった。',
-      '神器を持ち去った者は極めて巧妙なルートを使っている。罠の感知と回避に長けた者でないと追いつけない。',
-      '盗賊か魔法使いで運を高く積んだ者が有利だ。魔族なら闇のルートを本能的に察知でき、人間なら柔軟な発想で予想外の抜け道を見つける。',
+      '派遣した者は邪術師に近づいた瞬間に精神を侵食され、支配されてしまった。精神耐性がまったく足りない。',
+      '邪眼による精神支配は魔力の防壁でのみ防げる。魔力が低い者は近づくだけで操られる。',
+      '魔法使いか聖職者で魔力を極めた者が有効だ。魔族かエルフなら自力で邪眼を跳ね返せる。',
     ],
-    hintCount:0,
-    tag:'heist', favorJob:['盗賊','魔法使い'], favorRace:['魔族','人間'], favorStat:'運'
+  },
+  {
+    name:'巨大魔物「{N}」の出現', icon:'🏔️',
+    names:['岩巨人ゴルガン','泥沼巨獣スラッジ','骨の巨人スケルトン・ロード','鉄皮の巨獣アイアンハイド','火山巨人マグマゴッド'],
+    desc:'が{PLACE}に出現し、周辺を破壊し続けている。通常の武器はほぼ効かないという報告がある。',
+    need:'正面から削り倒せる力を持つ者が必要だ。',
+    favorJob:['戦士','盗賊'], favorRace:['ドワーフ','獣人'], favorStat:'体力',
+    hints:[
+      '派遣した者は巨体に圧倒され、ダメージをほぼ与えられなかった。生半可な体力では話にならない。',
+      '体力と腕力で正面から削り倒すしかない。逃げ場のない狭い地形では特に力勝負になる。',
+      '戦士か盗賊の職でドワーフか獣人の血を引く者が有利だ。体力と腕力をしっかり積んだ者でないと話にならない。',
+    ],
+  },
+  {
+    name:'謎の術式「{N}」の発動', icon:'🌊',
+    names:['古代召喚陣','時空歪曲術','次元崩壊呪文','大地封印解除陣','天変地異の術'],
+    desc:'が{PLACE}で誰かによって発動され、周辺環境が激変している。術式を解除しないと被害が拡大する一方だ。',
+    need:'術式を解読し解除できる知識者が必要だ。',
+    favorJob:['錬金術師','魔法使い'], favorRace:['エルフ','人間'], favorStat:'知恵',
+    hints:[
+      '派遣した者は術式の前に立ちすくみ、何もできなかった。知識がなければ手も足も出ない。',
+      '術式は古代魔法語で書かれており、読解と解除には高い知恵と魔力の両方が必要だ。',
+      '錬金術師か魔法使いで知恵を重点的に積んだ者が有効だ。エルフなら古代語の素養があり解読が格段に速い。',
+    ],
+  },
+  {
+    name:'空中要塞「{N}」の侵攻', icon:'⚡',
+    names:['雷神城','天空要塞アルカディア','浮遊砲台ゴッドウォー','空中戦艦スカイキラー','嵐の城塞テンペスト'],
+    desc:'が{PLACE}上空に出現し、地上を無差別攻撃している。地上からの反撃はまったく届かない。',
+    need:'要塞に乗り込み中枢を破壊できる者が必要だ。',
+    favorJob:['弓使い','魔法使い'], favorRace:['エルフ','獣人'], favorStat:'素早',
+    hints:[
+      '派遣した者は接近しようとしたが防衛網に阻まれ辿り着けなかった。素早さが全然足りない。',
+      '要塞への接近には素早さと回避力が必要だ。遠距離から的確に弱点を狙える者でないと中枢まで届かない。',
+      '弓使いか魔法使いで素早さを鍛えた者が有利だ。エルフか獣人なら攻撃のタイミングを本能的に読める。',
+    ],
+  },
+  {
+    name:'神器「{N}」の奪取事件', icon:'💣',
+    names:['終焉の鍵','滅びの宝珠','破壊の聖剣','封印の指輪','時の砂時計'],
+    desc:'が{PLACE}から何者かに盗み出された。使用されれば甚大な被害が出るとされ、奪還が急務だ。',
+    need:'犯人を追跡し神器を取り戻せる者が必要だ。',
+    favorJob:['盗賊','魔法使い'], favorRace:['魔族','人間'], favorStat:'運',
+    hints:[
+      '派遣した者は犯人を追跡しようとしたが、罠だらけの隠し通路で先へ進めなかった。',
+      '犯人は極めて巧妙なルートを使っている。罠の感知と回避に長けた者でないと追いつけない。',
+      '盗賊か魔法使いで運を高く積んだ者が有利だ。魔族なら闇のルートを本能的に察知でき、人間なら柔軟な発想で抜け道を見つける。',
+    ],
   },
 ];
+
+// 場所の固有名詞プール
+const T_PLACE_NAMES = {
+  城下町: ['グランディア','アルカス','ロード城下','王都エルディア','聖都クラリス'],
+  港町:   ['アルミア','ネリア','ポートカルド','海都サルミス','貿易港ウェナ'],
+  山岳:   ['クロノス山脈','鉄嶺','雪峰ガルディア','霧の山脈','断崖絶壁の地'],
+  森:     ['翠嵐の森','禁断の樹海','精霊の森','呪われた深緑','古の大森林'],
+  遺跡:   ['嘆きの塔','古代神殿跡','忘れられた都','封印の迷宮','滅びた王国の跡'],
+  砂漠:   ['灼熱の砂海','砂漠都市ザルビア','不毛の大地','砂嵐の谷','幻の砂漠'],
+  空中:   ['浮遊島アルカ','天空の神殿','雲上の要塞','空中庭園','浮島の集落'],
+  海底:   ['深海神殿','水底の都','古代海底遺跡','珊瑚の宮殿','深淵の神殿'],
+  雪原:   ['永久凍土の地','極寒の荒野','氷の城塞','霜の修道院','雪原の集落'],
+  魔界:   ['魔族領域の境界','闇の城塞','呪われた荒野','冥府の入口','暗黒の地'],
+  辺境:   ['辺境の開拓村','最果ての砦','廃れた街道','孤立した集落','国境の町'],
+  峡谷:   ['竜の峡谷','断崖の谷間','深い谷底','険しい峡谷','霧の谷'],
+  地下:   ['地下迷宮','奈落の底','洞窟深部','地底の神殿','忘れられた地下道'],
+  湖畔:   ['水晶湖','精霊湖畔','鏡の湖','霧の湖','神聖な湖'],
+  廃墟:   ['滅びた古都','廃城','砂に埋もれた王国','忘れられた街','崩れた神殿'],
+};
+
+function generateTrouble(){
+  const place  = T_PLACES[Math.floor(Math.random()*T_PLACES.length)];
+  const threat = T_THREATS[Math.floor(Math.random()*T_THREATS.length)];
+  const placeName = (T_PLACE_NAMES[place.area]||[place.name])[Math.floor(Math.random()*(T_PLACE_NAMES[place.area]||[place.name]).length)];
+  const threatName = threat.names ? threat.names[Math.floor(Math.random()*threat.names.length)] : '';
+
+  const nameStr = threat.name.replace('{N}', threatName);
+  const descStr = threat.desc.replace('{PLACE}', placeName);
+  const text    = nameStr + descStr + threat.need;
+
+  // ヒントをディープコピー
+  return {
+    icon:       threat.icon,
+    text:       text,
+    hints:      [...threat.hints],
+    hintCount:  0,
+    favorJob:   threat.favorJob,
+    favorRace:  threat.favorRace,
+    favorStat:  threat.favorStat,
+  };
+}
 
 // ═══════════════════════════════════════════
 //  舞台・敵データ
@@ -445,29 +597,53 @@ const MID_EPISODES = [
   '旅の途中で出会った子どもに、かつての自分を重ねた。',
 ];
 const ENDINGS = {
-  great:[
-    {r:'を見事討伐し、英雄として讃えられた', w:'周辺の脅威が払われ平和が訪れた'},
-    {r:'を倒し、伝説に名を刻んだ',           w:'その武勲は吟遊詩人の歌となって広まった'},
-    {r:'を打ち破り、新たな王として迎えられた',w:'地域一帯に繁栄の時代が訪れた'},
-    {r:'を完全に封印し、世界に平和をもたらした',w:'封印の力が大地を守り続けている'},
+  great2:[
+    {r:'を完膚なきまでに討伐し、伝説の英雄として王都に凱旋した', w:'脅威は完全に払われ、地域に黄金時代が訪れた'},
+    {r:'を一撃のもとに葬り、その名は歴史書に刻まれた',           w:'英雄譚は国中に広まり、民の士気が大いに上がった'},
+    {r:'を圧倒し、その力を完全に封印して意気揚々と帰還した',     w:'長年の脅威が消え、周辺国まで平和が広がった'},
+    {r:'の野望を打ち砕き、失われた秘宝とともに帰還した',         w:'王国への信頼が増し、同盟国が増えた'},
   ],
-  good:[
-    {r:'を撃退し、無事帰還した',       w:'住民たちの生活が少し楽になった'},
-    {r:'を追い払い、宝を持ち帰った',   w:'町に活気が戻り始めた'},
-    {r:'を退け、目的を果たした',       w:'脅威は和らいだが完全には消えていない'},
-    {r:'との戦いを制し、傷を癒した',   w:'均衡が保たれ、しばらく平和が続くだろう'},
+  great1:[
+    {r:'を撃破し、任務を完遂して無事帰還した',   w:'住民の生活が戻り、町に笑顔が溢れた'},
+    {r:'を退けて目的を果たし、報酬を手に戻った', w:'脅威は和らぎ、しばらくは平和が続くだろう'},
+    {r:'を追い払い、依頼を成功させて帰還した',   w:'均衡が保たれ、人々は安堵した'},
+    {r:'との戦いを制し、傷を癒しながら帰還した', w:'勝利の報せが届き、希望の光が灯った'},
+  ],
+  honor:[
+    {r:'を道連れに討ち果たした。任務は達成されたが、本人は帰らぬ人となった', w:'英雄の犠牲により脅威は消えたが、その死は長く悼まれた'},
+    {r:'を封印する際に自らの命を礎とした。使命は果たされた',                 w:'英雄の名は永遠に語り継がれ、後継者が立ち上がった'},
+    {r:'との死闘の末に勝利したが、致命傷を負い息絶えた',                     w:'任務は成功したが、派遣所は最強の戦力を失った'},
+    {r:'を倒したものの力尽き、戦場に散った。しかし世界は救われた',           w:'英雄の墓標に人々が花を手向け続けている'},
   ],
   mixed:[
-    {r:'と相打ちになり、辛くも生き延びた', w:'敵は弱体化したが、まだ脅威は残る'},
-    {r:'を倒したが、重傷を負って帰還した', w:'勝利したものの、失ったものも大きかった'},
-    {r:'との戦いで宝を失ったが命は拾った', w:'世界の均衡は微妙なまま続いている'},
-    {r:'を封印したが、代償として記憶を失った',w:'世界は救われたが、英雄は誰も知らない'},
+    {r:'をなんとか撃退したが、多くの犠牲者が出た',           w:'勝利したものの、代償は大きく復興に時間がかかる'},
+    {r:'との激戦でほぼ壊滅状態の中、かろうじてクリアした',   w:'脅威は去ったが傷跡は深く、当分は安定しない'},
+    {r:'を退けたが街の大半が破壊され、民衆の怒りを買った',   w:'任務は達成されたが評判は芳しくない'},
+    {r:'の撃退に成功したが、重要な宝が失われてしまった',     w:'世界の均衡は微妙なまま、次の脅威が迫っている'},
   ],
-  bad:[
-    {r:'に敗れ、行方不明となった',    w:'脅威は増し、人々は恐怖に怯えている'},
-    {r:'の前に力及ばず倒れた',        w:'英雄の死が世界に暗い影を落とした'},
-    {r:'に捕らえられ、消息を絶った',  w:'英雄が消え、次の勇者が求められている'},
-    {r:'との戦いで命を落とした',      w:'犠牲は無駄ではなく、民の心に刻まれた'},
+  flee:[
+    {r:'の圧倒的な力の前に戦意を喪失し、命からがら逃げ帰った',   w:'脅威は健在で、むしろ増長している'},
+    {r:'との交戦で戦力の大半を失い、撤退を余儀なくされた',       w:'任務未達成の報せに、民衆の不安が募っている'},
+    {r:'に一太刀も浴びせられず、這々の体で帰還した',             w:'敵はさらに勢力を拡大しつつある'},
+    {r:'の罠に嵌り、逃げることしかできなかった',                 w:'失敗の報告が王都に届き、派遣所への批判が上がった'},
+  ],
+  captured:[
+    {r:'に捕らえられ、捕虜として連行された。救出部隊が必要だ',   w:'英雄の情報が漏洩するリスクがあり、状況が悪化した'},
+    {r:'の罠にはまり、身動きが取れない状態で拘束されている',     w:'交渉の切り札として使われる恐れがある'},
+    {r:'との戦闘中に囚われ、その後消息が途絶えた',               w:'敵に人質を取られ、王国は苦しい立場に立たされた'},
+    {r:'に敗北し、牢獄に閉じ込められた。脱出の手がかりなし',    w:'新たな勇者による奪還作戦が必要になった'},
+  ],
+  missing:[
+    {r:'との戦闘後、突然消息を絶った。生死は不明',               w:'行方不明者の捜索により他の任務に支障が出ている'},
+    {r:'の結界の中に消え、以来姿を見せていない',                 w:'謎の失踪が続き、派遣所の信頼が揺らいでいる'},
+    {r:'との戦いで次元の狭間に飲み込まれたとみられる',           w:'別の次元での戦いが続いているとも噂されている'},
+    {r:'の拠点へ乗り込んだきり、戻ってこない',                   w:'捜索隊が出されたが手がかりは何も見つかっていない'},
+  ],
+  dead:[
+    {r:'に敗れ、力尽きて息絶えた。合掌',               w:'英雄の死が世界に暗い影を落とし、民は震えている'},
+    {r:'の圧倒的な力の前に散った。無念の最期だった',   w:'仲間たちは悲しみに暮れ、復讐を誓う者も現れた'},
+    {r:'との死闘に敗れ、帰らぬ人となった',             w:'犠牲は無駄ではなく、次の勇者の礎となるだろう'},
+    {r:'に討たれ、その魂は天に召された',               w:'遺族への補償と次の勇者探しが急務となった'},
   ],
 };
 
@@ -475,7 +651,7 @@ const ENDINGS = {
 //  最終ステータス計算
 //  outcome・パラメーター・種族ボーナスで成長量が変わる
 // ═══════════════════════════════════════════
-const OUTCOME_GROW = {great:1.0, good:0.6, mixed:0.25, bad:-0.1};
+const OUTCOME_GROW = {great2:1.2, great1:0.8, honor:0.6, mixed:0.3, flee:-0.05, captured:-0.1, missing:-0.05, dead:-0.15};
 // 種族の成長傾向（得意ステータスに追加補正）
 const RACE_GROW_BIAS = {
   人間:    {腕力:1,体力:1,魔力:1,素早:1,知恵:1,運:1},
@@ -511,9 +687,8 @@ function calcFinalStats(initSv, outcome, race, job, lv){
 }
 
 function calcLevel(outcome, initSv){
-  const baseScore = Object.values(initSv).reduce((a,b)=>a+b,0); // max30
-  const growRate = OUTCOME_GROW[outcome] ?? 0;
-  // スコアが高いほど多く経験、成功ほどLVが高い
+  const baseScore = Object.values(initSv).reduce((a,b)=>a+b,0);
+  const growRate = Math.max(0, OUTCOME_GROW[outcome] ?? 0);
   const lv = Math.max(1, Math.round((baseScore / 3) * (0.5 + growRate * 1.2)));
   return lv;
 }
@@ -523,39 +698,119 @@ function calcLevel(outcome, initSv){
 // ═══════════════════════════════════════════
 function rng(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-function calcOutcomeWeights(sv, race, job, personality, heroCount, currentTrouble){
-  // 腕力を物理系に加算して power を計算（max36ポイント → 正規化）
-  const rawPower = sv['腕力']*1.3 + sv['体力']*1.1 + sv['魔力']*1.0
-                 + sv['素早']*0.9 + sv['知恵']*0.8 + sv['運']*0.9;
-  // 全振り時の最大値は約36*1.3=46.8、平均配分なら約36 → 0〜100に正規化
-  const power = rawPower / 47 * 100;
+// 種族・職業・性格・性別ごとのステータス補正定義
+const RACE_BONUS = {
+  人間:    {体力:1, 素早:1, 運:1},
+  エルフ:  {魔力:3, 知恵:2},
+  ドワーフ:{腕力:3, 体力:2},
+  獣人:    {腕力:2, 素早:3},
+  魔族:    {魔力:4, 知恵:1},
+  竜人:    {腕力:2, 体力:2, 魔力:1},
+};
+const JOB_BONUS = {
+  戦士:    {腕力:3, 体力:2},
+  魔法使い:{魔力:3, 知恵:2},
+  盗賊:    {素早:3, 運:2},
+  聖職者:  {知恵:3, 魔力:1},
+  弓使い:  {素早:2, 知恵:1, 運:1},
+  錬金術師:{知恵:3, 魔力:1},
+};
+const PERSONALITY_BONUS = {
+  勇敢:      {腕力:2, 体力:1},
+  慎重:      {知恵:2, 運:1},
+  好奇心旺盛:{知恵:1, 魔力:1},
+  義侠心:    {体力:1, 運:2},
+  強欲:      {運:2, 素早:1},
+  孤高:      {腕力:1, 魔力:1},
+};
+const GENDER_BONUS = {
+  男: {腕力:2},
+  女: {運:2},
+  謎: {腕力:1, 運:1},
+};
 
-  // 種族・職業・性格はごく小さな補正に留める（ボーナスではなく傾向）
-  const raceMod = {人間:2,エルフ:3,ドワーフ:2,獣人:3,魔族:4,竜人:5}[race]||0;
-  const jobMod  = {戦士:2,魔法使い:3,盗賊:2,聖職者:2,弓使い:2,錬金術師:3}[job]||0;
-  const perMod  = {勇敢:3,慎重:2,好奇心旺盛:1,義侠心:2,強欲:-4,孤高:0}[personality]||0;
+function applyBonus(svAdj, bonusMap){
+  if(!bonusMap) return;
+  Object.entries(bonusMap).forEach(([s,v])=>{ svAdj[s] = (svAdj[s]||0) + v; });
+}
 
-  // トラブル適性ボーナス（合ってれば少し有利、外れてもペナルティなし）
+function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, currentTrouble){
+  // 全補正をsvAdjに乗せる（表示値には影響しない、計算専用）
+  const svAdj = {...sv};
+  applyBonus(svAdj, RACE_BONUS[race]);
+  applyBonus(svAdj, JOB_BONUS[job]);
+  applyBonus(svAdj, PERSONALITY_BONUS[personality]);
+  applyBonus(svAdj, GENDER_BONUS[gender]);
+
+  // トラブルの要求ステータスを3.5倍重みで評価
+  const STAT_BASE_W = {腕力:1.0, 体力:1.0, 魔力:1.0, 素早:1.0, 知恵:1.0, 運:1.0};
+  const statW = {...STAT_BASE_W};
+  if(currentTrouble && currentTrouble.favorStat){
+    statW[currentTrouble.favorStat] = 3.5;
+  }
+  const rawPower = Object.keys(statW).reduce((a,s)=> a + (svAdj[s]||0) * statW[s], 0);
+  const maxRaw = 50 * 3.5; // 補正後の最大値に合わせて調整
+  const power = Math.min(rawPower / maxRaw * 100, 100);
+
+  // 適性ボーナス（CFGの設定値を参照）
   let matchBonus = 0;
   if(currentTrouble){
-    if(currentTrouble.favorJob.includes(job))   matchBonus += 6;
-    if(currentTrouble.favorRace.includes(race))  matchBonus += 4;
-    if((sv[currentTrouble.favorStat]||0) >= 10)  matchBonus += 5;
+    if(currentTrouble.favorJob.includes(job))   matchBonus += CFG.jobBonus;
+    if(currentTrouble.favorRace.includes(race)) matchBonus += CFG.raceBonus;
+    const fv = (svAdj[currentTrouble.favorStat]||0);
+    if(fv >= 16)      matchBonus += CFG.statHi;
+    else if(fv >= 12) matchBonus += CFG.statMd;
+    else if(fv >= 8)  matchBonus += CFG.statLo;
   }
 
-  // worldBoostは廃止（先人の活躍は物語フレーバーのみ）
+  const score = power + matchBonus;
 
-  const score = power + raceMod + jobMod + perMod + matchBonus;
-  // scoreはおおよそ 0〜120 の範囲
-  // 平均配分(各6)なら power≒46、合計≒53 → mixed/bad帯に落ちる
-  // 特化振り(12〜18)なら power≒80〜90台 → good帯に入れる
-  // 完全特化+適性一致なら 100超 → greatも狙える
+  // [大成功, 成功, 名誉の戦死, 波乱, 逃げ帰る, 捕虜, 行方不明, 死亡]
+  if(score >= CFG.t1) return [35, 35, 10, 12,  4,  2,  1,  1];
+  if(score >= CFG.t2) return [15, 30, 10, 20, 12,  6,  4,  3];
+  if(score >= CFG.t3) return [ 5, 18,  7, 22, 20, 12,  9,  7];
+  if(score >= CFG.t4) return [ 2,  8,  4, 18, 25, 18, 13, 12];
+  if(score >= CFG.t5) return [ 1,  3,  2, 12, 25, 20, 18, 19];
+  return                      [ 0,  1,  1,  8, 20, 22, 22, 26];
+}
 
-  if(score >= 105) return [35, 38, 18,  9]; // かなり強い：大成功多め
-  if(score >=  85) return [15, 35, 32, 18]; // 強め：成功が主体
-  if(score >=  65) return [ 5, 20, 40, 35]; // 普通：波乱・失敗が多い
-  if(score >=  45) return [ 2, 10, 35, 53]; // 弱め：失敗が主体
-  return                   [ 1,  5, 25, 69]; // 弱い：ほぼ失敗
+// 計算内訳を返す関数（表示用）
+function calcScoreBreakdown(sv, race, job, personality, gender, currentTrouble){
+  const svAdj = {...sv};
+  const raceB = RACE_BONUS[race]||{};
+  const jobB  = JOB_BONUS[job]||{};
+  const perB  = PERSONALITY_BONUS[personality]||{};
+  const genB  = GENDER_BONUS[gender]||{};
+  applyBonus(svAdj, raceB);
+  applyBonus(svAdj, jobB);
+  applyBonus(svAdj, perB);
+  applyBonus(svAdj, genB);
+
+  const statW = {腕力:1.0,体力:1.0,魔力:1.0,素早:1.0,知恵:1.0,運:1.0};
+  if(currentTrouble && currentTrouble.favorStat) statW[currentTrouble.favorStat] = 3.5;
+
+  const rawPower = Object.keys(statW).reduce((a,s)=> a + (svAdj[s]||0) * statW[s], 0);
+  const power = Math.min(rawPower / (50*3.5) * 100, 100);
+
+  let matchBonus = 0, matchDetails = [];
+  if(currentTrouble){
+    if(currentTrouble.favorJob.includes(job)){   matchBonus+=CFG.jobBonus;  matchDetails.push('職業適性+'+CFG.jobBonus); }
+    if(currentTrouble.favorRace.includes(race)){ matchBonus+=CFG.raceBonus; matchDetails.push('種族適性+'+CFG.raceBonus); }
+    const fv = svAdj[currentTrouble.favorStat]||0;
+    if(fv>=16){      matchBonus+=CFG.statHi; matchDetails.push(currentTrouble.favorStat+'特化+'+CFG.statHi); }
+    else if(fv>=12){ matchBonus+=CFG.statMd; matchDetails.push(currentTrouble.favorStat+'高め+'+CFG.statMd); }
+    else if(fv>=8){  matchBonus+=CFG.statLo; matchDetails.push(currentTrouble.favorStat+'普通+'+CFG.statLo); }
+  }
+  const score = power + matchBonus;
+
+  // svAdjの補正内訳
+  const bonusLines = [];
+  Object.entries(raceB).forEach(([s,v])=> bonusLines.push(`${race}→${s}+${v}`));
+  Object.entries(jobB) .forEach(([s,v])=> bonusLines.push(`${job}→${s}+${v}`));
+  Object.entries(perB) .forEach(([s,v])=> bonusLines.push(`${personality}→${s}+${v}`));
+  Object.entries(genB) .forEach(([s,v])=> bonusLines.push(`${gender==='男'?'男性':gender==='女'?'女性':'不明'}→${s}+${v}`));
+
+  return { svAdj, power:power.toFixed(1), matchBonus, matchDetails, score:score.toFixed(1), bonusLines, favorStat: currentTrouble?.favorStat };
 }
 
 function weightedPick(arr, weights){
@@ -569,9 +824,10 @@ function weightedPick(arr, weights){
 //  物語生成
 // ═══════════════════════════════════════════
 function generateStory(name, gender, race, job, personality, sv, heroCount, prevImpacts, currentTrouble){
-  const outcomes = ['great','good','mixed','bad'];
-  const weights  = calcOutcomeWeights(sv, race, job, personality, heroCount, currentTrouble);
-  const outcome  = weightedPick(outcomes, weights);
+  const outcomes  = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
+  const weights   = calcOutcomeWeights(sv, race, job, personality, gender, heroCount, currentTrouble);
+  const outcome   = weightedPick(outcomes, weights);
+  const breakdown = calcScoreBreakdown(sv, race, job, personality, gender, currentTrouble);
 
   const stage    = rng(STAGES);
   const enemy    = rng(ENEMIES[stage.tag]);
@@ -597,7 +853,7 @@ function generateStory(name, gender, race, job, personality, sv, heroCount, prev
   const lv = calcLevel(outcome, sv);
   const finalStats = calcFinalStats(sv, outcome, race, job, lv);
 
-  return { story, result:`${enemy}${endData.r}`, outcome, worldImpact:endData.w, stage:stage.name, enemy, lv, finalStats };
+  return { story, result:`${enemy}${endData.r}`, outcome, worldImpact:endData.w, stage:stage.name, enemy, lv, finalStats, breakdown };
 }
 
 // ═══════════════════════════════════════════
@@ -666,7 +922,8 @@ let sel = {gender:'男',race:'人間',job:'戦士',personality:'勇敢'};
 let sv  = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
 let heroes = [];
 let pastImpacts = [];
-let selectedTroubleIdx = 0; // 選択中のトラブルインデックス
+let selectedTroubleIdx = 0;
+let fame = 0; // 知名度（-100〜∞） // 選択中のトラブルインデックス
 
 function selectTrouble(idx){
   selectedTroubleIdx = idx;
@@ -683,26 +940,18 @@ function updateSendLabel(){
   if(lbl && t) lbl.textContent = `▶ ${t.icon} この件に向かわせる`;
 }
 
-// トラブルは最初から複数表示、英雄を送り出すたびに1つが解決→新トラブル追加
-let activetroubles = [];
-function initTroubles(){
-  const shuffled = [...WORLD_TROUBLES].sort(()=>Math.random()-.5);
-  activetroubles_pool = shuffled;
-  activetroubles_idx  = 0;
-  // 最初から3件表示
-  activetroubles_displayed = [];
-  activetroubles_displayed.push(pickNextTrouble());
-  activetroubles_displayed.push(pickNextTrouble());
-  activetroubles_displayed.push(pickNextTrouble());
-}
-let activetroubles_pool = [];
-let activetroubles_idx  = 0;
+// 表示中のトラブル（無限生成）
 let activetroubles_displayed = [];
 
+function initTroubles(){
+  activetroubles_displayed = [];
+  activetroubles_displayed.push(generateTrouble());
+  activetroubles_displayed.push(generateTrouble());
+  activetroubles_displayed.push(generateTrouble());
+}
+
 function pickNextTrouble(){
-  const t = activetroubles_pool[activetroubles_idx % activetroubles_pool.length];
-  activetroubles_idx++;
-  return {...t};
+  return generateTrouble();
 }
 
 // ═══════════════════════════════════════════
@@ -763,24 +1012,30 @@ function sendHero(){
     story:result.story, result:result.result, outcome:result.outcome,
     worldImpact:result.worldImpact,
     targetTrouble: targetTrouble ? targetTrouble.text : null,
+    breakdown: result.breakdown,
   };
   heroes.unshift(hero);
   pastImpacts.unshift(result.worldImpact);
   if(pastImpacts.length>8) pastImpacts.pop();
 
-  // トラブル更新：成功なら解決、失敗・波乱なら残す or 悪化
-  const resolved = result.outcome === 'great' || result.outcome === 'good';
+  // 知名度更新
+  const delta = FAME_DELTA[result.outcome] || 0;
+  fame = Math.max(-100, fame + delta);
+  updateFameBar();
+
+  // トラブル更新
+  const resolved = IS_CLEAR[result.outcome];
   const t = activetroubles_displayed[selectedTroubleIdx];
-  if(resolved){
-    // 成功: 該当トラブルを除去して新トラブル補充
+  if(result.outcome === 'great2' || result.outcome === 'great1'){
+    // 完全クリア: トラブル解決
     activetroubles_displayed.splice(selectedTroubleIdx, 1);
     activetroubles_displayed.push(pickNextTrouble());
-  } else if(result.outcome === 'mixed'){
-    // 波乱: 残したままヒントを1段階解放＋新トラブルが追加
-    if(t && t.hintCount < (t.hints||[]).length) t.hintCount++;
-    if(activetroubles_displayed.length < 4) activetroubles_displayed.push(pickNextTrouble());
+  } else if(result.outcome === 'honor' || result.outcome === 'mixed'){
+    // 名誉の戦死・波乱: ヒント解放、トラブルは一応解決扱い
+    activetroubles_displayed.splice(selectedTroubleIdx, 1);
+    activetroubles_displayed.push(pickNextTrouble());
   } else {
-    // 失敗: ヒントを1段階解放・悪化テキスト付加＋新トラブルも追加
+    // 未達成系: ヒント解放・悪化・新トラブル追加
     if(t){
       if(t.hintCount < (t.hints||[]).length) t.hintCount++;
       if(!t.worsened){ t.text = '【悪化】' + t.text; t.worsened = true; }
@@ -832,14 +1087,16 @@ function renderLog(){
   }
 
   // 集計バー
-  const gc={great:0,good:0,mixed:0,bad:0};
+  const OUTCOMES8 = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
+  const gc={};
+  OUTCOMES8.forEach(k=>gc[k]=0);
   heroes.forEach(h=>gc[h.outcome]=(gc[h.outcome]||0)+1);
   const totalBar=document.createElement('div');
   totalBar.className='total-bar';
-  totalBar.innerHTML=`<b>${heroes.length}</b> 人が旅立った
-    <div class="outcome-dots">
-      ${['great','good','mixed','bad'].map(k=>Array(Math.min(gc[k]||0,8)).fill(`<div class="od" style="background:${ODOT[k]}" title="${OL[k]}:${gc[k]}人"></div>`).join('')).join('')}
-    </div>`;
+  totalBar.innerHTML='<b>'+heroes.length+'</b> 人が旅立った'
+    +'<div class="outcome-dots">'
+    +OUTCOMES8.map(k=>Array(Math.min(gc[k]||0,6)).fill('<div class="od" style="background:'+ODOT[k]+'" title="'+OL[k]+':'+(gc[k]||0)+'人"></div>').join('')).join('')
+    +'</div>';
   col.appendChild(totalBar);
 
   // クロニクル
@@ -858,26 +1115,48 @@ function renderLog(){
       </div>`;
     }).join('');
 
+    // 計算内訳HTML
+    let breakdownHtml = '';
+    if(h.breakdown){
+      const b = h.breakdown;
+      const tierLabel = b.score>=100?'大成功/成功帯':b.score>=80?'成功/波乱帯':b.score>=65?'波乱/失敗帯':b.score>=45?'失敗帯':'ほぼ失敗帯';
+      const adjStr = Object.entries(b.svAdj).map(([s,v])=>s+':'+v).join(' ');
+      const bonusTags = b.bonusLines.map(l=>'<span class="bd-tag">'+l+'</span>').join('');
+      const matchTags = b.matchDetails.length
+        ? b.matchDetails.map(l=>'<span class="bd-tag bd-match">'+l+'</span>').join('')
+        : '<span class="bd-tag">適性ボーナスなし</span>';
+      const favorLine = b.favorStat
+        ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px">要求ステータス: '+b.favorStat+'（×3.5重み）</div>'
+        : '';
+      breakdownHtml =
+        '<div class="breakdown-box">' +
+        '<div class="breakdown-title">📊 計算内訳</div>' +
+        '<div class="breakdown-row">'+bonusTags+'</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-bottom:4px">補正後: '+adjStr+'</div>' +
+        favorLine +
+        '<div class="breakdown-row">'+matchTags+'</div>' +
+        '<div class="bd-score">スコア: '+b.score+' <span class="bd-tier">（パワー'+b.power+' + 適性'+b.matchBonus+' → '+tierLabel+'）</span></div>' +
+        '</div>';
+    }
+
     const el=document.createElement('div');
     el.className='chronicle';
-    el.innerHTML=`
-<div class="chr-head">
-  <div class="avatar">${RACE_EMOJI[h.race]||'👤'}</div>
-  <div class="chr-info">
-    <div class="cname">${h.name} ${JOB_EMOJI[h.job]||''}</div>
-    <div class="csub">${h.gender==='男'?'男性':h.gender==='女'?'女性':'不明'} / ${h.race} / ${h.job} / ${h.personality}</div>
-  </div>
-  <span class="outcome-badge ${OC[h.outcome]||'ob-mixed'}">${OL[h.outcome]||h.outcome}</span>
-</div>
-<div class="chr-story">${h.story}</div>
-<div class="chr-result">📜 ${h.result}</div>
-<div class="final-stats">
-  <div class="final-stats-title">
-    冒険後ステータス
-    <span class="lv-badge">⭐ LV ${h.lv}</span>
-  </div>
-  <div class="final-stats-grid">${diffHtml}</div>
-</div>`;
+    el.innerHTML=
+      '<div class="chr-head">' +
+        '<div class="avatar">'+(RACE_EMOJI[h.race]||'👤')+'</div>' +
+        '<div class="chr-info">' +
+          '<div class="cname">'+h.name+' '+(JOB_EMOJI[h.job]||'')+'</div>' +
+          '<div class="csub">'+(h.gender==='男'?'男性':h.gender==='女'?'女性':'不明')+' / '+h.race+' / '+h.job+' / '+h.personality+'</div>' +
+        '</div>' +
+        '<span class="outcome-badge '+(OC[h.outcome]||'ob-mixed')+'">'+(OL[h.outcome]||h.outcome)+'</span>' +
+      '</div>' +
+      '<div class="chr-story">'+h.story+'</div>' +
+      '<div class="chr-result">📜 '+h.result+'</div>' +
+      '<div class="final-stats">' +
+        '<div class="final-stats-title">冒険後ステータス <span class="lv-badge">⭐ LV '+h.lv+'</span></div>' +
+        '<div class="final-stats-grid">'+diffHtml+'</div>' +
+      '</div>' +
+      breakdownHtml;
     col.appendChild(el);
   });
 }
@@ -885,10 +1164,214 @@ function renderLog(){
 // ═══════════════════════════════════════════
 //  初期化
 // ═══════════════════════════════════════════
+// ── 設定値（calcOutcomeWeightsから参照） ──
+let CFG = {
+  t1:115, t2:100, t3:80, t4:60, t5:40,
+  jobBonus:15, raceBonus:10, statHi:12, statMd:7, statLo:3,
+  fGreat2:30, fGreat1:15, fHonor:10, fMixed:5,
+  fFlee:-10, fCaptured:-15, fMissing:-20, fDead:-25,
+};
+
+function openSettings(){
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+function closeSettingsOutside(e){
+  if(e.target===document.getElementById('settings-overlay')) closeSettings();
+}
+function applySettings(){
+  CFG.t1 = +document.getElementById('cfg-t1').value;
+  CFG.t2 = +document.getElementById('cfg-t2').value;
+  CFG.t3 = +document.getElementById('cfg-t3').value;
+  CFG.t4 = +document.getElementById('cfg-t4').value;
+  CFG.t5 = +document.getElementById('cfg-t5').value;
+  CFG.jobBonus  = +document.getElementById('cfg-job-bonus').value;
+  CFG.raceBonus = +document.getElementById('cfg-race-bonus').value;
+  CFG.statHi    = +document.getElementById('cfg-stat-hi').value;
+  CFG.statMd    = +document.getElementById('cfg-stat-md').value;
+  CFG.statLo    = +document.getElementById('cfg-stat-lo').value;
+  CFG.fGreat2   = +document.getElementById('cfg-f-great2').value;
+  CFG.fGreat1   = +document.getElementById('cfg-f-great1').value;
+  CFG.fHonor    = +document.getElementById('cfg-f-honor').value;
+  CFG.fMixed    = +document.getElementById('cfg-f-mixed').value;
+  CFG.fFlee     = +document.getElementById('cfg-f-flee').value;
+  CFG.fCaptured = +document.getElementById('cfg-f-captured').value;
+  CFG.fMissing  = +document.getElementById('cfg-f-missing').value;
+  CFG.fDead     = +document.getElementById('cfg-f-dead').value;
+  // FAME_DELTAも更新
+  FAME_DELTA.great2=CFG.fGreat2; FAME_DELTA.great1=CFG.fGreat1; FAME_DELTA.honor=CFG.fHonor;
+  FAME_DELTA.mixed=CFG.fMixed; FAME_DELTA.flee=CFG.fFlee; FAME_DELTA.captured=CFG.fCaptured;
+  FAME_DELTA.missing=CFG.fMissing; FAME_DELTA.dead=CFG.fDead;
+  closeSettings();
+}
+function resetSettings(){
+  CFG = {t1:115,t2:100,t3:80,t4:60,t5:40,jobBonus:15,raceBonus:10,statHi:12,statMd:7,statLo:3,fGreat2:30,fGreat1:15,fHonor:10,fMixed:5,fFlee:-10,fCaptured:-15,fMissing:-20,fDead:-25};
+  document.getElementById('cfg-t1').value=CFG.t1;
+  document.getElementById('cfg-t2').value=CFG.t2;
+  document.getElementById('cfg-t3').value=CFG.t3;
+  document.getElementById('cfg-t4').value=CFG.t4;
+  document.getElementById('cfg-t5').value=CFG.t5;
+  document.getElementById('cfg-job-bonus').value=CFG.jobBonus;
+  document.getElementById('cfg-race-bonus').value=CFG.raceBonus;
+  document.getElementById('cfg-stat-hi').value=CFG.statHi;
+  document.getElementById('cfg-stat-md').value=CFG.statMd;
+  document.getElementById('cfg-stat-lo').value=CFG.statLo;
+  document.getElementById('cfg-f-great2').value=CFG.fGreat2;
+  document.getElementById('cfg-f-great1').value=CFG.fGreat1;
+  document.getElementById('cfg-f-honor').value=CFG.fHonor;
+  document.getElementById('cfg-f-mixed').value=CFG.fMixed;
+  document.getElementById('cfg-f-flee').value=CFG.fFlee;
+  document.getElementById('cfg-f-captured').value=CFG.fCaptured;
+  document.getElementById('cfg-f-missing').value=CFG.fMissing;
+  document.getElementById('cfg-f-dead').value=CFG.fDead;
+  FAME_DELTA.great2=30;FAME_DELTA.great1=15;FAME_DELTA.honor=10;FAME_DELTA.mixed=5;
+  FAME_DELTA.flee=-10;FAME_DELTA.captured=-15;FAME_DELTA.missing=-20;FAME_DELTA.dead=-25;
+}
+
+function showSettingsMsg(msg, color){
+  const el = document.getElementById('settings-msg');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = color || 'var(--text3)';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.textContent=''; }, 2500);
+}
+
+function saveSettings(){
+  // 現在の入力値を読んでJSONとしてダウンロード
+  const data = {
+    t1:+document.getElementById('cfg-t1').value,
+    t2:+document.getElementById('cfg-t2').value,
+    t3:+document.getElementById('cfg-t3').value,
+    t4:+document.getElementById('cfg-t4').value,
+    t5:+document.getElementById('cfg-t5').value,
+    jobBonus: +document.getElementById('cfg-job-bonus').value,
+    raceBonus:+document.getElementById('cfg-race-bonus').value,
+    statHi:   +document.getElementById('cfg-stat-hi').value,
+    statMd:   +document.getElementById('cfg-stat-md').value,
+    statLo:   +document.getElementById('cfg-stat-lo').value,
+    fGreat2:  +document.getElementById('cfg-f-great2').value,
+    fGreat1:  +document.getElementById('cfg-f-great1').value,
+    fHonor:   +document.getElementById('cfg-f-honor').value,
+    fMixed:   +document.getElementById('cfg-f-mixed').value,
+    fFlee:    +document.getElementById('cfg-f-flee').value,
+    fCaptured:+document.getElementById('cfg-f-captured').value,
+    fMissing: +document.getElementById('cfg-f-missing').value,
+    fDead:    +document.getElementById('cfg-f-dead').value,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'HeroDispatch_settings.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showSettingsMsg('💾 保存しました', '#4fc97e');
+}
+
+function loadSettings(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file){ return; }
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        // 入力欄に反映
+        const map = {
+          't1':'cfg-t1','t2':'cfg-t2','t3':'cfg-t3','t4':'cfg-t4','t5':'cfg-t5',
+          'jobBonus':'cfg-job-bonus','raceBonus':'cfg-race-bonus',
+          'statHi':'cfg-stat-hi','statMd':'cfg-stat-md','statLo':'cfg-stat-lo',
+          'fGreat2':'cfg-f-great2','fGreat1':'cfg-f-great1','fHonor':'cfg-f-honor',
+          'fMixed':'cfg-f-mixed','fFlee':'cfg-f-flee','fCaptured':'cfg-f-captured',
+          'fMissing':'cfg-f-missing','fDead':'cfg-f-dead',
+        };
+        Object.entries(map).forEach(([key, id])=>{
+          if(data[key] !== undefined){
+            document.getElementById(id).value = data[key];
+          }
+        });
+        showSettingsMsg('📂 読み込みました。「設定を適用」で反映されます', 'var(--accent2)');
+      } catch(err){
+        showSettingsMsg('⚠ 読み込み失敗: ファイルが正しくありません', '#ff7777');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function updateFameBar(){
+  const val = document.getElementById('fame-val');
+  const fill = document.getElementById('fame-fill');
+  if(!val||!fill) return;
+  val.textContent = (fame>=0?'+':'')+fame;
+  // -100→0% , 0→50% , 正→50%超（上限なし、100%に近づくだけ）
+  let pct;
+  if(fame < 0){
+    pct = Math.max(0, 50 + fame/2); // -100→0%, 0→50%
+  } else {
+    pct = Math.min(98, 50 + fame/Math.max(fame+100,100)*48);
+  }
+  fill.style.width = pct+'%';
+  const color = fame >= 50 ? '#4fc97e' : fame >= 0 ? '#7c6fff' : fame >= -50 ? '#f0c040' : '#ff6b6b';
+  fill.style.background = color;
+  val.style.color = color;
+}
+
 initTroubles();
 initSliders();
 renderLog();
 updateSendLabel();
+updateFameBar();
 </script>
+<!-- 設定オーバーレイ -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettingsOutside(event)">
+  <div class="settings-panel" id="settings-panel">
+    <h2>⚙ 設定 <span class="settings-close" onclick="closeSettings()">✕</span></h2>
+
+    <div class="settings-section">
+      <div class="settings-section-title">スコア閾値</div>
+      <div class="settings-row"><label>大成功/成功帯 (この値以上)</label><input class="settings-input" id="cfg-t1" type="number" value="115"></div>
+      <div class="settings-row"><label>成功/波乱帯 (この値以上)</label><input class="settings-input" id="cfg-t2" type="number" value="100"></div>
+      <div class="settings-row"><label>波乱/失敗帯 (この値以上)</label><input class="settings-input" id="cfg-t3" type="number" value="80"></div>
+      <div class="settings-row"><label>失敗帯 (この値以上)</label><input class="settings-input" id="cfg-t4" type="number" value="60"></div>
+      <div class="settings-row"><label>最低帯 (この値以上)</label><input class="settings-input" id="cfg-t5" type="number" value="40"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">適性ボーナス</div>
+      <div class="settings-row"><label>職業適性ボーナス</label><input class="settings-input" id="cfg-job-bonus" type="number" value="15"></div>
+      <div class="settings-row"><label>種族適性ボーナス</label><input class="settings-input" id="cfg-race-bonus" type="number" value="10"></div>
+      <div class="settings-row"><label>要求ステータス高め(16+)</label><input class="settings-input" id="cfg-stat-hi" type="number" value="12"></div>
+      <div class="settings-row"><label>要求ステータス中(12+)</label><input class="settings-input" id="cfg-stat-md" type="number" value="7"></div>
+      <div class="settings-row"><label>要求ステータス低め(8+)</label><input class="settings-input" id="cfg-stat-lo" type="number" value="3"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">知名度変動量</div>
+      <div class="settings-row"><label>大成功</label><input class="settings-input" id="cfg-f-great2" type="number" value="30"></div>
+      <div class="settings-row"><label>成功</label><input class="settings-input" id="cfg-f-great1" type="number" value="15"></div>
+      <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-f-honor" type="number" value="10"></div>
+      <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-f-mixed" type="number" value="5"></div>
+      <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-f-flee" type="number" value="-10"></div>
+      <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-f-captured" type="number" value="-15"></div>
+      <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-f-missing" type="number" value="-20"></div>
+      <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-f-dead" type="number" value="-25"></div>
+    </div>
+
+    <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">✓ 設定を適用</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button onclick="saveSettings()" style="padding:9px;background:rgba(79,201,126,.12);border:1px solid rgba(79,201,126,.3);border-radius:var(--radius);color:#4fc97e;font-size:12px;font-weight:600;cursor:pointer">💾 設定を保存</button>
+      <button onclick="loadSettings()" style="padding:9px;background:rgba(124,111,255,.12);border:1px solid rgba(124,111,255,.3);border-radius:var(--radius);color:var(--accent2);font-size:12px;font-weight:600;cursor:pointer">📂 設定を読み込む</button>
+    </div>
+    <div id="settings-msg" style="font-size:11px;text-align:center;color:var(--text3);min-height:16px;margin-bottom:6px"></div>
+    <button class="btn-reset-settings" onclick="resetSettings()">↺ デフォルトに戻す</button>
+  </div>
+</div>
 </body>
 </html>
