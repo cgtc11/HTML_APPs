@@ -193,6 +193,24 @@
     width:100%;padding:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);
     border-radius:var(--radius);color:#ff7777;font-size:12px;cursor:pointer;margin-top:8px;
   }
+  /* 可視化 */
+  .viz-bar-track{height:24px;background:var(--bg);border-radius:6px;position:relative;margin:10px 0 4px;overflow:visible}
+  .viz-bar-seg{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;border-radius:3px;transition:all .3s;overflow:hidden;white-space:nowrap}
+  .viz-bar-seg span{padding:0 4px;pointer-events:none}
+  .viz-tick{position:absolute;top:26px;font-size:9px;color:var(--text3);transform:translateX(-50%);white-space:nowrap}
+  .viz-score-pin{position:absolute;top:-6px;width:3px;background:#fff;border-radius:2px;height:36px;z-index:10;transition:left .3s;pointer-events:none}
+  .viz-score-label{position:absolute;top:-18px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;transform:translateX(-50%);z-index:11}
+  .score-preview{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+  .score-preview-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+  .score-stack{display:flex;flex-direction:column;gap:4px}
+  .score-stack-row{display:flex;align-items:center;gap:6px;font-size:11px}
+  .score-stack-label{color:var(--text3);width:100px;flex-shrink:0}
+  .score-stack-bar{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+  .score-stack-fill{height:100%;border-radius:4px;transition:width .3s}
+  .score-stack-val{color:var(--text2);width:30px;text-align:right;font-weight:600}
+  .score-total{font-size:14px;font-weight:700;color:var(--accent2);text-align:right;margin-top:6px}
+  .result-prob{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .prob-chip{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600}
   .breakdown-box{
     margin-top:10px;background:rgba(0,0,0,0.3);
     border:1px solid rgba(124,111,255,0.15);
@@ -205,6 +223,35 @@
   .bd-score{font-size:13px;font-weight:700;color:var(--accent2);margin-top:4px}
   .bd-tier{font-size:11px;color:var(--text3)}
   .total-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);padding-bottom:4px}
+  /* 依頼カード */
+  .trouble-scale-badge{
+    display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;
+    border-radius:4px;margin-bottom:4px;letter-spacing:.04em;
+  }
+  .trouble-reward{font-size:11px;color:#f0c040;margin-top:4px;display:flex;align-items:center;gap:6px}
+  .trouble-btn-row{display:flex;gap:6px;margin-top:8px}
+  .btn-accept{
+    flex:1;padding:7px;font-size:12px;font-weight:600;
+    background:linear-gradient(135deg,#534AB7,#7c6fff);
+    color:#fff;border:none;border-radius:6px;cursor:pointer;transition:opacity .12s;
+  }
+  .btn-accept:hover{opacity:.85}
+  .btn-accept.active-sel{background:linear-gradient(135deg,#3a9c6f,#4fc97e);box-shadow:0 0 0 2px #4fc97e88}
+  .btn-decline{
+    padding:7px 12px;font-size:12px;font-weight:600;
+    background:rgba(255,107,107,.1);color:#ff7777;
+    border:1px solid rgba(255,107,107,.3);border-radius:6px;cursor:pointer;transition:all .12s;
+  }
+  .btn-decline:hover{background:rgba(255,107,107,.2)}
+  /* 所持金 */
+  .gold-bar{
+    display:flex;align-items:center;gap:8px;
+    background:rgba(240,192,64,.07);border:1px solid rgba(240,192,64,.2);
+    border-radius:var(--radius);padding:7px 14px;margin-bottom:10px;font-size:13px;
+  }
+  .gold-icon{font-size:16px}
+  .gold-val{font-weight:700;color:var(--gold)}
+  .gold-label{font-size:11px;color:var(--text3);margin-left:auto}
   .total-bar b{color:var(--text2)}
   .outcome-dots{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
   .od{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -217,8 +264,14 @@
     <span class="sub">世界のトラブルに立ち向かう勇者を送り出せ</span>
     <button class="btn-settings" onclick="openSettings()" style="margin-left:auto">⚙ 設定</button>
   </div>
-  <!-- 知名度バー -->
-  <div class="fame-bar-wrap" id="fame-bar-wrap">
+  <!-- 所持金・知名度バー -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:0">
+    <div class="gold-bar" style="flex:1;min-width:160px">
+      <span class="gold-icon">💰</span>
+      <span class="gold-val" id="gold-val">0</span> G
+      <span class="gold-label">所持金</span>
+    </div>
+    <div class="fame-bar-wrap" id="fame-bar-wrap" style="flex:2;min-width:220px;margin-bottom:0">
     <div class="fame-bar-label">
       <span class="fame-bar-title">⭐ 派遣所の知名度</span>
       <span class="fame-bar-val" id="fame-val">0</span>
@@ -226,12 +279,13 @@
     <div class="fame-track"><div class="fame-fill" id="fame-fill" style="width:50%;background:#7c6fff"></div></div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px"><span>-100</span><span>0</span><span>∞</span></div>
   </div>
+  </div>
 
   <div class="two-col">
     <!-- 左：作成パネル -->
     <div>
       <div class="panel">
-        <div class="panel-title">キャラクター作成</div>
+        <div class="panel-title">雇用する勇者</div>
         <div class="sec">
           <div class="sec-label">名前</div>
           <div style="display:flex;gap:6px">
@@ -506,6 +560,46 @@ const T_PLACE_NAMES = {
   廃墟:   ['滅びた古都','廃城','砂に埋もれた王国','忘れられた街','崩れた神殿'],
 };
 
+// ── 規模定義（難易度係数・報酬係数つき） ──
+const T_SCALES = [
+  {name:'子供部屋',  rank:1,  diff:0.20, reward:50,   fameMod:1,  icon:'🛏'},
+  {name:'一室',     rank:2,  diff:0.28, reward:100,  fameMod:2,  icon:'🚪'},
+  {name:'家',       rank:3,  diff:0.36, reward:200,  fameMod:3,  icon:'🏠'},
+  {name:'旅館',     rank:4,  diff:0.44, reward:350,  fameMod:4,  icon:'🏨'},
+  {name:'村',       rank:5,  diff:0.52, reward:600,  fameMod:5,  icon:'🏘'},
+  {name:'施設',     rank:6,  diff:0.60, reward:900,  fameMod:6,  icon:'🏛'},
+  {name:'建物',     rank:7,  diff:0.67, reward:1400, fameMod:7,  icon:'🏗'},
+  {name:'町',       rank:8,  diff:0.74, reward:2000, fameMod:8,  icon:'🏙'},
+  {name:'洞窟',     rank:9,  diff:0.80, reward:2800, fameMod:9,  icon:'🕳'},
+  {name:'林',       rank:10, diff:0.85, reward:3800, fameMod:10, icon:'🌲'},
+  {name:'城',       rank:11, diff:0.90, reward:5000, fameMod:12, icon:'🏯'},
+  {name:'要塞',     rank:12, diff:0.95, reward:7000, fameMod:14, icon:'🏰'},
+  {name:'森林',     rank:13, diff:1.00, reward:10000,fameMod:16, icon:'🌳'},
+  {name:'国家',     rank:14, diff:1.10, reward:15000,fameMod:20, icon:'🗺'},
+  {name:'全国',     rank:15, diff:1.20, reward:22000,fameMod:25, icon:'🌐'},
+  {name:'地球規模', rank:16, diff:1.35, reward:35000,fameMod:35, icon:'🌍'},
+  {name:'宇宙規模', rank:17, diff:1.55, reward:60000,fameMod:50, icon:'🌌'},
+];
+
+// ── 対象定義（難易度係数・説明つき） ──
+const T_TARGETS = [
+  {name:'迷い込んだ子猫',     diff:0.15, tag:'single_weak',   desc:'街中に迷い込んだ子猫の保護'},
+  {name:'小悪党1人',          diff:0.25, tag:'single_weak',   desc:'たちの悪い悪党1人の捕縛'},
+  {name:'腕の立つ盗賊',       diff:0.45, tag:'single_mid',    desc:'剣の腕が立つ盗賊の討伐'},
+  {name:'熟練の暗殺者',       diff:0.65, tag:'single_strong', desc:'熟練の腕を持つ暗殺者の排除'},
+  {name:'伝説の剣士',         diff:0.85, tag:'single_elite',  desc:'名の知れた伝説の剣士との対決'},
+  {name:'小悪党の集団',       diff:0.40, tag:'group_weak',    desc:'悪党たちの群れの鎮圧'},
+  {name:'武装した盗賊団',     diff:0.60, tag:'group_mid',     desc:'武装した盗賊団の掃討'},
+  {name:'組織化された軍勢',   diff:0.80, tag:'group_strong',  desc:'統率された軍勢との戦い'},
+  {name:'不死の軍団',         diff:1.00, tag:'group_elite',   desc:'何度倒しても蘇る不死の軍団'},
+  {name:'未知の生物',         diff:0.70, tag:'unknown',       desc:'正体不明の奇妙な生物の調査と対処'},
+  {name:'謎の呪い',           diff:0.75, tag:'unknown',       desc:'原因不明の呪いの解明と解除'},
+  {name:'次元の歪み',         diff:1.10, tag:'unknown',       desc:'突如現れた次元の歪みの封鎖'},
+  {name:'古代の守護者',       diff:0.90, tag:'unknown',       desc:'遺跡を守る古代の巨大守護者'},
+  {name:'召喚された上位悪魔', diff:1.20, tag:'elite',         desc:'魔法陣で呼び出された上位の悪魔'},
+  {name:'龍神の化身',         diff:1.40, tag:'elite',         desc:'龍神が地上に降ろした化身との決戦'},
+];
+
 function generateTrouble(){
   const place  = T_PLACES[Math.floor(Math.random()*T_PLACES.length)];
   const threat = T_THREATS[Math.floor(Math.random()*T_THREATS.length)];
@@ -517,14 +611,36 @@ function generateTrouble(){
   const text    = nameStr + descStr + threat.need;
 
   // ヒントをディープコピー
+  // 規模・対象をランダム選択
+  const scale  = T_SCALES[Math.floor(Math.random()*T_SCALES.length)];
+  const target = T_TARGETS[Math.floor(Math.random()*T_TARGETS.length)];
+
+  // 総難易度係数 = 脅威 × 規模 × 対象
+  const diffMult = scale.diff * target.diff;
+  // 報酬 = 基本報酬 × 対象難易度
+  const reward = Math.round(scale.reward * target.diff / 10) * 10;
+  // 知名度ボーナス = 規模 + 対象難易度
+  const fameBonus = scale.fameMod + Math.round(target.diff * 10);
+
+  const fullText = scale.icon+' 【'+scale.name+'規模】 '+nameStr+descStr
+    +' 対象：'+target.desc+'。'+threat.need;
+
   return {
     icon:       threat.icon,
-    text:       text,
+    scaleIcon:  scale.icon,
+    scaleName:  scale.name,
+    scaleRank:  scale.rank,
+    targetName: target.name,
+    text:       fullText,
     hints:      [...threat.hints],
     hintCount:  0,
     favorJob:   threat.favorJob,
     favorRace:  threat.favorRace,
     favorStat:  threat.favorStat,
+    diffMult:   diffMult,
+    reward:     reward,
+    fameBonus:  fameBonus,
+    declined:   false,
   };
 }
 
@@ -763,7 +879,9 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
     else if(fv >= 8)  matchBonus += CFG.statLo;
   }
 
-  const score = power + matchBonus;
+  // 規模・対象による難易度補正（diffMultが高いほどスコアを下げる）
+  const diffPenalty = currentTrouble ? (currentTrouble.diffMult||1.0) * 20 : 0;
+  const score = power + matchBonus - diffPenalty;
 
   // [大成功, 成功, 名誉の戦死, 波乱, 逃げ帰る, 捕虜, 行方不明, 死亡]
   if(score >= CFG.t1) return [35, 35, 10, 12,  4,  2,  1,  1];
@@ -923,15 +1041,30 @@ let sv  = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
 let heroes = [];
 let pastImpacts = [];
 let selectedTroubleIdx = 0;
-let fame = 0; // 知名度（-100〜∞） // 選択中のトラブルインデックス
+let fame = 0; // 知名度（-100〜∞）
+let gold = 0; // 所持金 // 選択中のトラブルインデックス
 
 function selectTrouble(idx){
+  if(activetroubles_displayed[idx] && activetroubles_displayed[idx].declined) return;
   selectedTroubleIdx = idx;
   updateSendLabel();
-  // トラブルUI再描画（選択状態だけ更新）
   document.querySelectorAll('.trouble-item').forEach((el,i)=>{
     el.classList.toggle('selected', i===idx);
   });
+}
+
+function declineTrouble(idx, e){
+  e.stopPropagation();
+  const t = activetroubles_displayed[idx];
+  if(!t) return;
+  t.declined = true;
+  // 断った依頼は新しいものと交換
+  activetroubles_displayed.splice(idx, 1);
+  activetroubles_displayed.push(pickNextTrouble());
+  while(activetroubles_displayed.length < 3) activetroubles_displayed.push(pickNextTrouble());
+  if(selectedTroubleIdx >= activetroubles_displayed.length) selectedTroubleIdx = 0;
+  renderLog();
+  updateSendLabel();
 }
 
 function updateSendLabel(){
@@ -1018,10 +1151,25 @@ function sendHero(){
   pastImpacts.unshift(result.worldImpact);
   if(pastImpacts.length>8) pastImpacts.pop();
 
-  // 知名度更新
+  // 報酬・知名度更新
   const delta = FAME_DELTA[result.outcome] || 0;
   fame = Math.max(-100, fame + delta);
+  // クリア系なら報酬獲得、未達成なら報酬なし
+  if(targetTrouble && IS_CLEAR[result.outcome]){
+    const earnedGold = Math.round((targetTrouble.reward||0) * (result.outcome==='great2'?1.5:result.outcome==='great1'?1.0:result.outcome==='honor'?0.8:0.5));
+    gold += earnedGold;
+    hero.earnedGold = earnedGold;
+  } else {
+    hero.earnedGold = 0;
+  }
+  // 知名度も依頼の規模で増減倍率変化
+  if(targetTrouble && IS_CLEAR[result.outcome]){
+    const fameDelta2 = Math.round(delta * (targetTrouble.fameBonus||1) / 10);
+    fame = Math.max(-100, fame + fameDelta2 - delta); // delta分は既に加算済みなので差分のみ
+  }
   updateFameBar();
+updateGoldBar();
+  updateGoldBar();
 
   // トラブル更新
   const resolved = IS_CLEAR[result.outcome];
@@ -1062,19 +1210,38 @@ function renderLog(){
   // 世界トラブルボックス（ヒーローがいなくても常に表示）
   const tb = document.createElement('div');
   tb.className='trouble-box';
-  tb.innerHTML=`<div class="trouble-title">⚠ 世界で起きているトラブル — クリックして挑む件を選択</div>`+
-    activetroubles_displayed.map((t,i)=>{
-      const hintsHtml = (t.hints||[]).slice(0, t.hintCount||0).map((h,hi)=>
-        `<div class="trouble-hint">💡 ${h}</div>`
-      ).join('');
-      return `
-      <div class="trouble-item${i===selectedTroubleIdx?' selected':''}" onclick="selectTrouble(${i})">
-        <span class="trouble-icon">${t.icon}</span>
-        <div style="flex:1">
-          <div class="trouble-text">${t.text}<span class="trouble-sel-badge">← 選択中</span></div>
-          ${hintsHtml}
-        </div>
-      </div>`;
+  // 規模バッジの色（rank1-6:緑、7-10:黄、11-14:橙、15-17:赤）
+  function scaleBadgeStyle(rank){
+    if(rank<=6)  return 'background:rgba(79,201,126,.15);color:#4fc97e';
+    if(rank<=10) return 'background:rgba(240,192,64,.15);color:#f0c040';
+    if(rank<=14) return 'background:rgba(255,153,102,.15);color:#ff9966';
+    return 'background:rgba(255,68,68,.15);color:#ff4444';
+  }
+
+  tb.innerHTML='<div class="trouble-title">📋 依頼一覧 — 受ける依頼を選択して勇者を派遣</div>'
+    +activetroubles_displayed.map((t,i)=>{
+      const hintsHtml = (t.hints||[]).slice(0, t.hintCount||0)
+        .map(h=>'<div class="trouble-hint">💡 '+h+'</div>').join('');
+      const rank = t.scaleRank||5;
+      const badgeStyle = scaleBadgeStyle(rank);
+      const isSelected = i===selectedTroubleIdx;
+      return '<div class="trouble-item'+(isSelected?' selected':'')+'" onclick="selectTrouble('+i+')">'
+        +'<span class="trouble-icon">'+t.icon+'</span>'
+        +'<div style="flex:1">'
+          +'<div style="margin-bottom:3px">'
+            +'<span class="trouble-scale-badge" style="'+badgeStyle+'">'+t.scaleIcon+' '+t.scaleName+'規模</span>'
+          +'</div>'
+          +'<div class="trouble-text">'+t.text+'<span class="trouble-sel-badge">← 選択中</span></div>'
+          +hintsHtml
+          +'<div class="trouble-reward">💰 報酬: '+((t.reward||0).toLocaleString())+' G'
+            +'<span style="color:var(--accent2);margin-left:8px">⭐ 知名度+'+(t.fameBonus||1)+'</span>'
+          +'</div>'
+          +'<div class="trouble-btn-row">'
+            +'<button class="btn-accept" onclick="selectTrouble('+i+');event.stopPropagation()">✔ この依頼を受ける</button>'
+            +'<button class="btn-decline" onclick="declineTrouble('+i+',event)">✗ 断る</button>'
+          +'</div>'
+        +'</div>'
+        +'</div>';
     }).join('');
   col.appendChild(tb);
 
@@ -1151,7 +1318,9 @@ function renderLog(){
         '<span class="outcome-badge '+(OC[h.outcome]||'ob-mixed')+'">'+(OL[h.outcome]||h.outcome)+'</span>' +
       '</div>' +
       '<div class="chr-story">'+h.story+'</div>' +
-      '<div class="chr-result">📜 '+h.result+'</div>' +
+      '<div class="chr-result">📜 '+h.result+'</div>'
+      +(h.earnedGold>0?'<div style="font-size:12px;color:#f0c040;margin-bottom:6px">💰 報酬獲得: '+h.earnedGold.toLocaleString()+' G</div>':'<div style="font-size:12px;color:var(--text3);margin-bottom:6px">💰 報酬なし（未達成）</div>')
+      +
       '<div class="final-stats">' +
         '<div class="final-stats-title">冒険後ステータス <span class="lv-badge">⭐ LV '+h.lv+'</span></div>' +
         '<div class="final-stats-grid">'+diffHtml+'</div>' +
@@ -1174,6 +1343,171 @@ let CFG = {
 
 function openSettings(){
   document.getElementById('settings-overlay').classList.add('open');
+  updateViz();
+}
+
+// 帯色
+const TIER_COLORS = {
+  great2:'#4fc97e', great1:'#88e0a8', honor:'#ffd700',
+  mixed:'#f0c040', flee:'#ff9966', captured:'#ff7777',
+  missing:'#cc66cc', dead:'#ff4444'
+};
+const TIER_LABELS = ['大成功','成功','名誉','波乱','逃げ','捕虜','不明','死亡'];
+const TIER_KEYS   = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
+
+function updateViz(){
+  const t1 = +document.getElementById('cfg-t1').value||115;
+  const t2 = +document.getElementById('cfg-t2').value||100;
+  const t3 = +document.getElementById('cfg-t3').value||80;
+  const t4 = +document.getElementById('cfg-t4').value||60;
+  const t5 = +document.getElementById('cfg-t5').value||40;
+  const jobB  = +document.getElementById('cfg-job-bonus').value||15;
+  const raceB = +document.getElementById('cfg-race-bonus').value||10;
+  const stHi  = +document.getElementById('cfg-stat-hi').value||12;
+  const stMd  = +document.getElementById('cfg-stat-md').value||7;
+  const stLo  = +document.getElementById('cfg-stat-lo').value||3;
+
+  // スコアの最大表示値（t1の1.3倍か150の大きい方）
+  const maxScore = Math.max(150, t1 * 1.3);
+
+  // 帯の区切り [上限, ラベル, key]
+  const tiers = [
+    [maxScore, t1, 'great2'],
+    [t1,       t2, 'great1'],
+    [t2,       t3, 'honor'],
+    [t3,       t4, 'mixed'],
+    [t4,       t5, 'flee'],
+    [t5,       t5*0.7, 'captured'],
+    [t5*0.7,   t5*0.35,'missing'],
+    [t5*0.35,  0,      'dead'],
+  ];
+
+  const track = document.getElementById('viz-track');
+  if(!track) return;
+  track.innerHTML = '';
+
+  tiers.forEach(([hi, lo, key], i)=>{
+    const leftPct  = (lo / maxScore) * 100;
+    const widthPct = ((hi - lo) / maxScore) * 100;
+    if(widthPct <= 0) return;
+    const seg = document.createElement('div');
+    seg.className = 'viz-bar-seg';
+    seg.style.left  = leftPct+'%';
+    seg.style.width = widthPct+'%';
+    seg.style.background = TIER_COLORS[key]+'44';
+    seg.style.border = '1px solid '+TIER_COLORS[key]+'88';
+    seg.style.color  = TIER_COLORS[key];
+    seg.innerHTML = '<span>'+OL[key]+'</span>';
+    track.appendChild(seg);
+    // 境界ティック（左端）
+    if(lo > 0){
+      const tick = document.createElement('div');
+      tick.className = 'viz-tick';
+      tick.style.left = leftPct+'%';
+      tick.textContent = Math.round(lo);
+      track.appendChild(tick);
+    }
+  });
+
+  // キャラスコア試算ピン
+  const trouble = activetroubles_displayed[selectedTroubleIdx];
+  if(trouble){
+    const tmpCFG = {jobBonus:jobB,raceBonus:raceB,statHi:stHi,statMd:stMd,statLo:stLo,
+                    t1,t2,t3,t4,t5};
+    const bd = calcBreakdownWithCFG(sv, sel.race, sel.job, sel.personality, sel.gender, trouble, tmpCFG);
+    const score = parseFloat(bd.score);
+    const pinPct = Math.min(98, (score / maxScore) * 100);
+    const pin = document.createElement('div');
+    pin.className = 'viz-score-pin';
+    pin.style.left = pinPct+'%';
+    const lbl = document.createElement('div');
+    lbl.className = 'viz-score-label';
+    lbl.style.left = pinPct+'%';
+    lbl.style.position = 'absolute';
+    lbl.style.top = '-18px';
+    lbl.textContent = '▼ '+Math.round(score);
+    track.appendChild(pin);
+    track.appendChild(lbl);
+
+    // スコア積み上げ表示
+    renderScorePreview(bd, score, t1,t2,t3,t4,t5, trouble);
+  }
+}
+
+function calcBreakdownWithCFG(sv, race, job, personality, gender, trouble, cfg){
+  const svAdj = {...sv};
+  applyBonus(svAdj, RACE_BONUS[race]);
+  applyBonus(svAdj, JOB_BONUS[job]);
+  applyBonus(svAdj, PERSONALITY_BONUS[personality]);
+  applyBonus(svAdj, GENDER_BONUS[gender]);
+
+  const statW = {腕力:1.0,体力:1.0,魔力:1.0,素早:1.0,知恵:1.0,運:1.0};
+  if(trouble && trouble.favorStat) statW[trouble.favorStat] = 3.5;
+
+  const rawPower = Object.keys(statW).reduce((a,s)=>a+(svAdj[s]||0)*statW[s],0);
+  const power = Math.min(rawPower/(50*3.5)*100,100);
+
+  let matchBonus=0, matchDetails=[];
+  if(trouble){
+    if(trouble.favorJob.includes(job)){   matchBonus+=cfg.jobBonus;  matchDetails.push({label:'職業一致',val:cfg.jobBonus}); }
+    if(trouble.favorRace.includes(race)){ matchBonus+=cfg.raceBonus; matchDetails.push({label:'種族一致',val:cfg.raceBonus}); }
+    const fv = svAdj[trouble.favorStat]||0;
+    if(fv>=16){      matchBonus+=cfg.statHi; matchDetails.push({label:trouble.favorStat+'が16以上',val:cfg.statHi}); }
+    else if(fv>=12){ matchBonus+=cfg.statMd; matchDetails.push({label:trouble.favorStat+'が12以上',val:cfg.statMd}); }
+    else if(fv>=8){  matchBonus+=cfg.statLo; matchDetails.push({label:trouble.favorStat+'が8以上', val:cfg.statLo}); }
+  }
+
+  const bonusLines = [];
+  Object.entries(RACE_BONUS[race]||{}).forEach(([s,v])=>bonusLines.push(race+'→'+s+'+'+v));
+  Object.entries(JOB_BONUS[job]||{}).forEach(([s,v])=>bonusLines.push(job+'→'+s+'+'+v));
+  Object.entries(PERSONALITY_BONUS[personality]||{}).forEach(([s,v])=>bonusLines.push(personality+'→'+s+'+'+v));
+  Object.entries(GENDER_BONUS[gender]||{}).forEach(([s,v])=>bonusLines.push((gender==='男'?'男性':gender==='女'?'女性':'不明')+'→'+s+'+'+v));
+
+  return {svAdj, power:power.toFixed(1), matchBonus, matchDetails, bonusLines,
+          score:(power+matchBonus).toFixed(1), favorStat:trouble?.favorStat};
+}
+
+function renderScorePreview(bd, score, t1,t2,t3,t4,t5, trouble){
+  const stack = document.getElementById('score-stack');
+  const total = document.getElementById('score-total');
+  const prob  = document.getElementById('result-prob');
+  if(!stack||!total||!prob) return;
+
+  const maxBar = Math.max(150, t1*1.3);
+  const rows = [
+    {label:'パワー（ステータス×重み）', val:parseFloat(bd.power), color:'#7c6fff'},
+    ...bd.matchDetails.map(d=>({label:d.label, val:d.val, color:'#4fc97e'})),
+  ];
+  stack.innerHTML = rows.map(r=>{
+    const pct = Math.min(100, r.val/maxBar*100*2.5);
+    return '<div class="score-stack-row">'
+      +'<div class="score-stack-label">'+r.label+'</div>'
+      +'<div class="score-stack-bar"><div class="score-stack-fill" style="width:'+pct+'%;background:'+r.color+'"></div></div>'
+      +'<div class="score-stack-val">'+r.val+'</div>'
+      +'</div>';
+  }).join('');
+
+  // 補正内訳
+  if(bd.bonusLines.length){
+    stack.innerHTML += '<div style="font-size:10px;color:var(--text3);margin-top:4px">補正: '+bd.bonusLines.join(' / ')+'</div>';
+  }
+  if(trouble && trouble.favorStat){
+    stack.innerHTML += '<div style="font-size:10px;color:var(--text3)">要求ステータス: '+trouble.favorStat+'（×3.5重み）</div>';
+  }
+
+  // 合計スコアと帯
+  const tierLabel = score>=t1?'大成功/成功帯':score>=t2?'成功/波乱帯':score>=t3?'波乱/失敗帯':score>=t4?'失敗帯':score>=t5?'最低帯':'ほぼ失敗帯';
+  const tierColor = score>=t1?'#4fc97e':score>=t2?'#88e0a8':score>=t3?'#f0c040':score>=t4?'#ff9966':'#ff7777';
+  total.innerHTML = 'スコア合計: <span style="color:'+tierColor+'">'+Math.round(score)+'</span> <span style="font-size:11px;color:var(--text3)">→ '+tierLabel+'</span>';
+
+  // 確率チップ
+  const weights = score>=t1?[35,35,10,12,4,2,1,1]:score>=t2?[15,30,10,20,12,6,4,3]:score>=t3?[5,18,7,22,20,12,9,7]:score>=t4?[2,8,4,18,25,18,13,12]:score>=t5?[1,3,2,12,25,20,18,19]:[0,1,1,8,20,22,22,26];
+  const total_w = weights.reduce((a,b)=>a+b,0);
+  const KEYS8 = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
+  prob.innerHTML = KEYS8.map((k,i)=>
+    '<span class="prob-chip" style="background:'+TIER_COLORS[k]+'22;color:'+TIER_COLORS[k]+';border:1px solid '+TIER_COLORS[k]+'44">'
+    +OL[k]+' '+Math.round(weights[i]/total_w*100)+'%</span>'
+  ).join('');
 }
 function closeSettings(){
   document.getElementById('settings-overlay').classList.remove('open');
@@ -1305,6 +1639,11 @@ function loadSettings(){
   input.click();
 }
 
+function updateGoldBar(){
+  const el = document.getElementById('gold-val');
+  if(el) el.textContent = gold.toLocaleString();
+}
+
 function updateFameBar(){
   const val = document.getElementById('fame-val');
   const fill = document.getElementById('fame-fill');
@@ -1334,34 +1673,50 @@ updateFameBar();
   <div class="settings-panel" id="settings-panel">
     <h2>⚙ 設定 <span class="settings-close" onclick="closeSettings()">✕</span></h2>
 
+    <!-- キャラスコアプレビュー -->
+    <div class="score-preview">
+      <div class="score-preview-title">📊 現在のキャラ × 選択中トラブルのスコア試算</div>
+      <div class="score-stack" id="score-stack"></div>
+      <div class="score-total" id="score-total"></div>
+      <div class="result-prob" id="result-prob"></div>
+    </div>
+
+    <!-- スコア帯ビジュアライザー -->
     <div class="settings-section">
-      <div class="settings-section-title">スコア閾値</div>
-      <div class="settings-row"><label>大成功/成功帯 (この値以上)</label><input class="settings-input" id="cfg-t1" type="number" value="115"></div>
-      <div class="settings-row"><label>成功/波乱帯 (この値以上)</label><input class="settings-input" id="cfg-t2" type="number" value="100"></div>
-      <div class="settings-row"><label>波乱/失敗帯 (この値以上)</label><input class="settings-input" id="cfg-t3" type="number" value="80"></div>
-      <div class="settings-row"><label>失敗帯 (この値以上)</label><input class="settings-input" id="cfg-t4" type="number" value="60"></div>
-      <div class="settings-row"><label>最低帯 (この値以上)</label><input class="settings-input" id="cfg-t5" type="number" value="40"></div>
+      <div class="settings-section-title">スコア帯と結果の対応（数値を変えると即反映）</div>
+      <div style="position:relative;margin-bottom:36px">
+        <div class="viz-bar-track" id="viz-track"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="settings-row"><label>① 大成功帯 以上</label><input class="settings-input" id="cfg-t1" type="number" value="115" oninput="updateViz()"></div>
+        <div class="settings-row"><label>② 成功帯 以上</label><input class="settings-input" id="cfg-t2" type="number" value="100" oninput="updateViz()"></div>
+        <div class="settings-row"><label>③ 波乱帯 以上</label><input class="settings-input" id="cfg-t3" type="number" value="80" oninput="updateViz()"></div>
+        <div class="settings-row"><label>④ 失敗帯 以上</label><input class="settings-input" id="cfg-t4" type="number" value="60" oninput="updateViz()"></div>
+        <div class="settings-row"><label>⑤ 最低帯 以上</label><input class="settings-input" id="cfg-t5" type="number" value="40" oninput="updateViz()"></div>
+      </div>
     </div>
 
     <div class="settings-section">
-      <div class="settings-section-title">適性ボーナス</div>
-      <div class="settings-row"><label>職業適性ボーナス</label><input class="settings-input" id="cfg-job-bonus" type="number" value="15"></div>
-      <div class="settings-row"><label>種族適性ボーナス</label><input class="settings-input" id="cfg-race-bonus" type="number" value="10"></div>
-      <div class="settings-row"><label>要求ステータス高め(16+)</label><input class="settings-input" id="cfg-stat-hi" type="number" value="12"></div>
-      <div class="settings-row"><label>要求ステータス中(12+)</label><input class="settings-input" id="cfg-stat-md" type="number" value="7"></div>
-      <div class="settings-row"><label>要求ステータス低め(8+)</label><input class="settings-input" id="cfg-stat-lo" type="number" value="3"></div>
+      <div class="settings-section-title">適性ボーナス（トラブルへの適合で加算）</div>
+      <div class="settings-row"><label>職業が一致</label><input class="settings-input" id="cfg-job-bonus" type="number" value="15" oninput="updateViz()"></div>
+      <div class="settings-row"><label>種族が一致</label><input class="settings-input" id="cfg-race-bonus" type="number" value="10" oninput="updateViz()"></div>
+      <div class="settings-row"><label>要求ステータス 16以上</label><input class="settings-input" id="cfg-stat-hi" type="number" value="12" oninput="updateViz()"></div>
+      <div class="settings-row"><label>要求ステータス 12〜15</label><input class="settings-input" id="cfg-stat-md" type="number" value="7" oninput="updateViz()"></div>
+      <div class="settings-row"><label>要求ステータス 8〜11</label><input class="settings-input" id="cfg-stat-lo" type="number" value="3" oninput="updateViz()"></div>
     </div>
 
     <div class="settings-section">
-      <div class="settings-section-title">知名度変動量</div>
-      <div class="settings-row"><label>大成功</label><input class="settings-input" id="cfg-f-great2" type="number" value="30"></div>
-      <div class="settings-row"><label>成功</label><input class="settings-input" id="cfg-f-great1" type="number" value="15"></div>
-      <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-f-honor" type="number" value="10"></div>
-      <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-f-mixed" type="number" value="5"></div>
-      <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-f-flee" type="number" value="-10"></div>
-      <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-f-captured" type="number" value="-15"></div>
-      <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-f-missing" type="number" value="-20"></div>
-      <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-f-dead" type="number" value="-25"></div>
+      <div class="settings-section-title">知名度変動量（結果ごとの増減）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="settings-row"><label>大成功</label><input class="settings-input" id="cfg-f-great2" type="number" value="30"></div>
+        <div class="settings-row"><label>成功</label><input class="settings-input" id="cfg-f-great1" type="number" value="15"></div>
+        <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-f-honor" type="number" value="10"></div>
+        <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-f-mixed" type="number" value="5"></div>
+        <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-f-flee" type="number" value="-10"></div>
+        <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-f-captured" type="number" value="-15"></div>
+        <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-f-missing" type="number" value="-20"></div>
+        <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-f-dead" type="number" value="-25"></div>
+      </div>
     </div>
 
     <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">✓ 設定を適用</button>
