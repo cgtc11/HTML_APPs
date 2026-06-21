@@ -31,7 +31,7 @@
   .header{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:20px}
   .header h1{font-size:22px;font-weight:600;letter-spacing:.05em;color:var(--accent2)}
   .header .sub{font-size:13px;color:var(--text3)}
-  .two-col{display:grid;grid-template-columns:500px 1fr;gap:28px;align-items:start}
+  .two-col{display:grid;grid-template-columns:720px 1fr;gap:28px;align-items:start}
   @media(max-width:700px){.two-col{grid-template-columns:1fr}}
   .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
   .panel-title{font-size:12px;font-weight:600;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:14px}
@@ -49,6 +49,8 @@
   .stat-slider{flex:1;-webkit-appearance:none;appearance:none;height:4px;background:var(--bg3);border-radius:2px;outline:none;cursor:pointer}
   .stat-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:pointer}
   .stat-val{font-size:12px;font-weight:600;color:var(--accent2);width:20px;text-align:right;flex-shrink:0}
+  .stat-bonus{font-size:11px;font-weight:600;color:#4fc97e;width:32px;text-align:left;flex-shrink:0;padding-left:2px}
+  .stat-total{font-size:12px;font-weight:700;color:var(--text);width:28px;text-align:right;flex-shrink:0}
   .remain-bar{text-align:center;font-size:11px;color:var(--text3);padding:5px;background:var(--bg3);border-radius:6px;margin-bottom:10px}
   .remain-bar span{color:var(--gold);font-weight:600}
   .btn-send{width:100%;padding:13px;margin-top:4px;background:linear-gradient(135deg,#6255d4,#8b7aff);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.05em;transition:opacity .15s,transform .1s}
@@ -308,6 +310,17 @@
           </div>
         </div>
         <div class="sec">
+          <div class="sec-label">年齢層</div>
+          <div class="chips" id="g-age">
+            <div class="chip" data-g="age" data-v="少年">🌱 少年・少女<span class="chip-bonus"></span></div>
+            <div class="chip sel" data-g="age" data-v="青年">⚔️ 青年<span class="chip-bonus"></span></div>
+            <div class="chip" data-g="age" data-v="壮年">🛡 壮年<span class="chip-bonus"></span></div>
+            <div class="chip" data-g="age" data-v="中年">📖 中年<span class="chip-bonus"></span></div>
+            <div class="chip" data-g="age" data-v="老年">🌙 老練<span class="chip-bonus"></span></div>
+            <div class="chip" data-g="age" data-v="老齢">⭐ 超老齢<span class="chip-bonus"></span></div>
+          </div>
+        </div>
+        <div class="sec">
           <div class="sec-label">種族</div>
           <div class="chips">
             <div class="chip sel" data-g="race" data-v="人間">🧑 人間<span class="chip-bonus">体力+1 素早+1 運+1</span></div>
@@ -342,7 +355,7 @@
         </div>
         <div class="sec">
           <div class="sec-label">パラメーター配分</div>
-          <div class="remain-bar">残りポイント: <span id="remain">36</span> / 36</div>
+          <div class="remain-bar">配分ポイント残り: <span id="remain">36</span> / 36　<span style="font-size:10px;color:var(--text3)">※右の緑数字が選択ボーナス</span></div>
           <div id="stat-sliders"></div>
         </div>
         <button class="btn-send" id="send-btn" onclick="sendHero()"><span id="send-label">▶ 冒険へ旅立たせる</span></button>
@@ -568,10 +581,10 @@ const T_PLACE_NAMES = {
 
 // ── 規模定義（難易度係数・報酬係数つき） ──
 const T_SCALES = [
-  {name:'子供部屋',  rank:1,  diff:0.20, reward:50,   fameMod:1,  icon:'🛏'},
-  {name:'一室',     rank:2,  diff:0.28, reward:100,  fameMod:2,  icon:'🚪'},
-  {name:'家',       rank:3,  diff:0.36, reward:200,  fameMod:3,  icon:'🏠'},
-  {name:'旅館',     rank:4,  diff:0.44, reward:350,  fameMod:4,  icon:'🏨'},
+  {name:'家具',  rank:1,  diff:0.20, reward:50,   fameMod:1,  icon:'🛏'},
+  {name:'部屋',     rank:2,  diff:0.28, reward:100,  fameMod:2,  icon:'🚪'},
+  {name:'建物',       rank:3,  diff:0.36, reward:200,  fameMod:3,  icon:'🏠'},
+  {name:'墓場',     rank:4,  diff:0.44, reward:350,  fameMod:4,  icon:'🏨'},
   {name:'村',       rank:5,  diff:0.52, reward:600,  fameMod:5,  icon:'🏘'},
   {name:'施設',     rank:6,  diff:0.60, reward:900,  fameMod:6,  icon:'🏛'},
   {name:'建物',     rank:7,  diff:0.67, reward:1400, fameMod:7,  icon:'🏗'},
@@ -821,33 +834,58 @@ function calcLevel(outcome, initSv){
 function rng(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
 // 種族・職業・性格・性別ごとのステータス補正定義
+// 年齢層定義
+const AGE_GROUPS = [
+  {val:'少年', label:'少年・少女', range:'10代',    icon:'🌱',
+   bonus:{体力:3, 素早:2, 腕力:1, 知恵:-2, 魔力:-2, 運:-1},
+   desc:'若さと素早さが武器。体力・素早さが高いが知恵・魔力は低め。'},
+  {val:'青年', label:'青年',       range:'20代',    icon:'⚔️',
+   bonus:{腕力:3, 体力:2, 素早:1, 知恵:-1, 魔力:-1},
+   desc:'肉体の全盛期。腕力・体力が最も高い。知恵・魔力はやや低い。'},
+  {val:'壮年', label:'壮年',       range:'30〜40代',icon:'🛡',
+   bonus:{腕力:2, 体力:1, 知恵:2, 運:1},
+   desc:'経験と体力のバランス型。最もバランスが良い年齢。'},
+  {val:'中年', label:'中年',       range:'50代',    icon:'📖',
+   bonus:{知恵:3, 魔力:2, 運:1, 腕力:-1, 体力:-1, 素早:-1},
+   desc:'体力より知識と経験が勝る。知恵・魔力が高い。'},
+  {val:'老年', label:'老練',       range:'60〜70代',icon:'🌙',
+   bonus:{知恵:4, 魔力:2, 運:2, 腕力:-2, 体力:-2, 素早:-2},
+   desc:'長年の経験が生きる。知恵・魔力・運が高いが体力系は低い。'},
+  {val:'老齢', label:'超老齢',     range:'80代以上',icon:'⭐',
+   bonus:{知恵:5, 魔力:3, 運:3, 腕力:-3, 体力:-3, 素早:-3},
+   desc:'伝説級の知恵と魔力。だが体力・腕力・素早はかなり低い。'},
+];
+
+const AGE_BONUS = {};
+AGE_GROUPS.forEach(a=> AGE_BONUS[a.val] = a.bonus);
+
 const RACE_BONUS = {
   人間:    {体力:1, 素早:1, 運:1},
-  エルフ:  {魔力:3, 知恵:2},
-  ドワーフ:{腕力:3, 体力:2},
-  獣人:    {腕力:2, 素早:3},
-  魔族:    {魔力:4, 知恵:1},
-  竜人:    {腕力:2, 体力:2, 魔力:1},
+  エルフ:  {魔力:3, 知恵:2, 腕力:-2, 体力:-1},
+  ドワーフ:{腕力:3, 体力:2, 素早:-2, 魔力:-1},
+  獣人:    {腕力:2, 素早:3, 知恵:-2, 魔力:-2},
+  魔族:    {魔力:4, 知恵:1, 体力:-2, 運:-1},
+  竜人:    {腕力:2, 体力:2, 魔力:1, 素早:-1, 知恵:-1},
 };
 const JOB_BONUS = {
-  戦士:    {腕力:3, 体力:2},
-  魔法使い:{魔力:3, 知恵:2},
-  盗賊:    {素早:3, 運:2},
-  聖職者:  {知恵:3, 魔力:1},
-  弓使い:  {素早:2, 知恵:1, 運:1},
-  錬金術師:{知恵:3, 魔力:1},
+  戦士:    {腕力:3, 体力:2, 魔力:-2, 知恵:-1},
+  魔法使い:{魔力:3, 知恵:2, 腕力:-2, 体力:-2},
+  盗賊:    {素早:3, 運:2, 体力:-1, 魔力:-1},
+  聖職者:  {知恵:3, 魔力:1, 腕力:-2, 素早:-1},
+  弓使い:  {素早:2, 知恵:1, 運:1, 体力:-1},
+  錬金術師:{知恵:3, 魔力:1, 腕力:-2, 体力:-1},
 };
 const PERSONALITY_BONUS = {
-  勇敢:      {腕力:2, 体力:1},
-  慎重:      {知恵:2, 運:1},
-  好奇心旺盛:{知恵:1, 魔力:1},
-  義侠心:    {体力:1, 運:2},
-  強欲:      {運:2, 素早:1},
-  孤高:      {腕力:1, 魔力:1},
+  勇敢:      {腕力:2, 体力:1, 知恵:-1, 運:-1},
+  慎重:      {知恵:2, 運:1, 素早:-1, 腕力:-1},
+  好奇心旺盛:{知恵:1, 魔力:1, 体力:-1},
+  義侠心:    {体力:1, 運:2, 素早:-1, 魔力:-1},
+  強欲:      {運:2, 素早:1, 体力:-2, 知恵:-1},
+  孤高:      {腕力:1, 魔力:1, 体力:-1, 運:-1},
 };
 const GENDER_BONUS = {
-  男: {腕力:2},
-  女: {運:2},
+  男: {腕力:2, 知恵:-1, 魔力:-1},
+  女: {運:2, 腕力:-1, 体力:-1},
   謎: {腕力:1, 運:1},
 };
 
@@ -863,6 +901,7 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
   applyBonus(svAdj, JOB_BONUS[job]);
   applyBonus(svAdj, PERSONALITY_BONUS[personality]);
   applyBonus(svAdj, GENDER_BONUS[gender]);
+  applyBonus(svAdj, AGE_BONUS[sel.age]);
 
   // トラブルの要求ステータスを3.5倍重みで評価
   const STAT_BASE_W = {腕力:1.0, 体力:1.0, 魔力:1.0, 素早:1.0, 知恵:1.0, 運:1.0};
@@ -947,7 +986,7 @@ function weightedPick(arr, weights){
 // ═══════════════════════════════════════════
 //  物語生成
 // ═══════════════════════════════════════════
-function generateStory(name, gender, race, job, personality, sv, heroCount, prevImpacts, currentTrouble){
+function generateStory(name, gender, race, job, personality, age, sv, heroCount, prevImpacts, currentTrouble){
   const outcomes  = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
   const weights   = calcOutcomeWeights(sv, race, job, personality, gender, heroCount, currentTrouble);
   const outcome   = weightedPick(outcomes, weights);
@@ -966,9 +1005,12 @@ function generateStory(name, gender, race, job, personality, sv, heroCount, prev
     worldLine = `かつての勇者が「${prevImpacts[prevImpacts.length-1]}」という爪痕を残したこの地で、`;
   }
   const pronoun = gender==='女'?'彼女':(gender==='男'?'彼':'その者');
+  const ageFlavor = {
+    少年:'若き', 青年:'血気盛んな', 壮年:'歴戦の', 中年:'老練な', 老年:'白髪の賢者たる', 老齢:'伝説の老師たる'
+  }[age]||'';
 
   const story =
-    `${worldLine}${name}は${stage.name}へと旅立った。${raceFlav}、${perAct}${pronoun}は険しき道を歩んだ。`+
+    `${worldLine}${ageFlavor}${name}は${stage.name}へと旅立った。${raceFlav}、${perAct}${pronoun}は険しき道を歩んだ。`+
     `${midEp}`+
     `ついに${enemy}と対峙した${name}は、${jobStyle}${raceFlav}戦いに臨んだ。`+
     `激闘の末、${name}は${enemy}${endData.r}。`;
@@ -1040,9 +1082,10 @@ function randomStats(){
     if(valEl) valEl.textContent = pts[i];
   });
   updateRemain();
+  updateBonusDisplay();
 }
 
-let sel = {gender:'男',race:'人間',job:'戦士',personality:'勇敢'};
+let sel = {gender:'男',race:'人間',job:'戦士',personality:'勇敢',age:'青年'};
 let sv  = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
 let heroes = [];
 let pastImpacts = [];
@@ -1102,8 +1145,17 @@ document.querySelectorAll('.chip').forEach(c=>{
     document.querySelectorAll(`[data-g="${g}"]`).forEach(x=>x.classList.remove('sel'));
     c.classList.add('sel');
     sel[g]=c.dataset.v;
+    updateBonusDisplay();
   });
 });
+
+function calcTotalBonus(){
+  // 現在のsel（性別・種族・職業・性格）から全補正を合算
+  const bonus = {腕力:0,体力:0,魔力:0,素早:0,知恵:0,運:0};
+  [GENDER_BONUS[sel.gender], RACE_BONUS[sel.race], JOB_BONUS[sel.job], PERSONALITY_BONUS[sel.personality], AGE_BONUS[sel.age]]
+    .forEach(b=>{ if(!b) return; Object.entries(b).forEach(([s,v])=>{ if(bonus[s]!==undefined) bonus[s]+=v; }); });
+  return bonus;
+}
 
 function initSliders(){
   const el=document.getElementById('stat-sliders');
@@ -1111,13 +1163,35 @@ function initSliders(){
   STATS.forEach(s=>{
     const row=document.createElement('div');
     row.className='stat-row';
-    row.innerHTML=`<div class="stat-name">${s}</div>
-      <input type="range" class="stat-slider" id="sl-${s}" min="0" max="20" step="1" value="${sv[s]}">
-      <div class="stat-val" id="sv-${s}">${sv[s]}</div>`;
+    row.innerHTML=
+      '<div class="stat-name">'+s+'</div>'+
+      '<input type="range" class="stat-slider" id="sl-'+s+'" min="0" max="20" step="1" value="'+sv[s]+'">'+
+      '<div class="stat-val" id="sv-'+s+'">'+sv[s]+'</div>'+
+      '<div class="stat-bonus" id="sb-'+s+'"></div>'+
+      '<div class="stat-total" id="st-'+s+'"></div>';
     el.appendChild(row);
     row.querySelector('input').addEventListener('input',()=>onSlide(s));
   });
   updateRemain();
+  updateBonusDisplay();
+}
+
+function updateBonusDisplay(){
+  const bonus = calcTotalBonus();
+  STATS.forEach(s=>{
+    const bEl = document.getElementById('sb-'+s);
+    const tEl = document.getElementById('st-'+s);
+    const b = bonus[s]||0;
+    if(bEl){
+      bEl.textContent = b>0 ? '+'+b : b<0 ? ''+b : '';
+      bEl.style.color = b>0 ? '#4fc97e' : b<0 ? '#ff7777' : 'transparent';
+    }
+    if(tEl){
+      const total = (sv[s]||0) + b;
+      tEl.textContent = total;
+      tEl.style.color = b>0 ? 'var(--text)' : 'var(--text2)';
+    }
+  });
 }
 
 function onSlide(name){
@@ -1128,6 +1202,7 @@ function onSlide(name){
   input.value=sv[name];
   document.getElementById('sv-'+name).textContent=sv[name];
   updateRemain();
+  updateBonusDisplay();
 }
 
 function updateRemain(){
@@ -1139,12 +1214,12 @@ function sendHero(){
   const targetTrouble = activetroubles_displayed[selectedTroubleIdx] || null;
 
   const name = document.getElementById('name-input').value.trim()||'名無し';
-  const result = generateStory(name, sel.gender, sel.race, sel.job, sel.personality, {...sv},
+  const result = generateStory(name, sel.gender, sel.race, sel.job, sel.personality, sel.age, {...sv},
                                heroes.length, pastImpacts, targetTrouble);
 
   const hero={
     id:Date.now(), name,
-    gender:sel.gender, race:sel.race, job:sel.job, personality:sel.personality,
+    gender:sel.gender, race:sel.race, job:sel.job, personality:sel.personality, age:sel.age||'青年',
     initStats:{...sv},
     lv: result.lv,
     finalStats: result.finalStats,
@@ -1319,7 +1394,7 @@ function renderLog(){
         '<div class="avatar">'+(RACE_EMOJI[h.race]||'👤')+'</div>' +
         '<div class="chr-info">' +
           '<div class="cname">'+h.name+' '+(JOB_EMOJI[h.job]||'')+'</div>' +
-          '<div class="csub">'+(h.gender==='男'?'男性':h.gender==='女'?'女性':'不明')+' / '+h.race+' / '+h.job+' / '+h.personality+'</div>' +
+          '<div class="csub">'+(h.gender==='男'?'男性':h.gender==='女'?'女性':'不明')+'('+( h.age||'青年')+') / '+h.race+' / '+h.job+' / '+h.personality+'</div>' +
         '</div>' +
         '<span class="outcome-badge '+(OC[h.outcome]||'ob-mixed')+'">'+(OL[h.outcome]||h.outcome)+'</span>' +
       '</div>' +
@@ -1446,6 +1521,7 @@ function calcBreakdownWithCFG(sv, race, job, personality, gender, trouble, cfg){
   applyBonus(svAdj, JOB_BONUS[job]);
   applyBonus(svAdj, PERSONALITY_BONUS[personality]);
   applyBonus(svAdj, GENDER_BONUS[gender]);
+  applyBonus(svAdj, AGE_BONUS[sel.age]);
 
   const statW = {腕力:1.0,体力:1.0,魔力:1.0,素早:1.0,知恵:1.0,運:1.0};
   if(trouble && trouble.favorStat) statW[trouble.favorStat] = 3.5;
@@ -1572,7 +1648,7 @@ function resetSettings(){
   FAME_DELTA.flee=-10;FAME_DELTA.captured=-15;FAME_DELTA.missing=-20;FAME_DELTA.dead=-25;
   // 補正値リセット
   const DEF_BONUS = {
-    gender:{'男':{腕力:2},'女':{運:2},'謎':{腕力:1,運:1}},
+    gender:{'男':{腕力:2,知恵:-1,魔力:-1},'女':{運:2,腕力:-1,体力:-1},'謎':{腕力:1,運:1}},
     race:{人間:{体力:1,素早:1,運:1},エルフ:{魔力:3,知恵:2},ドワーフ:{腕力:3,体力:2},獣人:{腕力:2,素早:3},魔族:{魔力:4,知恵:1},竜人:{腕力:2,体力:2,魔力:1}},
     job:{戦士:{腕力:3,体力:2},魔法使い:{魔力:3,知恵:2},盗賊:{素早:3,運:2},聖職者:{知恵:3,魔力:1},弓使い:{素早:2,知恵:1,運:1},錬金術師:{知恵:3,魔力:1}},
     per:{勇敢:{腕力:2,体力:1},慎重:{知恵:2,運:1},好奇心旺盛:{知恵:1,魔力:1},義侠心:{体力:1,運:2},強欲:{運:2,素早:1},孤高:{腕力:1,魔力:1}},
@@ -1589,8 +1665,8 @@ function resetSettings(){
 function readVal(id, def){ const el=document.getElementById(id); return el ? +el.value : def; }
 
 function applyBonusFromSettings(){
-  GENDER_BONUS['男']  = {腕力: readVal('cb-gender-男-腕力',2)};
-  GENDER_BONUS['女']  = {運:   readVal('cb-gender-女-運',2)};
+  GENDER_BONUS['男']  = {腕力: readVal('cb-gender-男-腕力',2), 知恵: readVal('cb-gender-男-知恵',-1), 魔力: readVal('cb-gender-男-魔力',-1)};
+  GENDER_BONUS['女']  = {運:   readVal('cb-gender-女-運',2), 腕力: readVal('cb-gender-女-腕力',-1), 体力: readVal('cb-gender-女-体力',-1)};
   GENDER_BONUS['謎']  = {腕力: readVal('cb-gender-謎-腕力',1), 運: readVal('cb-gender-謎-運',1)};
   RACE_BONUS['人間']    = {体力:readVal('cb-race-人間-体力',1), 素早:readVal('cb-race-人間-素早',1), 運:readVal('cb-race-人間-運',1)};
   RACE_BONUS['エルフ']  = {魔力:readVal('cb-race-エルフ-魔力',3), 知恵:readVal('cb-race-エルフ-知恵',2)};
@@ -1609,8 +1685,37 @@ function applyBonusFromSettings(){
   PERSONALITY_BONUS['好奇心旺盛']= {知恵:readVal('cb-per-好奇心旺盛-知恵',1), 魔力:readVal('cb-per-好奇心旺盛-魔力',1)};
   PERSONALITY_BONUS['義侠心']    = {体力:readVal('cb-per-義侠心-体力',1), 運:readVal('cb-per-義侠心-運',2)};
   PERSONALITY_BONUS['強欲']      = {運:readVal('cb-per-強欲-運',2), 素早:readVal('cb-per-強欲-素早',1)};
-  PERSONALITY_BONUS['孤高']      = {腕力:readVal('cb-per-孤高-腕力',1), 魔力:readVal('cb-per-孤高-魔力',1)};
+  PERSONALITY_BONUS['孤高']      = {腕力:readVal('cb-per-孤高-腕力',1), 魔力:readVal('cb-per-孤高-魔力',1), 体力:readVal('cb-per-孤高-体力',-1), 運:readVal('cb-per-孤高-運',-1)};
+  // 職業マイナス
+  JOB_BONUS['戦士']     = {腕力:readVal('cb-job-戦士-腕力',3), 体力:readVal('cb-job-戦士-体力',2), 魔力:readVal('cb-job-戦士-魔力',-2), 知恵:readVal('cb-job-戦士-知恵',-1)};
+  JOB_BONUS['魔法使い'] = {魔力:readVal('cb-job-魔法使い-魔力',3), 知恵:readVal('cb-job-魔法使い-知恵',2), 腕力:readVal('cb-job-魔法使い-腕力',-2), 体力:readVal('cb-job-魔法使い-体力',-2)};
+  JOB_BONUS['盗賊']     = {素早:readVal('cb-job-盗賊-素早',3), 運:readVal('cb-job-盗賊-運',2), 体力:readVal('cb-job-盗賊-体力',-1), 魔力:readVal('cb-job-盗賊-魔力',-1)};
+  JOB_BONUS['聖職者']   = {知恵:readVal('cb-job-聖職者-知恵',3), 魔力:readVal('cb-job-聖職者-魔力',1), 腕力:readVal('cb-job-聖職者-腕力',-2), 素早:readVal('cb-job-聖職者-素早',-1)};
+  JOB_BONUS['弓使い']   = {素早:readVal('cb-job-弓使い-素早',2), 知恵:readVal('cb-job-弓使い-知恵',1), 運:readVal('cb-job-弓使い-運',1), 体力:readVal('cb-job-弓使い-体力',-1)};
+  JOB_BONUS['錬金術師'] = {知恵:readVal('cb-job-錬金術師-知恵',3), 魔力:readVal('cb-job-錬金術師-魔力',1), 腕力:readVal('cb-job-錬金術師-腕力',-2), 体力:readVal('cb-job-錬金術師-体力',-1)};
+  // 種族マイナス
+  RACE_BONUS['人間']    = {体力:readVal('cb-race-人間-体力',1), 素早:readVal('cb-race-人間-素早',1), 運:readVal('cb-race-人間-運',1)};
+  RACE_BONUS['エルフ']  = {魔力:readVal('cb-race-エルフ-魔力',3), 知恵:readVal('cb-race-エルフ-知恵',2), 腕力:readVal('cb-race-エルフ-腕力',-2), 体力:readVal('cb-race-エルフ-体力',-1)};
+  RACE_BONUS['ドワーフ']= {腕力:readVal('cb-race-ドワーフ-腕力',3), 体力:readVal('cb-race-ドワーフ-体力',2), 素早:readVal('cb-race-ドワーフ-素早',-2), 魔力:readVal('cb-race-ドワーフ-魔力',-1)};
+  RACE_BONUS['獣人']    = {腕力:readVal('cb-race-獣人-腕力',2), 素早:readVal('cb-race-獣人-素早',3), 知恵:readVal('cb-race-獣人-知恵',-2), 魔力:readVal('cb-race-獣人-魔力',-2)};
+  RACE_BONUS['魔族']    = {魔力:readVal('cb-race-魔族-魔力',4), 知恵:readVal('cb-race-魔族-知恵',1), 体力:readVal('cb-race-魔族-体力',-2), 運:readVal('cb-race-魔族-運',-1)};
+  RACE_BONUS['竜人']    = {腕力:readVal('cb-race-竜人-腕力',2), 体力:readVal('cb-race-竜人-体力',2), 魔力:readVal('cb-race-竜人-魔力',1), 素早:readVal('cb-race-竜人-素早',-1), 知恵:readVal('cb-race-竜人-知恵',-1)};
+  // 性格マイナス
+  PERSONALITY_BONUS['勇敢']      = {腕力:readVal('cb-per-勇敢-腕力',2), 体力:readVal('cb-per-勇敢-体力',1), 知恵:readVal('cb-per-勇敢-知恵',-1), 運:readVal('cb-per-勇敢-運',-1)};
+  PERSONALITY_BONUS['慎重']      = {知恵:readVal('cb-per-慎重-知恵',2), 運:readVal('cb-per-慎重-運',1), 素早:readVal('cb-per-慎重-素早',-1), 腕力:readVal('cb-per-慎重-腕力',-1)};
+  PERSONALITY_BONUS['好奇心旺盛']= {知恵:readVal('cb-per-好奇心旺盛-知恵',1), 魔力:readVal('cb-per-好奇心旺盛-魔力',1), 体力:readVal('cb-per-好奇心旺盛-体力',-1)};
+  PERSONALITY_BONUS['義侠心']    = {体力:readVal('cb-per-義侠心-体力',1), 運:readVal('cb-per-義侠心-運',2), 素早:readVal('cb-per-義侠心-素早',-1), 魔力:readVal('cb-per-義侠心-魔力',-1)};
+  PERSONALITY_BONUS['強欲']      = {運:readVal('cb-per-強欲-運',2), 素早:readVal('cb-per-強欲-素早',1), 体力:readVal('cb-per-強欲-体力',-2), 知恵:readVal('cb-per-強欲-知恵',-1)};
+  PERSONALITY_BONUS['孤高']      = {腕力:readVal('cb-per-孤高-腕力',1), 魔力:readVal('cb-per-孤高-魔力',1), 体力:readVal('cb-per-孤高-体力',-1), 運:readVal('cb-per-孤高-運',-1)};
+  // 年齢補正
+  AGE_BONUS['少年'] = {体力:readVal('cb-age-少年-体力',3), 素早:readVal('cb-age-少年-素早',2), 腕力:readVal('cb-age-少年-腕力',1), 知恵:readVal('cb-age-少年-知恵',-2), 魔力:readVal('cb-age-少年-魔力',-2), 運:readVal('cb-age-少年-運',-1)};
+  AGE_BONUS['青年'] = {腕力:readVal('cb-age-青年-腕力',3), 体力:readVal('cb-age-青年-体力',2), 素早:readVal('cb-age-青年-素早',1), 知恵:readVal('cb-age-青年-知恵',-1), 魔力:readVal('cb-age-青年-魔力',-1)};
+  AGE_BONUS['壮年'] = {腕力:readVal('cb-age-壮年-腕力',2), 体力:readVal('cb-age-壮年-体力',1), 知恵:readVal('cb-age-壮年-知恵',2), 運:readVal('cb-age-壮年-運',1)};
+  AGE_BONUS['中年'] = {知恵:readVal('cb-age-中年-知恵',3), 魔力:readVal('cb-age-中年-魔力',2), 運:readVal('cb-age-中年-運',1), 腕力:readVal('cb-age-中年-腕力',-1), 体力:readVal('cb-age-中年-体力',-1), 素早:readVal('cb-age-中年-素早',-1)};
+  AGE_BONUS['老年'] = {知恵:readVal('cb-age-老年-知恵',4), 魔力:readVal('cb-age-老年-魔力',2), 運:readVal('cb-age-老年-運',2), 腕力:readVal('cb-age-老年-腕力',-2), 体力:readVal('cb-age-老年-体力',-2), 素早:readVal('cb-age-老年-素早',-2)};
+  AGE_BONUS['老齢'] = {知恵:readVal('cb-age-老齢-知恵',5), 魔力:readVal('cb-age-老齢-魔力',3), 運:readVal('cb-age-老齢-運',3), 腕力:readVal('cb-age-老齢-腕力',-3), 体力:readVal('cb-age-老齢-体力',-3), 素早:readVal('cb-age-老齢-素早',-3)};
   updateChipBonusText();
+  updateBonusDisplay();
 }
 
 function onBonusInput(){
@@ -1623,6 +1728,11 @@ function bonusToText(obj){
 }
 
 function updateChipBonusText(){
+  // 年齢
+  AGE_GROUPS.forEach(a=>{
+    const chip = document.querySelector('[data-g="age"][data-v="'+a.val+'"] .chip-bonus');
+    if(chip) chip.textContent = bonusToText(AGE_BONUS[a.val]);
+  });
   // 性別
   [['男',GENDER_BONUS['男']],['女',GENDER_BONUS['女']],['謎',GENDER_BONUS['謎']]].forEach(([v,b])=>{
     const chip = document.querySelector('[data-g="gender"][data-v="'+v+'"] .chip-bonus');
@@ -1753,6 +1863,8 @@ initSliders();
 renderLog();
 updateSendLabel();
 updateFameBar();
+updateGoldBar();
+updateChipBonusText();
 </script>
 <!-- 設定オーバーレイ -->
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettingsOutside(event)">
@@ -1808,111 +1920,27 @@ updateFameBar();
     <!-- 補正値セクション -->
     <div class="settings-section">
       <div class="settings-section-title">性別補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">男性</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-男-腕力" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">女性</div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-女-運" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">不明</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-謎-腕力" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-謎-運" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">男性</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-男-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-gender-男-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-gender-男-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">女性</div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-女-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-女-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-gender-女-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">不明</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-謎-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-謎-運" type="number" value="1" style="" oninput="onBonusInput()"></div></div></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">年齢層補正</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🌱 少年・少女</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-少年-体力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-少年-素早" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-少年-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-少年-知恵" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-少年-魔力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-少年-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔️ 青年</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-青年-腕力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-青年-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-青年-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-青年-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-青年-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🛡 壮年</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-壮年-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-壮年-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-壮年-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-壮年-運" type="number" value="1" style="" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">📖 中年</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-中年-知恵" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-中年-魔力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-中年-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-中年-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-中年-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-中年-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🌙 老練</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-老年-知恵" type="number" value="4" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-老年-魔力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-老年-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-老年-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-老年-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-老年-素早" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⭐ 超老齢</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-老齢-知恵" type="number" value="5" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-老齢-魔力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-老齢-運" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-老齢-腕力" type="number" value="-3" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-老齢-体力" type="number" value="-3" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-老齢-素早" type="number" value="-3" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
     </div>
 
     <div class="settings-section">
       <div class="settings-section-title">種族補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧑 人間</div>
-          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-人間-体力" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-人間-素早" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-人間-運" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧝 エルフ</div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-エルフ-魔力" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-エルフ-知恵" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⛏ ドワーフ</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-ドワーフ-腕力" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-ドワーフ-体力" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐾 獣人</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-獣人-腕力" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-獣人-素早" type="number" value="3" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">😈 魔族</div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-魔族-魔力" type="number" value="4" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-魔族-知恵" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐉 竜人</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-竜人-腕力" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-竜人-体力" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-竜人-魔力" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧑 人間</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-人間-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-人間-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-人間-運" type="number" value="1" style="" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧝 エルフ</div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-エルフ-魔力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-エルフ-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-エルフ-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-エルフ-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⛏ ドワーフ</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-ドワーフ-腕力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-ドワーフ-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-ドワーフ-素早" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-ドワーフ-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐾 獣人</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-獣人-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-獣人-素早" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-獣人-知恵" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-獣人-魔力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">😈 魔族</div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-魔族-魔力" type="number" value="4" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-魔族-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-魔族-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-魔族-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐉 竜人</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-竜人-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-竜人-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-竜人-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-竜人-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-竜人-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
     </div>
 
     <div class="settings-section">
       <div class="settings-section-title">職業補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔ 戦士</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-戦士-腕力" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-戦士-体力" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🔮 魔法使い</div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-魔法使い-魔力" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-魔法使い-知恵" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🗡 盗賊</div>
-          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-盗賊-素早" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-盗賊-運" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">✨ 聖職者</div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-聖職者-知恵" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-聖職者-魔力" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🏹 弓使い</div>
-          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-弓使い-素早" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-弓使い-知恵" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-弓使い-運" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚗ 錬金術師</div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-錬金術師-知恵" type="number" value="3" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-錬金術師-魔力" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔ 戦士</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-戦士-腕力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-戦士-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-戦士-魔力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-戦士-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🔮 魔法使い</div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-魔法使い-魔力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-魔法使い-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-魔法使い-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-魔法使い-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🗡 盗賊</div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-盗賊-素早" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-盗賊-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-盗賊-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-盗賊-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">✨ 聖職者</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-聖職者-知恵" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-聖職者-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-聖職者-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-聖職者-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🏹 弓使い</div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-弓使い-素早" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-弓使い-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-弓使い-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-弓使い-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚗ 錬金術師</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-錬金術師-知恵" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-錬金術師-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-錬金術師-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-錬金術師-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
     </div>
 
     <div class="settings-section">
       <div class="settings-section-title">性格補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">勇敢</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-勇敢-腕力" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-勇敢-体力" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">慎重</div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-慎重-知恵" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-慎重-運" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">好奇心旺盛</div>
-          <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-好奇心旺盛-知恵" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-好奇心旺盛-魔力" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">義侠心</div>
-          <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-義侠心-体力" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-義侠心-運" type="number" value="2" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">強欲</div>
-          <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-強欲-運" type="number" value="2" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-強欲-素早" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">孤高</div>
-          <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-孤高-腕力" type="number" value="1" oninput="onBonusInput()"></div>
-          <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-孤高-魔力" type="number" value="1" oninput="onBonusInput()"></div>
-        </div>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">勇敢</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-勇敢-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-勇敢-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-勇敢-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-勇敢-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">慎重</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-慎重-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-慎重-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-慎重-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-慎重-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">好奇心旺盛</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-好奇心旺盛-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-好奇心旺盛-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-好奇心旺盛-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">義侠心</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-義侠心-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-義侠心-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-義侠心-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-義侠心-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">強欲</div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-強欲-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-強欲-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-強欲-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-強欲-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">孤高</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-孤高-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-孤高-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-孤高-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-孤高-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
     </div>
 
     <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">✓ 設定を適用</button>
