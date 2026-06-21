@@ -214,7 +214,7 @@ F1Face
 <b>HeroDispatch</b>
 </a>
 <br>
-勇者派遣
+勇者派遣所
 </td>
 
 </tr>
