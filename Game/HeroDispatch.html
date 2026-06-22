@@ -231,6 +231,31 @@
   .bd-score{font-size:13px;font-weight:700;color:var(--accent2);margin-top:4px}
   .bd-tier{font-size:11px;color:var(--text3)}
   .total-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);padding-bottom:4px}
+  /* 規模フィルター */
+  .scale-filter-bar{
+    display:flex;flex-wrap:wrap;gap:5px;
+    margin-bottom:12px;
+    padding:10px 12px;
+    background:var(--bg3);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+  }
+  .scale-filter-title{
+    width:100%;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--text3);margin-bottom:4px;
+  }
+  .scale-chip{
+    padding:4px 9px;font-size:11px;
+    background:var(--bg);border:1px solid var(--border);
+    border-radius:5px;cursor:pointer;color:var(--text2);
+    transition:all .12s;white-space:nowrap;
+  }
+  .scale-chip:hover{border-color:var(--border2);color:var(--text)}
+  .scale-chip.sel{
+    border-color:var(--accent);
+    background:rgba(124,111,255,0.15);
+    color:var(--accent2);font-weight:600;
+  }
   /* 依頼カード */
   .trouble-scale-badge{
     display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;
@@ -278,6 +303,12 @@
       <span class="gold-icon">💰</span>
       <span class="gold-val" id="gold-val">0</span> G
       <span class="gold-label">所持金</span>
+    </div>
+    <div class="gold-bar" style="flex:1;min-width:200px;gap:8px">
+      <span class="gold-icon">⚔️</span>
+      <span style="font-size:13px;color:var(--text2)">仲間 <span class="gold-val" id="companion-val">0</span> 人</span>
+      <button onclick="hireCompanion()" style="margin-left:auto;padding:4px 10px;background:rgba(79,201,126,.15);border:1px solid rgba(79,201,126,.3);border-radius:6px;color:#4fc97e;font-size:11px;font-weight:600;cursor:pointer" title="100Gで仲間を1人雇う">＋雇う(100G)</button>
+      <button onclick="fireCompanion()" style="padding:4px 8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25);border-radius:6px;color:#ff7777;font-size:11px;cursor:pointer" title="仲間を1人解雇">－</button>
     </div>
     <div class="fame-bar-wrap" id="fame-bar-wrap" style="flex:2;min-width:220px;margin-bottom:0">
     <div class="fame-bar-label">
@@ -581,23 +612,23 @@ const T_PLACE_NAMES = {
 
 // ── 規模定義（難易度係数・報酬係数つき） ──
 const T_SCALES = [
-  {name:'家具',  rank:1,  diff:0.20, reward:50,   fameMod:1,  icon:'🛏'},
-  {name:'部屋',     rank:2,  diff:0.28, reward:100,  fameMod:2,  icon:'🚪'},
-  {name:'建物',       rank:3,  diff:0.36, reward:200,  fameMod:3,  icon:'🏠'},
-  {name:'墓場',     rank:4,  diff:0.44, reward:350,  fameMod:4,  icon:'🏨'},
-  {name:'村',       rank:5,  diff:0.52, reward:600,  fameMod:5,  icon:'🏘'},
-  {name:'施設',     rank:6,  diff:0.60, reward:900,  fameMod:6,  icon:'🏛'},
-  {name:'建物',     rank:7,  diff:0.67, reward:1400, fameMod:7,  icon:'🏗'},
-  {name:'町',       rank:8,  diff:0.74, reward:2000, fameMod:8,  icon:'🏙'},
-  {name:'洞窟',     rank:9,  diff:0.80, reward:2800, fameMod:9,  icon:'🕳'},
-  {name:'林',       rank:10, diff:0.85, reward:3800, fameMod:10, icon:'🌲'},
-  {name:'城',       rank:11, diff:0.90, reward:5000, fameMod:12, icon:'🏯'},
-  {name:'要塞',     rank:12, diff:0.95, reward:7000, fameMod:14, icon:'🏰'},
-  {name:'森林',     rank:13, diff:1.00, reward:10000,fameMod:16, icon:'🌳'},
-  {name:'国家',     rank:14, diff:1.10, reward:15000,fameMod:20, icon:'🗺'},
-  {name:'全国',     rank:15, diff:1.20, reward:22000,fameMod:25, icon:'🌐'},
-  {name:'地球規模', rank:16, diff:1.35, reward:35000,fameMod:35, icon:'🌍'},
-  {name:'宇宙規模', rank:17, diff:1.55, reward:60000,fameMod:50, icon:'🌌'},
+  {name:'家具',    rank:1,  diff:0.20, reward:50,        fameMod:1,  icon:'🪑'},
+  {name:'部屋',    rank:2,  diff:0.28, reward:100,       fameMod:2,  icon:'🚪'},
+  {name:'建物',    rank:3,  diff:0.36, reward:200,       fameMod:3,  icon:'🏗'},
+  {name:'墓場',    rank:4,  diff:0.44, reward:350,       fameMod:4,  icon:'⚰️'},
+  {name:'村',      rank:5,  diff:0.52, reward:800,       fameMod:5,  icon:'🏘'},
+  {name:'施設',    rank:6,  diff:0.60, reward:1500,      fameMod:6,  icon:'🏛'},
+  {name:'建物',    rank:7,  diff:0.67, reward:3000,      fameMod:7,  icon:'🏗'},
+  {name:'町',      rank:8,  diff:0.74, reward:6000,      fameMod:8,  icon:'🏙'},
+  {name:'洞窟',    rank:9,  diff:0.80, reward:12000,     fameMod:9,  icon:'🕳'},
+  {name:'林',      rank:10, diff:0.85, reward:25000,     fameMod:10, icon:'🌲'},
+  {name:'城',      rank:11, diff:0.90, reward:80000,     fameMod:12, icon:'🏯'},
+  {name:'要塞',    rank:12, diff:0.95, reward:200000,    fameMod:14, icon:'🏰'},
+  {name:'森林',    rank:13, diff:1.00, reward:500000,    fameMod:16, icon:'🌳'},
+  {name:'国家',    rank:14, diff:1.10, reward:2000000,   fameMod:20, icon:'🗺'},
+  {name:'全国',    rank:15, diff:1.20, reward:8000000,   fameMod:25, icon:'🌐'},
+  {name:'地球規模',rank:16, diff:1.35, reward:50000000,  fameMod:35, icon:'🌍'},
+  {name:'宇宙規模',rank:17, diff:1.55, reward:500000000, fameMod:50, icon:'🌌'},
 ];
 
 // ── 対象定義（難易度係数・説明つき） ──
@@ -910,7 +941,7 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
     statW[currentTrouble.favorStat] = 3.5;
   }
   const rawPower = Object.keys(statW).reduce((a,s)=> a + (svAdj[s]||0) * statW[s], 0);
-  const maxRaw = 50 * 3.5; // 補正後の最大値に合わせて調整
+  const maxRaw = 40 * 3.5; // 補正後の最大値に合わせて調整
   const power = Math.min(rawPower / maxRaw * 100, 100);
 
   // 適性ボーナス（CFGの設定値を参照）
@@ -925,8 +956,10 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
   }
 
   // 規模・対象による難易度補正（diffMultが高いほどスコアを下げる）
-  const diffPenalty = currentTrouble ? (currentTrouble.diffMult||1.0) * 20 : 0;
-  const score = power + matchBonus - diffPenalty;
+  const diffPenalty = currentTrouble ? (currentTrouble.diffMult||1.0) * 75 : 0;
+  // 仲間ボーナス（対数スケール: log10(N+1)*20）
+  const companionBonus = companions > 0 ? Math.log10(companions + 1) * 20 : 0;
+  const score = power + matchBonus - diffPenalty + companionBonus;
 
   // [大成功, 成功, 名誉の戦死, 波乱, 逃げ帰る, 捕虜, 行方不明, 死亡]
   if(score >= CFG.t1) return [35, 35, 10, 12,  4,  2,  1,  1];
@@ -953,7 +986,7 @@ function calcScoreBreakdown(sv, race, job, personality, gender, currentTrouble){
   if(currentTrouble && currentTrouble.favorStat) statW[currentTrouble.favorStat] = 3.5;
 
   const rawPower = Object.keys(statW).reduce((a,s)=> a + (svAdj[s]||0) * statW[s], 0);
-  const power = Math.min(rawPower / (50*3.5) * 100, 100);
+  const power = Math.min(rawPower / (40*3.5) * 100, 100);
 
   let matchBonus = 0, matchDetails = [];
   if(currentTrouble){
@@ -1091,7 +1124,47 @@ let heroes = [];
 let pastImpacts = [];
 let selectedTroubleIdx = 0;
 let fame = 0; // 知名度（-100〜∞）
-let gold = 0; // 所持金 // 選択中のトラブルインデックス
+let gold = 0; // 所持金
+let companions = 0; // 雇った仲間の数
+const COMPANION_COST = 100; // 1人100G
+const COMPANION_BONUS_PER = 15; // 仲間1人あたりスコアボーナス
+let selectedScaleRank = null; // null=すべて、数値=指定ランク // 選択中のトラブルインデックス
+
+function selectScale(rank){
+  if(rank === null){
+    selectedScaleRank = null; // ランダムボタン
+    // ランダムは無条件で3件再生成
+    activetroubles_displayed = [generateTrouble(), generateTrouble(), generateTrouble()];
+  } else if(selectedScaleRank === rank){
+    selectedScaleRank = null; // 同じを押したらランダムに戻す
+    activetroubles_displayed = [generateTrouble(), generateTrouble(), generateTrouble()];
+  } else {
+    selectedScaleRank = rank;
+    regenerateTroubles();
+  }
+  // ↓ regenerateTroublesはelse側のみ呼ぶので削除
+  selectedTroubleIdx = 0;
+  renderLog();
+  updateSendLabel();
+}
+
+function regenerateTroubles(){
+  // 既存の依頼を規模フィルターに合わせて再生成
+  // 選択規模がある場合、その規模の依頼で3件埋める
+  if(selectedScaleRank !== null){
+    activetroubles_displayed = [];
+    let tries = 0;
+    while(activetroubles_displayed.length < 3 && tries < 100){
+      const t = generateTrouble();
+      if(t.scaleRank === selectedScaleRank) activetroubles_displayed.push(t);
+      tries++;
+    }
+    // 万が一3件埋まらなければ近い規模で補完
+    while(activetroubles_displayed.length < 3){
+      activetroubles_displayed.push(generateTrouble());
+    }
+  }
+}
 
 function selectTrouble(idx){
   if(activetroubles_displayed[idx] && activetroubles_displayed[idx].declined) return;
@@ -1133,6 +1206,13 @@ function initTroubles(){
 }
 
 function pickNextTrouble(){
+  if(selectedScaleRank !== null){
+    // 指定規模のトラブルを生成（最大50回試行）
+    for(let i=0;i<50;i++){
+      const t = generateTrouble();
+      if(t.scaleRank === selectedScaleRank) return t;
+    }
+  }
   return generateTrouble();
 }
 
@@ -1291,6 +1371,20 @@ function renderLog(){
   // 世界トラブルボックス（ヒーローがいなくても常に表示）
   const tb = document.createElement('div');
   tb.className='trouble-box';
+  // 規模フィルターバー
+  const sfBar = document.createElement('div');
+  sfBar.className = 'scale-filter-bar';
+  const isRandom = selectedScaleRank === null;
+  sfBar.innerHTML = '<div class="scale-filter-title">📐 規模でフィルター</div>'
+    + '<span class="scale-chip'+(isRandom?' sel':'')+'" onclick="selectScale(null)">🎲 ランダム</span>'
+    + T_SCALES.map(s=>{
+        const isSel = selectedScaleRank === s.rank;
+        const badgeStyle = s.rank<=6?'color:#4fc97e':s.rank<=10?'color:#f0c040':s.rank<=14?'color:#ff9966':'color:#ff4444';
+        return '<span class="scale-chip'+(isSel?' sel':'')+'" onclick="selectScale('+s.rank+')">'+
+          '<span style="'+badgeStyle+'">'+s.icon+'</span> '+s.name+'</span>';
+      }).join('');
+  col.appendChild(sfBar);
+
   // 規模バッジの色（rank1-6:緑、7-10:黄、11-14:橙、15-17:赤）
   function scaleBadgeStyle(rank){
     if(rank<=6)  return 'background:rgba(79,201,126,.15);color:#4fc97e';
@@ -1416,7 +1510,7 @@ function renderLog(){
 // ═══════════════════════════════════════════
 // ── 設定値（calcOutcomeWeightsから参照） ──
 let CFG = {
-  t1:115, t2:100, t3:80, t4:60, t5:40,
+  t1:100, t2:82, t3:65, t4:45, t5:28,
   jobBonus:15, raceBonus:10, statHi:12, statMd:7, statLo:3,
   fGreat2:30, fGreat1:15, fHonor:10, fMixed:5,
   fFlee:-10, fCaptured:-15, fMissing:-20, fDead:-25,
@@ -1556,9 +1650,11 @@ function renderScorePreview(bd, score, t1,t2,t3,t4,t5, trouble){
   if(!stack||!total||!prob) return;
 
   const maxBar = Math.max(150, t1*1.3);
+  const companionBonusVal = companions > 0 ? Math.log10(companions + 1) * 20 : 0;
   const rows = [
     {label:'パワー（ステータス×重み）', val:parseFloat(bd.power), color:'#7c6fff'},
     ...bd.matchDetails.map(d=>({label:d.label, val:d.val, color:'#4fc97e'})),
+    ...(companionBonusVal>0 ? [{label:'仲間'+companions+'人ボーナス（対数）', val:Math.round(companionBonusVal*10)/10, color:'#ffd700'}] : []),
   ];
   stack.innerHTML = rows.map(r=>{
     const pct = Math.min(100, r.val/maxBar*100*2.5);
@@ -1625,7 +1721,7 @@ function applySettings(){
   closeSettings();
 }
 function resetSettings(){
-  CFG = {t1:115,t2:100,t3:80,t4:60,t5:40,jobBonus:15,raceBonus:10,statHi:12,statMd:7,statLo:3,fGreat2:30,fGreat1:15,fHonor:10,fMixed:5,fFlee:-10,fCaptured:-15,fMissing:-20,fDead:-25};
+  CFG = {t1:100,t2:82,t3:65,t4:45,t5:28,jobBonus:15,raceBonus:10,statHi:12,statMd:7,statLo:3,fGreat2:30,fGreat1:15,fHonor:10,fMixed:5,fFlee:-10,fCaptured:-15,fMissing:-20,fDead:-25};
   document.getElementById('cfg-t1').value=CFG.t1;
   document.getElementById('cfg-t2').value=CFG.t2;
   document.getElementById('cfg-t3').value=CFG.t3;
@@ -1840,6 +1936,28 @@ function updateGoldBar(){
   if(el) el.textContent = gold.toLocaleString();
 }
 
+function updateCompanionBar(){
+  const el = document.getElementById('companion-val');
+  if(el) el.textContent = companions;
+}
+
+function hireCompanion(){
+  if(gold < COMPANION_COST){
+    alert('所持金が足りません。（必要: '+COMPANION_COST+'G）');
+    return;
+  }
+  gold -= COMPANION_COST;
+  companions++;
+  updateGoldBar();
+  updateCompanionBar();
+}
+
+function fireCompanion(){
+  if(companions <= 0) return;
+  companions--;
+  updateCompanionBar();
+}
+
 function updateFameBar(){
   const val = document.getElementById('fame-val');
   const fill = document.getElementById('fame-fill');
@@ -1864,6 +1982,7 @@ renderLog();
 updateSendLabel();
 updateFameBar();
 updateGoldBar();
+updateCompanionBar();
 updateChipBonusText();
 </script>
 <!-- 設定オーバーレイ -->
@@ -1886,11 +2005,11 @@ updateChipBonusText();
         <div class="viz-bar-track" id="viz-track"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="settings-row"><label>① 大成功帯 以上</label><input class="settings-input" id="cfg-t1" type="number" value="115" oninput="updateViz()"></div>
-        <div class="settings-row"><label>② 成功帯 以上</label><input class="settings-input" id="cfg-t2" type="number" value="100" oninput="updateViz()"></div>
-        <div class="settings-row"><label>③ 波乱帯 以上</label><input class="settings-input" id="cfg-t3" type="number" value="80" oninput="updateViz()"></div>
-        <div class="settings-row"><label>④ 失敗帯 以上</label><input class="settings-input" id="cfg-t4" type="number" value="60" oninput="updateViz()"></div>
-        <div class="settings-row"><label>⑤ 最低帯 以上</label><input class="settings-input" id="cfg-t5" type="number" value="40" oninput="updateViz()"></div>
+        <div class="settings-row"><label>① 大成功帯 以上</label><input class="settings-input" id="cfg-t1" type="number" value="100" oninput="updateViz()"></div>
+        <div class="settings-row"><label>② 成功帯 以上</label><input class="settings-input" id="cfg-t2" type="number" value="82" oninput="updateViz()"></div>
+        <div class="settings-row"><label>③ 波乱帯 以上</label><input class="settings-input" id="cfg-t3" type="number" value="65" oninput="updateViz()"></div>
+        <div class="settings-row"><label>④ 失敗帯 以上</label><input class="settings-input" id="cfg-t4" type="number" value="45" oninput="updateViz()"></div>
+        <div class="settings-row"><label>⑤ 最低帯 以上</label><input class="settings-input" id="cfg-t5" type="number" value="28" oninput="updateViz()"></div>
       </div>
     </div>
 
