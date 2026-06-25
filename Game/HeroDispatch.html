@@ -309,6 +309,7 @@
       <span style="font-size:13px;color:var(--text2)">仲間 <span class="gold-val" id="companion-val">0</span> 人</span>
       <button onclick="hireCompanion()" style="margin-left:auto;padding:4px 10px;background:rgba(79,201,126,.15);border:1px solid rgba(79,201,126,.3);border-radius:6px;color:#4fc97e;font-size:11px;font-weight:600;cursor:pointer" title="100Gで仲間を1人雇う">＋雇う(100G)</button>
       <button onclick="fireCompanion()" style="padding:4px 8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25);border-radius:6px;color:#ff7777;font-size:11px;cursor:pointer" title="仲間を1人解雇">－</button>
+      <span id="companion-msg" style="font-size:11px;color:#ff7777;margin-left:4px"></span>
     </div>
     <div class="fame-bar-wrap" id="fame-bar-wrap" style="flex:2;min-width:220px;margin-bottom:0">
     <div class="fame-bar-label">
@@ -439,21 +440,32 @@ const FAME_DELTA = {great2:30,great1:15,honor:10,mixed:5,flee:-10,captured:-15,m
 //  トラブル自動生成エンジン（無限生成）
 // ═══════════════════════════════════════════
 const T_PLACES = [
-  {name:'王都の城下町',   area:'城下町'},
-  {name:'東部の港町アルミア', area:'港町'},
-  {name:'北方の山岳要塞', area:'山岳'},
-  {name:'西部の禁断の森', area:'森'},
-  {name:'古代遺跡の地下', area:'遺跡'},
-  {name:'砂漠の交易都市', area:'砂漠'},
-  {name:'浮遊島の神殿',   area:'空中'},
-  {name:'深海の神殿',     area:'海底'},
-  {name:'雪原の修道院',   area:'雪原'},
-  {name:'魔族の支配領域', area:'魔界'},
-  {name:'辺境の開拓村',   area:'辺境'},
-  {name:'竜の巣がある峡谷', area:'峡谷'},
-  {name:'地下迷宮の最深部', area:'地下'},
-  {name:'湖畔の精霊郷',  area:'湖畔'},
-  {name:'廃墟となった王国', area:'廃墟'},
+  // 小規模（家具〜墓場向け）
+  {name:'民家の地下室',     area:'地下室',  minRank:1, maxRank:4},
+  {name:'古い屋敷の一室',   area:'一室',    minRank:1, maxRank:4},
+  {name:'宿屋の物置部屋',   area:'物置',    minRank:1, maxRank:4},
+  {name:'路地裏の廃屋',     area:'廃屋',    minRank:1, maxRank:4},
+  {name:'教会の地下礼拝堂', area:'礼拝堂',  minRank:1, maxRank:4},
+  {name:'商家の倉庫',       area:'倉庫',    minRank:2, maxRank:5},
+  {name:'古井戸の底',       area:'井戸',    minRank:1, maxRank:3},
+  {name:'屋根裏部屋',       area:'屋根裏',  minRank:1, maxRank:3},
+  // 中規模（村〜城向け）
+  {name:'王都の城下町',     area:'城下町',  minRank:5, maxRank:12},
+  {name:'東部の港町アルミア',area:'港町',   minRank:5, maxRank:12},
+  {name:'北方の山岳要塞',   area:'山岳',    minRank:6, maxRank:14},
+  {name:'西部の禁断の森',   area:'森',      minRank:6, maxRank:13},
+  {name:'古代遺跡の地下',   area:'遺跡',    minRank:5, maxRank:13},
+  {name:'砂漠の交易都市',   area:'砂漠',    minRank:6, maxRank:13},
+  {name:'地下迷宮の最深部', area:'地下',    minRank:7, maxRank:14},
+  {name:'湖畔の精霊郷',     area:'湖畔',    minRank:5, maxRank:12},
+  {name:'廃墟となった王国', area:'廃墟',    minRank:8, maxRank:15},
+  // 大規模（国家〜宇宙向け）
+  {name:'浮遊島の神殿',     area:'空中',    minRank:10, maxRank:17},
+  {name:'深海の神殿',       area:'海底',    minRank:10, maxRank:17},
+  {name:'魔族の支配領域',   area:'魔界',    minRank:12, maxRank:17},
+  {name:'竜の巣がある峡谷', area:'峡谷',    minRank:11, maxRank:17},
+  {name:'雪原の修道院',     area:'雪原',    minRank:8,  maxRank:17},
+  {name:'辺境の開拓村',     area:'辺境',    minRank:5,  maxRank:14},
 ];
 
 const T_THREATS = [
@@ -593,6 +605,14 @@ const T_THREATS = [
 
 // 場所の固有名詞プール
 const T_PLACE_NAMES = {
+  地下室: ['薄暗い地下室','古い石造りの地下','ほこりまみれの地下倉庫','湿った地下牢','板張りの地下室'],
+  一室:   ['古びた客間','鍵のかかった寝室','埃だらけの書斎','狭い納戸','ひび割れた壁の一室'],
+  物置:   ['宿屋の裏物置','薄暗い道具部屋','がらくたが積まれた部屋','閉め切った納屋','古い物置小屋'],
+  廃屋:   ['路地裏の廃屋','崩れかけた古民家','錆びた扉の廃墟','草むした廃屋','板が打ちつけられた廃家'],
+  礼拝堂: ['石造りの地下礼拝堂','古い教会の地下','燭台が倒れた礼拝堂','苔むした礼拝堂','忘れられた礼拝室'],
+  倉庫:   ['商家の薄暗い倉庫','波止場の古倉庫','城壁沿いの倉庫','荷物が積まれた倉庫','隠し扉のある倉庫'],
+  井戸:   ['枯れた古井戸の底','石畳の井戸','村外れの古井戸','覗くと底が見えない井戸','封印された井戸'],
+  屋根裏: ['ほこりだらけの屋根裏','古い屋根裏部屋','梁だけが残る屋根裏','物が散乱した屋根裏','ひっそりとした屋根裏'],
   城下町: ['グランディア','アルカス','ロード城下','王都エルディア','聖都クラリス'],
   港町:   ['アルミア','ネリア','ポートカルド','海都サルミス','貿易港ウェナ'],
   山岳:   ['クロノス山脈','鉄嶺','雪峰ガルディア','霧の山脈','断崖絶壁の地'],
@@ -651,7 +671,15 @@ const T_TARGETS = [
 ];
 
 function generateTrouble(){
-  const place  = T_PLACES[Math.floor(Math.random()*T_PLACES.length)];
+  // 規模・対象を先に選択
+  const scale  = T_SCALES[Math.floor(Math.random()*T_SCALES.length)];
+  const target = T_TARGETS[Math.floor(Math.random()*T_TARGETS.length)];
+
+  // 規模に合ったplaceをフィルタリング
+  const validPlaces = T_PLACES.filter(p=> scale.rank >= (p.minRank||1) && scale.rank <= (p.maxRank||17));
+  const place  = validPlaces.length > 0
+    ? validPlaces[Math.floor(Math.random()*validPlaces.length)]
+    : T_PLACES[Math.floor(Math.random()*T_PLACES.length)];
   const threat = T_THREATS[Math.floor(Math.random()*T_THREATS.length)];
   const placeName = (T_PLACE_NAMES[place.area]||[place.name])[Math.floor(Math.random()*(T_PLACE_NAMES[place.area]||[place.name]).length)];
   const threatName = threat.names ? threat.names[Math.floor(Math.random()*threat.names.length)] : '';
@@ -659,11 +687,6 @@ function generateTrouble(){
   const nameStr = threat.name.replace('{N}', threatName);
   const descStr = threat.desc.replace('{PLACE}', placeName);
   const text    = nameStr + descStr + threat.need;
-
-  // ヒントをディープコピー
-  // 規模・対象をランダム選択
-  const scale  = T_SCALES[Math.floor(Math.random()*T_SCALES.length)];
-  const target = T_TARGETS[Math.floor(Math.random()*T_TARGETS.length)];
 
   // 総難易度係数 = 脅威 × 規模 × 対象
   const diffMult = scale.diff * target.diff;
@@ -925,14 +948,14 @@ function applyBonus(svAdj, bonusMap){
   Object.entries(bonusMap).forEach(([s,v])=>{ svAdj[s] = (svAdj[s]||0) + v; });
 }
 
-function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, currentTrouble){
+function calcOutcomeWeights(sv, race, job, personality, gender, age, heroCount, currentTrouble){
   // 全補正をsvAdjに乗せる（表示値には影響しない、計算専用）
   const svAdj = {...sv};
   applyBonus(svAdj, RACE_BONUS[race]);
   applyBonus(svAdj, JOB_BONUS[job]);
   applyBonus(svAdj, PERSONALITY_BONUS[personality]);
   applyBonus(svAdj, GENDER_BONUS[gender]);
-  applyBonus(svAdj, AGE_BONUS[sel.age]);
+  applyBonus(svAdj, AGE_BONUS[age]);
 
   // トラブルの要求ステータスを3.5倍重みで評価
   const STAT_BASE_W = {腕力:1.0, 体力:1.0, 魔力:1.0, 素早:1.0, 知恵:1.0, 運:1.0};
@@ -940,8 +963,8 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
   if(currentTrouble && currentTrouble.favorStat){
     statW[currentTrouble.favorStat] = 3.5;
   }
-  const rawPower = Object.keys(statW).reduce((a,s)=> a + (svAdj[s]||0) * statW[s], 0);
-  const maxRaw = 40 * 3.5; // 補正後の最大値に合わせて調整
+  const rawPower = Object.keys(statW).reduce((a,s)=> a + Math.max(0, svAdj[s]||0) * statW[s], 0);
+  const maxRaw = 30 * 3.5; // マイナス補正後の実態に合わせた基準値
   const power = Math.min(rawPower / maxRaw * 100, 100);
 
   // 適性ボーナス（CFGの設定値を参照）
@@ -956,10 +979,13 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
   }
 
   // 規模・対象による難易度補正（diffMultが高いほどスコアを下げる）
-  const diffPenalty = currentTrouble ? (currentTrouble.diffMult||1.0) * 75 : 0;
+  const diffPenalty = currentTrouble ? Math.max(0, ((currentTrouble.diffMult||1.0) - 0.30) * 100) : 0;
   // 仲間ボーナス（対数スケール: log10(N+1)*20）
-  const companionBonus = companions > 0 ? Math.log10(companions + 1) * 20 : 0;
-  const score = power + matchBonus - diffPenalty + companionBonus;
+  const companionBonus = companions * CFG.companionBonusPer;
+  // 低ランクボーナス（家具〜墓場は底上げ）
+  const rankBonusMap = {1:CFG.rankBonus1, 2:CFG.rankBonus2, 3:CFG.rankBonus3, 4:CFG.rankBonus4};
+  const rankBonus = rankBonusMap[currentTrouble ? (currentTrouble.scaleRank||5) : 5] || 0;
+  const score = power + matchBonus - diffPenalty + companionBonus + rankBonus;
 
   // [大成功, 成功, 名誉の戦死, 波乱, 逃げ帰る, 捕虜, 行方不明, 死亡]
   if(score >= CFG.t1) return [35, 35, 10, 12,  4,  2,  1,  1];
@@ -971,22 +997,24 @@ function calcOutcomeWeights(sv, race, job, personality, gender, heroCount, curre
 }
 
 // 計算内訳を返す関数（表示用）
-function calcScoreBreakdown(sv, race, job, personality, gender, currentTrouble){
+function calcScoreBreakdown(sv, race, job, personality, gender, age, currentTrouble){
   const svAdj = {...sv};
   const raceB = RACE_BONUS[race]||{};
   const jobB  = JOB_BONUS[job]||{};
   const perB  = PERSONALITY_BONUS[personality]||{};
   const genB  = GENDER_BONUS[gender]||{};
+  const ageB  = AGE_BONUS[age]||{};
   applyBonus(svAdj, raceB);
   applyBonus(svAdj, jobB);
   applyBonus(svAdj, perB);
   applyBonus(svAdj, genB);
+  applyBonus(svAdj, ageB);
 
   const statW = {腕力:1.0,体力:1.0,魔力:1.0,素早:1.0,知恵:1.0,運:1.0};
   if(currentTrouble && currentTrouble.favorStat) statW[currentTrouble.favorStat] = 3.5;
 
-  const rawPower = Object.keys(statW).reduce((a,s)=> a + (svAdj[s]||0) * statW[s], 0);
-  const power = Math.min(rawPower / (40*3.5) * 100, 100);
+  const rawPower = Object.keys(statW).reduce((a,s)=> a + Math.max(0, svAdj[s]||0) * statW[s], 0);
+  const power = Math.min(rawPower / (30*3.5) * 100, 100);
 
   let matchBonus = 0, matchDetails = [];
   if(currentTrouble){
@@ -997,16 +1025,22 @@ function calcScoreBreakdown(sv, race, job, personality, gender, currentTrouble){
     else if(fv>=12){ matchBonus+=CFG.statMd; matchDetails.push(currentTrouble.favorStat+'高め+'+CFG.statMd); }
     else if(fv>=8){  matchBonus+=CFG.statLo; matchDetails.push(currentTrouble.favorStat+'普通+'+CFG.statLo); }
   }
-  const score = power + matchBonus;
+  const diffPenalty = currentTrouble ? Math.max(0, ((currentTrouble.diffMult||1.0) - 0.30) * 100) : 0;
+  const companionBonus = companions * CFG.companionBonusPer;
+  const rankBonusMap = {1:CFG.rankBonus1, 2:CFG.rankBonus2, 3:CFG.rankBonus3, 4:CFG.rankBonus4};
+  const rankBonus = rankBonusMap[currentTrouble ? (currentTrouble.scaleRank||5) : 5] || 0;
+  const scoreNum = power + matchBonus - diffPenalty + companionBonus + rankBonus;
 
   // svAdjの補正内訳
   const bonusLines = [];
-  Object.entries(raceB).forEach(([s,v])=> bonusLines.push(`${race}→${s}+${v}`));
-  Object.entries(jobB) .forEach(([s,v])=> bonusLines.push(`${job}→${s}+${v}`));
-  Object.entries(perB) .forEach(([s,v])=> bonusLines.push(`${personality}→${s}+${v}`));
-  Object.entries(genB) .forEach(([s,v])=> bonusLines.push(`${gender==='男'?'男性':gender==='女'?'女性':'不明'}→${s}+${v}`));
+  Object.entries(raceB).forEach(([s,v])=> bonusLines.push(race+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(jobB) .forEach(([s,v])=> bonusLines.push(job+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(perB) .forEach(([s,v])=> bonusLines.push(personality+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(genB) .forEach(([s,v])=> bonusLines.push((gender==='男'?'男性':gender==='女'?'女性':'不明')+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(ageB) .forEach(([s,v])=> bonusLines.push((age||'青年')+'→'+s+(v>=0?'+':'')+v));
 
-  return { svAdj, power:power.toFixed(1), matchBonus, matchDetails, score:score.toFixed(1), bonusLines, favorStat: currentTrouble?.favorStat };
+  return { svAdj, power:power.toFixed(1), matchBonus, matchDetails,
+           score:scoreNum.toFixed(1), bonusLines, favorStat: currentTrouble?.favorStat };
 }
 
 function weightedPick(arr, weights){
@@ -1021,9 +1055,19 @@ function weightedPick(arr, weights){
 // ═══════════════════════════════════════════
 function generateStory(name, gender, race, job, personality, age, sv, heroCount, prevImpacts, currentTrouble){
   const outcomes  = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
-  const weights   = calcOutcomeWeights(sv, race, job, personality, gender, heroCount, currentTrouble);
-  const outcome   = weightedPick(outcomes, weights);
-  const breakdown = calcScoreBreakdown(sv, race, job, personality, gender, currentTrouble);
+  const weights   = calcOutcomeWeights(sv, race, job, personality, gender, age, heroCount, currentTrouble);
+  let outcome     = weightedPick(outcomes, weights);
+  // 低ランク別最低ライン
+  const scaleRankNow = currentTrouble ? (currentTrouble.scaleRank||5) : 5;
+  if(scaleRankNow === 1 && ['captured','missing','dead'].includes(outcome)){
+    outcome = 'flee';      // rank1: 逃げ帰るが最低
+  } else if(scaleRankNow === 2 && ['missing','dead'].includes(outcome)){
+    outcome = 'captured';  // rank2: 捕虜が最低（行方不明以下にならない）
+  } else if(scaleRankNow === 3 && outcome === 'dead'){
+    outcome = 'missing';   // rank3: 行方不明が最低（死亡にならない）
+  }
+  // rank4以上は制限なし
+  const breakdown = calcScoreBreakdown(sv, race, job, personality, gender, age, currentTrouble);
 
   const stage    = rng(STAGES);
   const enemy    = rng(ENEMIES[stage.tag]);
@@ -1125,6 +1169,7 @@ let pastImpacts = [];
 let selectedTroubleIdx = 0;
 let fame = 0; // 知名度（-100〜∞）
 let gold = 0; // 所持金
+let activeHero = null; // 現在活動中の勇者（死亡・名誉の戦死でnull化）
 let companions = 0; // 雇った仲間の数
 const COMPANION_COST = 100; // 1人100G
 const COMPANION_BONUS_PER = 15; // 仲間1人あたりスコアボーナス
@@ -1293,13 +1338,29 @@ function updateRemain(){
 function sendHero(){
   const targetTrouble = activetroubles_displayed[selectedTroubleIdx] || null;
 
+  // 前回が捕虜以下なら強制的に別キャラ
+  const lastHero = heroes[0];
+  if(lastHero && ['honor','captured','missing','dead'].includes(lastHero.outcome)){
+    // 名前をランダムに変更
+    const pool = sel.gender==='男' ? RANDOM_NAMES_M : sel.gender==='女' ? RANDOM_NAMES_F : RANDOM_NAMES_N;
+    const rndName = pool[Math.floor(Math.random()*pool.length)];
+    document.getElementById('name-input').value = rndName;
+    randomStats();
+  }
   const name = document.getElementById('name-input').value.trim()||'名無し';
-  const result = generateStory(name, sel.gender, sel.race, sel.job, sel.personality, sel.age, {...sv},
+  // 同一勇者の引き継ぎ：activeHeroがいればfinalStatsを初期値として使う
+  let baseSv = {...sv};
+  if(activeHero && activeHero.name === name && activeHero.finalStats){
+    // finalStatsのステータスをベースに（配分ポイントは加算）
+    STATS.forEach(s=>{ baseSv[s] = (activeHero.finalStats[s]||sv[s]); });
+  }
+  const result = generateStory(name, sel.gender, sel.race, sel.job, sel.personality, sel.age, baseSv,
                                heroes.length, pastImpacts, targetTrouble);
 
   const hero={
     id:Date.now(), name,
     gender:sel.gender, race:sel.race, job:sel.job, personality:sel.personality, age:sel.age||'青年',
+    companionLoss: 0,
     initStats:{...sv},
     lv: result.lv,
     finalStats: result.finalStats,
@@ -1310,7 +1371,33 @@ function sendHero(){
   };
   heroes.unshift(hero);
   pastImpacts.unshift(result.worldImpact);
+  // activeHero更新
+  if(['honor','dead'].includes(result.outcome)){
+    activeHero = null; // 死亡系はリセット
+  } else {
+    activeHero = hero; // 生存系は引き継ぎ可能
+  }
   if(pastImpacts.length>8) pastImpacts.pop();
+
+  // 仲間の損失処理（未達成系）
+  const companionLossRate = {
+    honor:   CFG.lossHonor/100,
+    mixed:   CFG.lossMixed/100,
+    flee:    CFG.lossFlee/100,
+    captured:CFG.lossCaptured/100,
+    missing: CFG.lossMissing/100,
+    dead:    CFG.lossDead/100,
+  };
+  const lossRate = companionLossRate[result.outcome] || 0;
+  if(lossRate > 0 && companions > 0){
+    const lost = Math.max(result.outcome==='dead'&&companions===1?1:0,
+                          Math.ceil(companions*lossRate));
+    companions = Math.max(0, companions - lost);
+    hero.companionLoss = lost;
+    updateCompanionBar();
+  } else {
+    hero.companionLoss = 0;
+  }
 
   // 報酬・知名度更新
   const delta = FAME_DELTA[result.outcome] || 0;
@@ -1329,7 +1416,6 @@ function sendHero(){
     fame = Math.max(-100, fame + fameDelta2 - delta); // delta分は既に加算済みなので差分のみ
   }
   updateFameBar();
-updateGoldBar();
   updateGoldBar();
 
   // トラブル更新
@@ -1412,7 +1498,6 @@ function renderLog(){
             +'<span style="color:var(--accent2);margin-left:8px">⭐ 知名度+'+(t.fameBonus||1)+'</span>'
           +'</div>'
           +'<div class="trouble-btn-row">'
-            +'<button class="btn-accept" onclick="selectTrouble('+i+');event.stopPropagation()">✔ この依頼を受ける</button>'
             +'<button class="btn-decline" onclick="declineTrouble('+i+',event)">✗ 断る</button>'
           +'</div>'
         +'</div>'
@@ -1495,6 +1580,7 @@ function renderLog(){
       '<div class="chr-story">'+h.story+'</div>' +
       '<div class="chr-result">📜 '+h.result+'</div>'
       +(h.earnedGold>0?'<div style="font-size:12px;color:#f0c040;margin-bottom:6px">💰 報酬獲得: '+h.earnedGold.toLocaleString()+' G</div>':'<div style="font-size:12px;color:var(--text3);margin-bottom:6px">💰 報酬なし（未達成）</div>')
+      +(h.companionLoss>0?'<div style="font-size:12px;color:#ff7777;margin-bottom:6px">⚔️ 仲間が '+h.companionLoss+' 人失われた</div>':'')
       +
       '<div class="final-stats">' +
         '<div class="final-stats-title">冒険後ステータス <span class="lv-badge">⭐ LV '+h.lv+'</span></div>' +
@@ -1514,6 +1600,12 @@ let CFG = {
   jobBonus:15, raceBonus:10, statHi:12, statMd:7, statLo:3,
   fGreat2:30, fGreat1:15, fHonor:10, fMixed:5,
   fFlee:-10, fCaptured:-15, fMissing:-20, fDead:-25,
+  // 低ランクボーナス
+  rankBonus1:50, rankBonus2:35, rankBonus3:20, rankBonus4:10,
+  // 仲間1人あたりボーナス
+  companionBonusPer: 1,
+  // 仲間損失率(%)
+  lossHonor:10, lossMixed:20, lossFlee:30, lossCaptured:40, lossMissing:50, lossDead:50,
 };
 
 function openSettings(){
@@ -1620,27 +1712,35 @@ function calcBreakdownWithCFG(sv, race, job, personality, gender, trouble, cfg){
   const statW = {腕力:1.0,体力:1.0,魔力:1.0,素早:1.0,知恵:1.0,運:1.0};
   if(trouble && trouble.favorStat) statW[trouble.favorStat] = 3.5;
 
-  const rawPower = Object.keys(statW).reduce((a,s)=>a+(svAdj[s]||0)*statW[s],0);
-  const power = Math.min(rawPower/(50*3.5)*100,100);
+  // マイナスを0クランプ・maxRaw=30*3.5に統一
+  const rawPower = Object.keys(statW).reduce((a,s)=>a+Math.max(0,svAdj[s]||0)*statW[s],0);
+  const power = Math.min(rawPower/(30*3.5)*100,100);
 
   let matchBonus=0, matchDetails=[];
   if(trouble){
     if(trouble.favorJob.includes(job)){   matchBonus+=cfg.jobBonus;  matchDetails.push({label:'職業一致',val:cfg.jobBonus}); }
     if(trouble.favorRace.includes(race)){ matchBonus+=cfg.raceBonus; matchDetails.push({label:'種族一致',val:cfg.raceBonus}); }
-    const fv = svAdj[trouble.favorStat]||0;
+    const fv = Math.max(0, svAdj[trouble.favorStat]||0);
     if(fv>=16){      matchBonus+=cfg.statHi; matchDetails.push({label:trouble.favorStat+'が16以上',val:cfg.statHi}); }
     else if(fv>=12){ matchBonus+=cfg.statMd; matchDetails.push({label:trouble.favorStat+'が12以上',val:cfg.statMd}); }
     else if(fv>=8){  matchBonus+=cfg.statLo; matchDetails.push({label:trouble.favorStat+'が8以上', val:cfg.statLo}); }
   }
 
   const bonusLines = [];
-  Object.entries(RACE_BONUS[race]||{}).forEach(([s,v])=>bonusLines.push(race+'→'+s+'+'+v));
-  Object.entries(JOB_BONUS[job]||{}).forEach(([s,v])=>bonusLines.push(job+'→'+s+'+'+v));
-  Object.entries(PERSONALITY_BONUS[personality]||{}).forEach(([s,v])=>bonusLines.push(personality+'→'+s+'+'+v));
-  Object.entries(GENDER_BONUS[gender]||{}).forEach(([s,v])=>bonusLines.push((gender==='男'?'男性':gender==='女'?'女性':'不明')+'→'+s+'+'+v));
+  Object.entries(RACE_BONUS[race]||{}).forEach(([s,v])=>bonusLines.push(race+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(JOB_BONUS[job]||{}).forEach(([s,v])=>bonusLines.push(job+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(PERSONALITY_BONUS[personality]||{}).forEach(([s,v])=>bonusLines.push(personality+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(GENDER_BONUS[gender]||{}).forEach(([s,v])=>bonusLines.push((gender==='男'?'男性':gender==='女'?'女性':'不明')+'→'+s+(v>=0?'+':'')+v));
+  Object.entries(AGE_BONUS[sel.age]||{}).forEach(([s,v])=>bonusLines.push((sel.age||'青年')+'→'+s+(v>=0?'+':'')+v));
 
+  const diffPenaltyC = trouble ? Math.max(0, ((trouble.diffMult||1.0) - 0.30) * 100) : 0;
+  const companionBonusC2 = companions * CFG.companionBonusPer;
+  // ここで rankBonusC を定義してから使う
+  const rankBonusMapLocal = {1:CFG.rankBonus1, 2:CFG.rankBonus2, 3:CFG.rankBonus3, 4:CFG.rankBonus4};
+  const rankBonusCLocal = rankBonusMapLocal[trouble ? (trouble.scaleRank||5) : 5] || 0;
+  const scoreC = power + matchBonus - diffPenaltyC + companionBonusC2 + rankBonusCLocal;
   return {svAdj, power:power.toFixed(1), matchBonus, matchDetails, bonusLines,
-          score:(power+matchBonus).toFixed(1), favorStat:trouble?.favorStat};
+          score:scoreC.toFixed(1), rankBonus:rankBonusCLocal, favorStat:trouble?.favorStat};
 }
 
 function renderScorePreview(bd, score, t1,t2,t3,t4,t5, trouble){
@@ -1651,10 +1751,12 @@ function renderScorePreview(bd, score, t1,t2,t3,t4,t5, trouble){
 
   const maxBar = Math.max(150, t1*1.3);
   const companionBonusVal = companions > 0 ? Math.log10(companions + 1) * 20 : 0;
+  const rankBonusC = bd.rankBonus || 0;
   const rows = [
     {label:'パワー（ステータス×重み）', val:parseFloat(bd.power), color:'#7c6fff'},
     ...bd.matchDetails.map(d=>({label:d.label, val:d.val, color:'#4fc97e'})),
     ...(companionBonusVal>0 ? [{label:'仲間'+companions+'人ボーナス（対数）', val:Math.round(companionBonusVal*10)/10, color:'#ffd700'}] : []),
+    ...(rankBonusC>0 ? [{label:'低ランクボーナス（rank'+((trouble&&trouble.scaleRank)||5)+'）', val:rankBonusC, color:'#88e0a8'}] : []),
   ];
   stack.innerHTML = rows.map(r=>{
     const pct = Math.min(100, r.val/maxBar*100*2.5);
@@ -1718,6 +1820,18 @@ function applySettings(){
   FAME_DELTA.missing=CFG.fMissing; FAME_DELTA.dead=CFG.fDead;
   // 補正値をBONUSオブジェクトに反映
   applyBonusFromSettings();
+  // 新設定値を反映
+  CFG.rankBonus1 = +document.getElementById('cfg-rank-bonus1').value;
+  CFG.rankBonus2 = +document.getElementById('cfg-rank-bonus2').value;
+  CFG.rankBonus3 = +document.getElementById('cfg-rank-bonus3').value;
+  CFG.rankBonus4 = +document.getElementById('cfg-rank-bonus4').value;
+  CFG.companionBonusPer = +document.getElementById('cfg-companion-per').value;
+  CFG.lossHonor    = +document.getElementById('cfg-loss-honor').value;
+  CFG.lossMixed    = +document.getElementById('cfg-loss-mixed').value;
+  CFG.lossFlee     = +document.getElementById('cfg-loss-flee').value;
+  CFG.lossCaptured = +document.getElementById('cfg-loss-captured').value;
+  CFG.lossMissing  = +document.getElementById('cfg-loss-missing').value;
+  CFG.lossDead     = +document.getElementById('cfg-loss-dead').value;
   closeSettings();
 }
 function resetSettings(){
@@ -1742,6 +1856,20 @@ function resetSettings(){
   document.getElementById('cfg-f-dead').value=CFG.fDead;
   FAME_DELTA.great2=30;FAME_DELTA.great1=15;FAME_DELTA.honor=10;FAME_DELTA.mixed=5;
   FAME_DELTA.flee=-10;FAME_DELTA.captured=-15;FAME_DELTA.missing=-20;FAME_DELTA.dead=-25;
+  CFG.rankBonus1=50;CFG.rankBonus2=35;CFG.rankBonus3=20;CFG.rankBonus4=10;
+  CFG.companionBonusPer=1;
+  CFG.lossHonor=10;CFG.lossMixed=20;CFG.lossFlee=30;CFG.lossCaptured=40;CFG.lossMissing=50;CFG.lossDead=50;
+  document.getElementById('cfg-rank-bonus1').value=50;
+  document.getElementById('cfg-rank-bonus2').value=35;
+  document.getElementById('cfg-rank-bonus3').value=20;
+  document.getElementById('cfg-rank-bonus4').value=10;
+  document.getElementById('cfg-companion-per').value=1;
+  document.getElementById('cfg-loss-honor').value=10;
+  document.getElementById('cfg-loss-mixed').value=20;
+  document.getElementById('cfg-loss-flee').value=30;
+  document.getElementById('cfg-loss-captured').value=40;
+  document.getElementById('cfg-loss-missing').value=50;
+  document.getElementById('cfg-loss-dead').value=50;
   // 補正値リセット
   const DEF_BONUS = {
     gender:{'男':{腕力:2,知恵:-1,魔力:-1},'女':{運:2,腕力:-1,体力:-1},'謎':{腕力:1,運:1}},
@@ -1883,7 +2011,7 @@ function saveSettings(){
     fDead:    +document.getElementById('cfg-f-dead').value,
   };
   // 補正値も保存
-  const bonusIds = Array.from(document.querySelectorAll('[id^="cb-"]')).map(el=>({id:el.id,v:+el.value}));
+  const bonusIds = Array.from(document.querySelectorAll('[id^="cb-"],[id^="cfg-rank"],[id^="cfg-companion"],[id^="cfg-loss"]')).map(el=>({id:el.id,v:+el.value}));
   data._bonuses = bonusIds;
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
@@ -1943,7 +2071,8 @@ function updateCompanionBar(){
 
 function hireCompanion(){
   if(gold < COMPANION_COST){
-    alert('所持金が足りません。（必要: '+COMPANION_COST+'G）');
+    const msg = document.getElementById('companion-msg');
+    if(msg){ msg.textContent = '💰 所持金が足りません（必要:'+COMPANION_COST+'G）'; msg.style.color='#ff7777'; setTimeout(()=>msg.textContent='', 2500); }
     return;
   }
   gold -= COMPANION_COST;
@@ -2062,7 +2191,34 @@ updateChipBonusText();
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">勇敢</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-勇敢-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-勇敢-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-勇敢-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-勇敢-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">慎重</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-慎重-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-慎重-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-慎重-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-慎重-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">好奇心旺盛</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-好奇心旺盛-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-好奇心旺盛-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-好奇心旺盛-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">義侠心</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-義侠心-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-義侠心-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-義侠心-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-義侠心-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">強欲</div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-強欲-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-強欲-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-強欲-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-強欲-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">孤高</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-孤高-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-孤高-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-孤高-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-孤高-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
     </div>
 
-    <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">✓ 設定を適用</button>
+    <div class="settings-section">
+      <div class="settings-section-title">低ランクボーナス（家具〜墓場の底上げ）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="settings-row"><label>rank1 家具ボーナス</label><input class="settings-input" id="cfg-rank-bonus1" type="number" value="50" oninput="updateViz()"></div>
+        <div class="settings-row"><label>rank2 部屋ボーナス</label><input class="settings-input" id="cfg-rank-bonus2" type="number" value="35" oninput="updateViz()"></div>
+        <div class="settings-row"><label>rank3 建物ボーナス</label><input class="settings-input" id="cfg-rank-bonus3" type="number" value="20" oninput="updateViz()"></div>
+        <div class="settings-row"><label>rank4 墓場ボーナス</label><input class="settings-input" id="cfg-rank-bonus4" type="number" value="10" oninput="updateViz()"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">仲間ボーナス</div>
+      <div class="settings-row"><label>仲間1人あたりのスコアボーナス</label><input class="settings-input" id="cfg-companion-per" type="number" value="1" oninput="updateViz()"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">仲間損失率（結果ごとの割合 %）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-loss-honor" type="number" value="10"></div>
+        <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-loss-mixed" type="number" value="20"></div>
+        <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-loss-flee" type="number" value="30"></div>
+        <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-loss-captured" type="number" value="40"></div>
+        <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-loss-missing" type="number" value="50"></div>
+        <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-loss-dead" type="number" value="50"></div>
+      </div>
+    </div>
+
+        <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">✓ 設定を適用</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       <button onclick="saveSettings()" style="padding:9px;background:rgba(79,201,126,.12);border:1px solid rgba(79,201,126,.3);border-radius:var(--radius);color:#4fc97e;font-size:12px;font-weight:600;cursor:pointer">💾 設定を保存</button>
       <button onclick="loadSettings()" style="padding:9px;background:rgba(124,111,255,.12);border:1px solid rgba(124,111,255,.3);border-radius:var(--radius);color:var(--accent2);font-size:12px;font-weight:600;cursor:pointer">📂 設定を読み込む</button>
