@@ -34,7 +34,13 @@
   .two-col{display:grid;grid-template-columns:720px 1fr;gap:28px;align-items:start}
   @media(max-width:700px){.two-col{grid-template-columns:1fr}}
   .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
-  .panel-title{font-size:12px;font-weight:600;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:14px}
+  .panel-title{font-size:12px;font-weight:600;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .panel-lv{font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0;text-transform:none}
+  .panel-lv.dead{color:#ff4444}
+  .stat-lv-row{display:flex;gap:6px;margin-top:6px;padding:6px 8px;background:rgba(240,192,64,0.07);border:1px solid rgba(240,192,64,0.2);border-radius:6px;}
+  .stat-lv-item{flex:1;text-align:center}
+  .stat-lv-name{font-size:10px;color:var(--text3);margin-bottom:2px}
+  .stat-lv-val{font-size:13px;font-weight:700;color:var(--gold)}
   .sec{margin-bottom:18px}
   .sec-label{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
   .name-input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;outline:none;transition:border-color .15s}
@@ -325,7 +331,7 @@
     <!-- 左：作成パネル -->
     <div>
       <div class="panel">
-        <div class="panel-title">雇用する勇者</div>
+        <div class="panel-title">雇用する勇者 <span class="panel-lv" id="panel-lv-badge">LV 1</span></div>
         <div class="sec">
           <div class="sec-label">名前</div>
           <div style="display:flex;gap:6px">
@@ -389,6 +395,7 @@
           <div class="sec-label">パラメーター配分</div>
           <div class="remain-bar">配分ポイント残り: <span id="remain">36</span> / 36　<span style="font-size:10px;color:var(--text3)">※右の緑数字が選択ボーナス</span></div>
           <div id="stat-sliders"></div>
+          <div id="stat-lv-row" style="display:none" class="stat-lv-row"></div>
         </div>
         <button class="btn-send" id="send-btn" onclick="sendHero()"><span id="send-label">▶ 冒険へ旅立たせる</span></button>
       </div>
@@ -1132,6 +1139,9 @@ function randomName(){
   const pool = g==='男' ? RANDOM_NAMES_M : g==='女' ? RANDOM_NAMES_F : RANDOM_NAMES_N;
   document.getElementById('name-input').value = pool[Math.floor(Math.random()*pool.length)];
   randomStats();
+  // 新キャラなのでactiveHeroをリセット → LV1・死亡表示をクリア
+  activeHero = null;
+  updatePanelHeroStatus();
 }
 
 function randomStats(){
@@ -1340,12 +1350,14 @@ function sendHero(){
 
   // 前回が捕虜以下なら強制的に別キャラ
   const lastHero = heroes[0];
-  if(lastHero && ['honor','captured','missing','dead'].includes(lastHero.outcome)){
-    // 名前をランダムに変更
+  if(lastHero && ['captured','missing'].includes(lastHero.outcome)){
+    // 捕虜・行方不明の場合も名前・ステータスをリセット
     const pool = sel.gender==='男' ? RANDOM_NAMES_M : sel.gender==='女' ? RANDOM_NAMES_F : RANDOM_NAMES_N;
-    const rndName = pool[Math.floor(Math.random()*pool.length)];
-    document.getElementById('name-input').value = rndName;
-    randomStats();
+    document.getElementById('name-input').value = pool[Math.floor(Math.random()*pool.length)];
+    sv = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
+    initSliders();
+    activeHero = null;
+    updatePanelHeroStatus();
   }
   const name = document.getElementById('name-input').value.trim()||'名無し';
   // 同一勇者の引き継ぎ：activeHeroがいればfinalStatsを初期値として使う
@@ -1374,9 +1386,14 @@ function sendHero(){
   // activeHero更新
   if(['honor','dead'].includes(result.outcome)){
     activeHero = null; // 死亡系はリセット
+    // 即座にパラメーター・名前を初期化
+    sv = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
+    initSliders();
+    document.getElementById('name-input').value = '';
   } else {
     activeHero = hero; // 生存系は引き継ぎ可能
   }
+  updatePanelHeroStatus();
   if(pastImpacts.length>8) pastImpacts.pop();
 
   // 仲間の損失処理（未達成系）
@@ -2059,6 +2076,39 @@ function loadSettings(){
   input.click();
 }
 
+function updatePanelHeroStatus(){
+  const badge = document.getElementById('panel-lv-badge');
+  const lvRow = document.getElementById('stat-lv-row');
+  if(!badge || !lvRow) return;
+
+  if(activeHero === null && heroes.length > 0){
+    const last = heroes[0];
+    if(['honor','dead'].includes(last.outcome)){
+      // 死亡・名誉の戦死 → 死亡表示
+      badge.textContent = '☠ 死亡';
+      badge.className = 'panel-lv dead';
+      lvRow.style.display = 'none';
+      return;
+    }
+  }
+
+  if(activeHero){
+    badge.textContent = 'LV ' + activeHero.lv;
+    badge.className = 'panel-lv';
+    // LV後ステータスを表示
+    const fs = activeHero.finalStats;
+    if(fs){
+      lvRow.style.display = 'flex';
+      lvRow.innerHTML = '<div class="stat-lv-name" style="flex:none;color:var(--text3);font-size:10px;margin-right:4px">LV後▶</div>'
+        + STATS.map(s=>`<div class="stat-lv-item"><div class="stat-lv-name">${s}</div><div class="stat-lv-val">${fs[s]||0}</div></div>`).join('');
+    }
+  } else {
+    badge.textContent = 'LV 1';
+    badge.className = 'panel-lv';
+    lvRow.style.display = 'none';
+  }
+}
+
 function updateGoldBar(){
   const el = document.getElementById('gold-val');
   if(el) el.textContent = gold.toLocaleString();
@@ -2113,6 +2163,7 @@ updateFameBar();
 updateGoldBar();
 updateCompanionBar();
 updateChipBonusText();
+updatePanelHeroStatus();
 </script>
 <!-- 設定オーバーレイ -->
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettingsOutside(event)">
