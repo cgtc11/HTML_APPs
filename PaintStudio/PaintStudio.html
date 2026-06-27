@@ -650,6 +650,29 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
       </div>
     </div>
 
+    <!-- Offset -->
+    <div id="fOffset" style="display:none">
+      <p style="font-size:10px;color:var(--dim);margin:0 0 8px">3×3タイル配置してX/Yでずらします。境界のなじみ確認・修正に使えます。</p>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:16px">X</span>
+        <input type="range" style="flex:1" id="fOffX" min="0" max="100" value="50"
+               oninput="G('fOffXN').value=this.value+'%';fPreview()">
+        <input type="number" id="fOffXN" value="50" min="0" max="100"
+               style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;font-size:10px"
+               oninput="G('fOffX').value=parseInt(this.value);fPreview()">
+        <span style="font-size:10px;color:var(--dim)">%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--dim);width:16px">Y</span>
+        <input type="range" style="flex:1" id="fOffY" min="0" max="100" value="50"
+               oninput="G('fOffYN').value=this.value+'%';fPreview()">
+        <input type="number" id="fOffYN" value="50" min="0" max="100"
+               style="width:48px;background:var(--p3);border:1px solid var(--bdr);color:var(--tx);padding:2px;font-size:10px"
+               oninput="G('fOffY').value=parseInt(this.value);fPreview()">
+        <span style="font-size:10px;color:var(--dim)">%</span>
+      </div>
+    </div>
+
     <!-- Punch Through -->
     <div id="fPunchthrough" style="display:none">
       <p style="font-size:10px;color:var(--dim);margin:0 0 8px">アルファが閾値以上→完全不透明、未満→完全透明にします。</p>
@@ -758,6 +781,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <div class="fmitem" onclick="openFilter('levels')">レベル補正</div>
   <div class="fmitem" onclick="openFilter('blur')">ぼかし</div>
   <div class="fmitem" onclick="openFilter('punchthrough')">パンチスルー（2階調抜き）</div>
+  <div class="fmitem" onclick="openFilter('offset')">オフセット（タイリング移動）</div>
   <div class="fmitem" onclick="applyFlip('h')">左右反転</div>
   <div class="fmitem" onclick="applyFlip('v')">上下反転</div>
   <div class="fmitem" onclick="applyInvert()">階調の反転</div>
@@ -3812,8 +3836,8 @@ function openFilter(type){
   // 元データを保存（プレビュー用）
   _filterOrig=l.ctx.getImageData(0,0,W,H);
   // 各パネル表示切替
-  ['fCurve','fCB','fHSL','fLev','fBlur','fPunchthrough','fTile','fResize','fTrim'].forEach(id=>G(id).style.display='none');
-  const titles={curve:'トーンカーブ',cb:'カラーバランス',hsl:'色相・彩度・明度',levels:'レベル補正',blur:'ぼかし',punchthrough:'パンチスルー（2階調抜き）',tile:'タイル / オフセット',resize:'解像度変更',trim:'トリミング（位置指定）'};
+  ['fCurve','fCB','fHSL','fLev','fBlur','fPunchthrough','fOffset','fTile','fResize','fTrim'].forEach(id=>G(id)&&(G(id).style.display='none'));
+  const titles={curve:'トーンカーブ',cb:'カラーバランス',hsl:'色相・彩度・明度',levels:'レベル補正',blur:'ぼかし',punchthrough:'パンチスルー（2階調抜き）',offset:'オフセット（タイリング移動）',tile:'タイル / オフセット',resize:'解像度変更',trim:'トリミング（位置指定）'};
   G('filterTitle').textContent=titles[type]||'フィルター';
   if(type==='curve'){
     G('fCurve').style.display='block';
@@ -3834,6 +3858,7 @@ function openFilter(type){
   if(type==='levels'){G('fLev').style.display='block';G('fLevBl').value=0;G('fLevMd').value=100;G('fLevWh').value=255;G('fOutBl').value=0;G('fOutWh').value=255;}
   if(type==='blur'){G('fBlur').style.display='block';G('fBlurR').value=3;G('fBlurRn').value=3;G('fBlurIter').value=1;G('fBlurIterN').value=1;G('fBlurStr').value=100;G('fBlurStrN').value=100;}
   if(type==='punchthrough'){G('fPunchthrough').style.display='block';G('fPtThresh').value=128;G('fPtThreshN').value=128;fPreview();}
+  if(type==='offset'){G('fOffset').style.display='block';G('fOffX').value=50;G('fOffXN').value=50;G('fOffY').value=50;G('fOffYN').value=50;fPreview();}
   if(type==='tile'){G('fTile').style.display='block';G('fTX').value=0;G('fTXn').value=0;G('fTY').value=0;G('fTYn').value=0;}
   if(type==='resize'){
     G('fResize').style.display='block';
@@ -4027,6 +4052,17 @@ function _applyFilterToLayer(l,commit){
       dPT[i]=dPT[i]>=thresh?255:0;
     }
     ctx.putImageData(idPT,rx,ry);
+  }else if(type==='offset'){
+    const pctX=(parseInt(G('fOffX').value)||50)/100;
+    const pctY=(parseInt(G('fOffY').value)||50)/100;
+    const ox=Math.round(W*pctX);
+    const oy=Math.round(H*pctY);
+    // 3×3タイルを作って(ox,oy)を左上として切り出す
+    const big=document.createElement('canvas');big.width=W*3;big.height=H*3;
+    const bc=big.getContext('2d');
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) bc.drawImage(l.cv,W*(dx+1),H*(dy+1));
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(big, W+ox, H+oy, W, H, 0, 0, W, H);
   }
 }
 
