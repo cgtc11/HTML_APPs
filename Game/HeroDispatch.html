@@ -197,6 +197,22 @@
     transition:border-color .15s;
   }
   .btn-settings:hover{border-color:var(--border2);color:var(--text)}
+  /* 設定タブ */
+  .settings-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+  .settings-tab{
+    padding:5px 12px;font-size:12px;font-weight:500;
+    background:var(--bg3);border:1px solid var(--border);
+    border-radius:6px;cursor:pointer;color:var(--text2);transition:all .12s;
+  }
+  .settings-tab:hover{border-color:var(--border2);color:var(--text)}
+  .settings-tab.active{background:rgba(124,111,255,.18);border-color:var(--accent);color:var(--accent2)}
+  .settings-tab-content{display:none}
+  .settings-tab-content.active{display:block}
+  .rank-table{width:100%;border-collapse:collapse;font-size:11px}
+  .rank-table th{color:var(--text3);font-weight:600;padding:4px 6px;text-align:left;border-bottom:1px solid var(--border)}
+  .rank-table td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .rank-table input{width:70px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right}
+  .rank-table input:focus{outline:none;border-color:var(--accent)}
   .btn-reset-settings{
     width:100%;padding:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);
     border-radius:var(--radius);color:#ff7777;font-size:12px;cursor:pointer;margin-top:8px;
@@ -697,10 +713,14 @@ function generateTrouble(){
 
   // 総難易度係数 = 脅威 × 規模 × 対象
   const diffMult = scale.diff * target.diff;
-  // 報酬 = 基本報酬 × 対象難易度
-  const reward = Math.round(scale.reward * target.diff / 10) * 10;
-  // 知名度ボーナス = 規模 + 対象難易度
-  const fameBonus = scale.fameMod + Math.round(target.diff * 10);
+  // 報酬 = CFGのrank別範囲からランダム × 対象難易度
+  const rMin = CFG['rewardMin'+scale.rank] ?? scale.reward * 0.5;
+  const rMax = CFG['rewardMax'+scale.rank] ?? scale.reward * 1.5;
+  const reward = Math.round((rMin + Math.random()*(rMax-rMin)) * target.diff / 10) * 10;
+  // 知名度 = CFGのrank別範囲からランダム
+  const fMin = CFG['fameMin'+scale.rank] ?? scale.fameMod;
+  const fMax = CFG['fameMax'+scale.rank] ?? scale.fameMod * 2;
+  const fameBonus = Math.round(fMin + Math.random()*(fMax-fMin));
 
   const fullText = scale.icon+' 【'+scale.name+'規模】 '+nameStr+descStr
     +' 対象：'+target.desc+'。'+threat.need;
@@ -882,11 +902,15 @@ function calcFinalStats(initSv, outcome, race, job, lv){
   return final;
 }
 
-function calcLevel(outcome, initSv){
-  const baseScore = Object.values(initSv).reduce((a,b)=>a+b,0);
+function calcLevel(outcome, initSv, scaleRank){
   const growRate = Math.max(0, OUTCOME_GROW[outcome] ?? 0);
-  const lv = Math.max(1, Math.round((baseScore / 3) * (0.5 + growRate * 1.2)));
-  return lv;
+  if(growRate === 0) return 0; // クリアできなかった場合はLV上昇なし
+  const rank = scaleRank || 5;
+  const lvMin = CFG['lvMin'+rank] ?? 0;
+  const lvMax = CFG['lvMax'+rank] ?? 3;
+  // growRateが高いほどlvMaxに近い値になる
+  const lv = Math.round(lvMin + growRate * (lvMax - lvMin));
+  return Math.max(0, lv);
 }
 
 // ═══════════════════════════════════════════
@@ -990,7 +1014,7 @@ function calcOutcomeWeights(sv, race, job, personality, gender, age, heroCount, 
   // 仲間ボーナス（対数スケール: log10(N+1)*20）
   const companionBonus = companions * CFG.companionBonusPer;
   // 低ランクボーナス（家具〜墓場は底上げ）
-  const rankBonusMap = {1:CFG.rankBonus1, 2:CFG.rankBonus2, 3:CFG.rankBonus3, 4:CFG.rankBonus4};
+  const rankBonusMap = {1:CFG.rankBonus1,2:CFG.rankBonus2,3:CFG.rankBonus3,4:CFG.rankBonus4,5:CFG.rankBonus5,6:CFG.rankBonus6,7:CFG.rankBonus7,8:CFG.rankBonus8,9:CFG.rankBonus9,10:CFG.rankBonus10,11:CFG.rankBonus11,12:CFG.rankBonus12,13:CFG.rankBonus13,14:CFG.rankBonus14,15:CFG.rankBonus15,16:CFG.rankBonus16,17:CFG.rankBonus17};
   const rankBonus = rankBonusMap[currentTrouble ? (currentTrouble.scaleRank||5) : 5] || 0;
   const score = power + matchBonus - diffPenalty + companionBonus + rankBonus;
 
@@ -1034,7 +1058,7 @@ function calcScoreBreakdown(sv, race, job, personality, gender, age, currentTrou
   }
   const diffPenalty = currentTrouble ? Math.max(0, ((currentTrouble.diffMult||1.0) - 0.30) * 100) : 0;
   const companionBonus = companions * CFG.companionBonusPer;
-  const rankBonusMap = {1:CFG.rankBonus1, 2:CFG.rankBonus2, 3:CFG.rankBonus3, 4:CFG.rankBonus4};
+  const rankBonusMap = {1:CFG.rankBonus1,2:CFG.rankBonus2,3:CFG.rankBonus3,4:CFG.rankBonus4,5:CFG.rankBonus5,6:CFG.rankBonus6,7:CFG.rankBonus7,8:CFG.rankBonus8,9:CFG.rankBonus9,10:CFG.rankBonus10,11:CFG.rankBonus11,12:CFG.rankBonus12,13:CFG.rankBonus13,14:CFG.rankBonus14,15:CFG.rankBonus15,16:CFG.rankBonus16,17:CFG.rankBonus17};
   const rankBonus = rankBonusMap[currentTrouble ? (currentTrouble.scaleRank||5) : 5] || 0;
   const scoreNum = power + matchBonus - diffPenalty + companionBonus + rankBonus;
 
@@ -1100,7 +1124,7 @@ function generateStory(name, gender, race, job, personality, age, sv, heroCount,
     `激闘の末、${name}は${enemy}${endData.r}。`;
 
   // LV・最終ステータス
-  const lv = calcLevel(outcome, sv);
+  const lv = calcLevel(outcome, sv, currentTrouble ? currentTrouble.scaleRank : 5);
   const finalStats = calcFinalStats(sv, outcome, race, job, lv);
 
   return { story, result:`${enemy}${endData.r}`, outcome, worldImpact:endData.w, stage:stage.name, enemy, lv, finalStats, breakdown };
@@ -1617,13 +1641,26 @@ let CFG = {
   jobBonus:15, raceBonus:10, statHi:12, statMd:7, statLo:3,
   fGreat2:30, fGreat1:15, fHonor:10, fMixed:5,
   fFlee:-10, fCaptured:-15, fMissing:-20, fDead:-25,
-  // 低ランクボーナス
+  // ランクボーナス（全rank）
   rankBonus1:50, rankBonus2:35, rankBonus3:20, rankBonus4:10,
+  rankBonus5:0, rankBonus6:0, rankBonus7:0, rankBonus8:0, rankBonus9:0,
+  rankBonus10:0, rankBonus11:0, rankBonus12:0, rankBonus13:0, rankBonus14:0,
+  rankBonus15:0, rankBonus16:0, rankBonus17:0,
   // 仲間1人あたりボーナス
   companionBonusPer: 1,
   // 仲間損失率(%)
   lossHonor:10, lossMixed:20, lossFlee:30, lossCaptured:40, lossMissing:50, lossDead:50,
 };
+
+function switchSettingsTab(tab){
+  document.querySelectorAll('.settings-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.settings-tab-content').forEach(t=>t.classList.remove('active'));
+  const tabs = ['score','reward','lv','companion','bonus'];
+  const idx = tabs.indexOf(tab);
+  document.querySelectorAll('.settings-tab')[idx]?.classList.add('active');
+  document.getElementById('stab-'+tab)?.classList.add('active');
+  if(tab==='score') updateViz();
+}
 
 function openSettings(){
   document.getElementById('settings-overlay').classList.add('open');
@@ -1698,7 +1735,11 @@ function updateViz(){
   if(trouble){
     const tmpCFG = {jobBonus:jobB,raceBonus:raceB,statHi:stHi,statMd:stMd,statLo:stLo,
                     t1,t2,t3,t4,t5};
-    const bd = calcBreakdownWithCFG(sv, sel.race, sel.job, sel.personality, sel.gender, trouble, tmpCFG);
+    // activeHeroがいればfinalStatsをベースに計算
+    const previewSv = (activeHero && activeHero.finalStats)
+      ? {...activeHero.finalStats}
+      : {...sv};
+    const bd = calcBreakdownWithCFG(previewSv, sel.race, sel.job, sel.personality, sel.gender, trouble, tmpCFG);
     const score = parseFloat(bd.score);
     const pinPct = Math.min(98, (score / maxScore) * 100);
     const pin = document.createElement('div');
@@ -1753,7 +1794,7 @@ function calcBreakdownWithCFG(sv, race, job, personality, gender, trouble, cfg){
   const diffPenaltyC = trouble ? Math.max(0, ((trouble.diffMult||1.0) - 0.30) * 100) : 0;
   const companionBonusC2 = companions * CFG.companionBonusPer;
   // ここで rankBonusC を定義してから使う
-  const rankBonusMapLocal = {1:CFG.rankBonus1, 2:CFG.rankBonus2, 3:CFG.rankBonus3, 4:CFG.rankBonus4};
+  const rankBonusMapLocal = {1:CFG.rankBonus1,2:CFG.rankBonus2,3:CFG.rankBonus3,4:CFG.rankBonus4,5:CFG.rankBonus5,6:CFG.rankBonus6,7:CFG.rankBonus7,8:CFG.rankBonus8,9:CFG.rankBonus9,10:CFG.rankBonus10,11:CFG.rankBonus11,12:CFG.rankBonus12,13:CFG.rankBonus13,14:CFG.rankBonus14,15:CFG.rankBonus15,16:CFG.rankBonus16,17:CFG.rankBonus17};
   const rankBonusCLocal = rankBonusMapLocal[trouble ? (trouble.scaleRank||5) : 5] || 0;
   const scoreC = power + matchBonus - diffPenaltyC + companionBonusC2 + rankBonusCLocal;
   return {svAdj, power:power.toFixed(1), matchBonus, matchDetails, bonusLines,
@@ -1838,10 +1879,23 @@ function applySettings(){
   // 補正値をBONUSオブジェクトに反映
   applyBonusFromSettings();
   // 新設定値を反映
-  CFG.rankBonus1 = +document.getElementById('cfg-rank-bonus1').value;
-  CFG.rankBonus2 = +document.getElementById('cfg-rank-bonus2').value;
-  CFG.rankBonus3 = +document.getElementById('cfg-rank-bonus3').value;
-  CFG.rankBonus4 = +document.getElementById('cfg-rank-bonus4').value;
+  CFG.rankBonus1  = +document.getElementById('cfg-rank-bonus1').value;
+  CFG.rankBonus2  = +document.getElementById('cfg-rank-bonus2').value;
+  CFG.rankBonus3  = +document.getElementById('cfg-rank-bonus3').value;
+  CFG.rankBonus4  = +document.getElementById('cfg-rank-bonus4').value;
+  CFG.rankBonus5  = +document.getElementById('cfg-rank-bonus5').value;
+  CFG.rankBonus6  = +document.getElementById('cfg-rank-bonus6').value;
+  CFG.rankBonus7  = +document.getElementById('cfg-rank-bonus7').value;
+  CFG.rankBonus8  = +document.getElementById('cfg-rank-bonus8').value;
+  CFG.rankBonus9  = +document.getElementById('cfg-rank-bonus9').value;
+  CFG.rankBonus10 = +document.getElementById('cfg-rank-bonus10').value;
+  CFG.rankBonus11 = +document.getElementById('cfg-rank-bonus11').value;
+  CFG.rankBonus12 = +document.getElementById('cfg-rank-bonus12').value;
+  CFG.rankBonus13 = +document.getElementById('cfg-rank-bonus13').value;
+  CFG.rankBonus14 = +document.getElementById('cfg-rank-bonus14').value;
+  CFG.rankBonus15 = +document.getElementById('cfg-rank-bonus15').value;
+  CFG.rankBonus16 = +document.getElementById('cfg-rank-bonus16').value;
+  CFG.rankBonus17 = +document.getElementById('cfg-rank-bonus17').value;
   CFG.companionBonusPer = +document.getElementById('cfg-companion-per').value;
   CFG.lossHonor    = +document.getElementById('cfg-loss-honor').value;
   CFG.lossMixed    = +document.getElementById('cfg-loss-mixed').value;
@@ -1874,6 +1928,10 @@ function resetSettings(){
   FAME_DELTA.great2=30;FAME_DELTA.great1=15;FAME_DELTA.honor=10;FAME_DELTA.mixed=5;
   FAME_DELTA.flee=-10;FAME_DELTA.captured=-15;FAME_DELTA.missing=-20;FAME_DELTA.dead=-25;
   CFG.rankBonus1=50;CFG.rankBonus2=35;CFG.rankBonus3=20;CFG.rankBonus4=10;
+  CFG.rankBonus5=0;CFG.rankBonus6=0;CFG.rankBonus7=0;CFG.rankBonus8=0;CFG.rankBonus9=0;
+  CFG.rankBonus10=0;CFG.rankBonus11=0;CFG.rankBonus12=0;CFG.rankBonus13=0;
+  CFG.rankBonus14=0;CFG.rankBonus15=0;CFG.rankBonus16=0;CFG.rankBonus17=0;
+  for(let i=5;i<=17;i++) document.getElementById('cfg-rank-bonus'+i).value=0;
   CFG.companionBonusPer=1;
   CFG.lossHonor=10;CFG.lossMixed=20;CFG.lossFlee=30;CFG.lossCaptured=40;CFG.lossMissing=50;CFG.lossDead=50;
   document.getElementById('cfg-rank-bonus1').value=50;
@@ -2170,7 +2228,7 @@ updatePanelHeroStatus();
   <div class="settings-panel" id="settings-panel">
     <h2>⚙ 設定 <span class="settings-close" onclick="closeSettings()">✕</span></h2>
 
-    <!-- キャラスコアプレビュー -->
+    <!-- スコアプレビュー -->
     <div class="score-preview">
       <div class="score-preview-title">📊 現在のキャラ × 選択中トラブルのスコア試算</div>
       <div class="score-stack" id="score-stack"></div>
@@ -2178,98 +2236,366 @@ updatePanelHeroStatus();
       <div class="result-prob" id="result-prob"></div>
     </div>
 
-    <!-- スコア帯ビジュアライザー -->
-    <div class="settings-section">
-      <div class="settings-section-title">スコア帯と結果の対応（数値を変えると即反映）</div>
-      <div style="position:relative;margin-bottom:36px">
-        <div class="viz-bar-track" id="viz-track"></div>
+    <!-- タブ -->
+    <div class="settings-tabs">
+      <div class="settings-tab active" onclick="switchSettingsTab('score')">📊 スコア</div>
+      <div class="settings-tab" onclick="switchSettingsTab('reward')">💰 報酬・知名度</div>
+      <div class="settings-tab" onclick="switchSettingsTab('lv')">⭐ LV成長</div>
+      <div class="settings-tab" onclick="switchSettingsTab('companion')">⚔️ 仲間</div>
+      <div class="settings-tab" onclick="switchSettingsTab('bonus')">🎯 補正値</div>
+    </div>
+
+    <!-- タブ：スコア -->
+    <div class="settings-tab-content active" id="stab-score">
+      <div class="settings-section">
+        <div class="settings-section-title">スコア帯と結果の対応</div>
+        <div style="position:relative;margin-bottom:36px"><div class="viz-bar-track" id="viz-track"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="settings-row"><label>① 大成功帯 以上</label><input class="settings-input" id="cfg-t1" type="number" value="100" oninput="updateViz()"></div>
+          <div class="settings-row"><label>② 成功帯 以上</label><input class="settings-input" id="cfg-t2" type="number" value="82" oninput="updateViz()"></div>
+          <div class="settings-row"><label>③ 波乱帯 以上</label><input class="settings-input" id="cfg-t3" type="number" value="65" oninput="updateViz()"></div>
+          <div class="settings-row"><label>④ 失敗帯 以上</label><input class="settings-input" id="cfg-t4" type="number" value="45" oninput="updateViz()"></div>
+          <div class="settings-row"><label>⑤ 最低帯 以上</label><input class="settings-input" id="cfg-t5" type="number" value="28" oninput="updateViz()"></div>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="settings-row"><label>① 大成功帯 以上</label><input class="settings-input" id="cfg-t1" type="number" value="100" oninput="updateViz()"></div>
-        <div class="settings-row"><label>② 成功帯 以上</label><input class="settings-input" id="cfg-t2" type="number" value="82" oninput="updateViz()"></div>
-        <div class="settings-row"><label>③ 波乱帯 以上</label><input class="settings-input" id="cfg-t3" type="number" value="65" oninput="updateViz()"></div>
-        <div class="settings-row"><label>④ 失敗帯 以上</label><input class="settings-input" id="cfg-t4" type="number" value="45" oninput="updateViz()"></div>
-        <div class="settings-row"><label>⑤ 最低帯 以上</label><input class="settings-input" id="cfg-t5" type="number" value="28" oninput="updateViz()"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">適性ボーナス</div>
+        <div class="settings-row"><label>職業が一致</label><input class="settings-input" id="cfg-job-bonus" type="number" value="15" oninput="updateViz()"></div>
+        <div class="settings-row"><label>種族が一致</label><input class="settings-input" id="cfg-race-bonus" type="number" value="10" oninput="updateViz()"></div>
+        <div class="settings-row"><label>要求ステータス 16以上</label><input class="settings-input" id="cfg-stat-hi" type="number" value="12" oninput="updateViz()"></div>
+        <div class="settings-row"><label>要求ステータス 12〜15</label><input class="settings-input" id="cfg-stat-md" type="number" value="7" oninput="updateViz()"></div>
+        <div class="settings-row"><label>要求ステータス 8〜11</label><input class="settings-input" id="cfg-stat-lo" type="number" value="3" oninput="updateViz()"></div>
       </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">適性ボーナス（トラブルへの適合で加算）</div>
-      <div class="settings-row"><label>職業が一致</label><input class="settings-input" id="cfg-job-bonus" type="number" value="15" oninput="updateViz()"></div>
-      <div class="settings-row"><label>種族が一致</label><input class="settings-input" id="cfg-race-bonus" type="number" value="10" oninput="updateViz()"></div>
-      <div class="settings-row"><label>要求ステータス 16以上</label><input class="settings-input" id="cfg-stat-hi" type="number" value="12" oninput="updateViz()"></div>
-      <div class="settings-row"><label>要求ステータス 12〜15</label><input class="settings-input" id="cfg-stat-md" type="number" value="7" oninput="updateViz()"></div>
-      <div class="settings-row"><label>要求ステータス 8〜11</label><input class="settings-input" id="cfg-stat-lo" type="number" value="3" oninput="updateViz()"></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">知名度変動量（結果ごとの増減）</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="settings-row"><label>大成功</label><input class="settings-input" id="cfg-f-great2" type="number" value="30"></div>
-        <div class="settings-row"><label>成功</label><input class="settings-input" id="cfg-f-great1" type="number" value="15"></div>
-        <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-f-honor" type="number" value="10"></div>
-        <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-f-mixed" type="number" value="5"></div>
-        <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-f-flee" type="number" value="-10"></div>
-        <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-f-captured" type="number" value="-15"></div>
-        <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-f-missing" type="number" value="-20"></div>
-        <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-f-dead" type="number" value="-25"></div>
-      </div>
-    </div>
-
-    <!-- 補正値セクション -->
-    <div class="settings-section">
-      <div class="settings-section-title">性別補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">男性</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-男-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-gender-男-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-gender-男-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">女性</div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-女-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-女-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-gender-女-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">不明</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-謎-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-謎-運" type="number" value="1" style="" oninput="onBonusInput()"></div></div></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">年齢層補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🌱 少年・少女</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-少年-体力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-少年-素早" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-少年-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-少年-知恵" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-少年-魔力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-少年-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔️ 青年</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-青年-腕力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-青年-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-青年-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-青年-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-青年-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🛡 壮年</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-壮年-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-壮年-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-壮年-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-壮年-運" type="number" value="1" style="" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">📖 中年</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-中年-知恵" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-中年-魔力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-中年-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-中年-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-中年-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-中年-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🌙 老練</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-老年-知恵" type="number" value="4" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-老年-魔力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-老年-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-老年-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-老年-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-老年-素早" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⭐ 超老齢</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-老齢-知恵" type="number" value="5" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-老齢-魔力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-老齢-運" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-老齢-腕力" type="number" value="-3" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-老齢-体力" type="number" value="-3" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-老齢-素早" type="number" value="-3" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">種族補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧑 人間</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-人間-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-人間-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-人間-運" type="number" value="1" style="" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧝 エルフ</div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-エルフ-魔力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-エルフ-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-エルフ-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-エルフ-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⛏ ドワーフ</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-ドワーフ-腕力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-ドワーフ-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-ドワーフ-素早" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-ドワーフ-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐾 獣人</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-獣人-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-獣人-素早" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-獣人-知恵" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-獣人-魔力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">😈 魔族</div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-魔族-魔力" type="number" value="4" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-魔族-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-魔族-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-魔族-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐉 竜人</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-竜人-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-竜人-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-竜人-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-竜人-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-竜人-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">職業補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔ 戦士</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-戦士-腕力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-戦士-体力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-戦士-魔力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-戦士-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🔮 魔法使い</div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-魔法使い-魔力" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-魔法使い-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-魔法使い-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-魔法使い-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🗡 盗賊</div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-盗賊-素早" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-盗賊-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-盗賊-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-盗賊-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">✨ 聖職者</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-聖職者-知恵" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-聖職者-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-聖職者-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-聖職者-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🏹 弓使い</div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-弓使い-素早" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-弓使い-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-弓使い-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-弓使い-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚗ 錬金術師</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-錬金術師-知恵" type="number" value="3" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-錬金術師-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-錬金術師-腕力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-錬金術師-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">性格補正</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">勇敢</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-勇敢-腕力" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-勇敢-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-勇敢-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-勇敢-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">慎重</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-慎重-知恵" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-慎重-運" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-慎重-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-慎重-腕力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">好奇心旺盛</div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-好奇心旺盛-知恵" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-好奇心旺盛-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-好奇心旺盛-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">義侠心</div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-義侠心-体力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-義侠心-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-義侠心-素早" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-義侠心-魔力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">強欲</div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-強欲-運" type="number" value="2" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-強欲-素早" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-強欲-体力" type="number" value="-2" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-強欲-知恵" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div><div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">孤高</div><div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-孤高-腕力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-孤高-魔力" type="number" value="1" style="" oninput="onBonusInput()"></div><div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-孤高-体力" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div><div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-孤高-運" type="number" value="-1" style="color:#ff7777;" oninput="onBonusInput()"></div></div></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">低ランクボーナス（家具〜墓場の底上げ）</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="settings-row"><label>rank1 家具ボーナス</label><input class="settings-input" id="cfg-rank-bonus1" type="number" value="50" oninput="updateViz()"></div>
-        <div class="settings-row"><label>rank2 部屋ボーナス</label><input class="settings-input" id="cfg-rank-bonus2" type="number" value="35" oninput="updateViz()"></div>
-        <div class="settings-row"><label>rank3 建物ボーナス</label><input class="settings-input" id="cfg-rank-bonus3" type="number" value="20" oninput="updateViz()"></div>
-        <div class="settings-row"><label>rank4 墓場ボーナス</label><input class="settings-input" id="cfg-rank-bonus4" type="number" value="10" oninput="updateViz()"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">ランクボーナス（マイナスも可）</div>
+        <table class="rank-table">
+          <tr><th>規模</th><th>ボーナス</th><th></th></tr>
+<tr><td style="color:var(--text2)">🪑家具</td><td colspan="2"><input id="cfg-rank-bonus1" type="number" value="50"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🚪部屋</td><td colspan="2"><input id="cfg-rank-bonus2" type="number" value="35"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物</td><td colspan="2"><input id="cfg-rank-bonus3" type="number" value="20"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">⚰️墓場</td><td colspan="2"><input id="cfg-rank-bonus4" type="number" value="10"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏘村</td><td colspan="2"><input id="cfg-rank-bonus5" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏛施設</td><td colspan="2"><input id="cfg-rank-bonus6" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物b</td><td colspan="2"><input id="cfg-rank-bonus7" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏙町</td><td colspan="2"><input id="cfg-rank-bonus8" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🕳洞窟</td><td colspan="2"><input id="cfg-rank-bonus9" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌲林</td><td colspan="2"><input id="cfg-rank-bonus10" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏯城</td><td colspan="2"><input id="cfg-rank-bonus11" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏰要塞</td><td colspan="2"><input id="cfg-rank-bonus12" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌳森林</td><td colspan="2"><input id="cfg-rank-bonus13" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🗺国家</td><td colspan="2"><input id="cfg-rank-bonus14" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌐全国</td><td colspan="2"><input id="cfg-rank-bonus15" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌍地球規模</td><td colspan="2"><input id="cfg-rank-bonus16" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌌宇宙規模</td><td colspan="2"><input id="cfg-rank-bonus17" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+        </table>
       </div>
     </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">仲間ボーナス</div>
-      <div class="settings-row"><label>仲間1人あたりのスコアボーナス</label><input class="settings-input" id="cfg-companion-per" type="number" value="1" oninput="updateViz()"></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-section-title">仲間損失率（結果ごとの割合 %）</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-loss-honor" type="number" value="10"></div>
-        <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-loss-mixed" type="number" value="20"></div>
-        <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-loss-flee" type="number" value="30"></div>
-        <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-loss-captured" type="number" value="40"></div>
-        <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-loss-missing" type="number" value="50"></div>
-        <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-loss-dead" type="number" value="50"></div>
+    <!-- タブ：報酬・知名度 -->
+    <div class="settings-tab-content" id="stab-reward">
+      <div class="settings-section">
+        <div class="settings-section-title">報酬範囲（この範囲でランダム × 対象難易度）</div>
+        <table class="rank-table">
+          <tr><th>規模</th><th>最小</th><th>最大</th></tr>
+<tr><td style="color:var(--text2)">🪑家具</td><td><input id="cfg-rmin1" type="number" value="30"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax1" type="number" value="80"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🚪部屋</td><td><input id="cfg-rmin2" type="number" value="60"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax2" type="number" value="150"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物</td><td><input id="cfg-rmin3" type="number" value="150"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax3" type="number" value="300"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">⚰️墓場</td><td><input id="cfg-rmin4" type="number" value="250"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax4" type="number" value="500"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏘村</td><td><input id="cfg-rmin5" type="number" value="600"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax5" type="number" value="1000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏛施設</td><td><input id="cfg-rmin6" type="number" value="1000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax6" type="number" value="2000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物b</td><td><input id="cfg-rmin7" type="number" value="2000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax7" type="number" value="4000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏙町</td><td><input id="cfg-rmin8" type="number" value="4000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax8" type="number" value="8000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🕳洞窟</td><td><input id="cfg-rmin9" type="number" value="8000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax9" type="number" value="15000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌲林</td><td><input id="cfg-rmin10" type="number" value="15000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax10" type="number" value="35000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏯城</td><td><input id="cfg-rmin11" type="number" value="50000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax11" type="number" value="120000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏰要塞</td><td><input id="cfg-rmin12" type="number" value="100000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax12" type="number" value="300000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌳森林</td><td><input id="cfg-rmin13" type="number" value="300000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax13" type="number" value="700000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🗺国家</td><td><input id="cfg-rmin14" type="number" value="1000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax14" type="number" value="3000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌐全国</td><td><input id="cfg-rmin15" type="number" value="4000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax15" type="number" value="12000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌍地球規模</td><td><input id="cfg-rmin16" type="number" value="20000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax16" type="number" value="80000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌌宇宙規模</td><td><input id="cfg-rmin17" type="number" value="200000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-rmax17" type="number" value="800000000"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+        </table>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">知名度ボーナス範囲</div>
+        <table class="rank-table">
+          <tr><th>規模</th><th>最小</th><th>最大</th></tr>
+<tr><td style="color:var(--text2)">🪑家具</td><td><input id="cfg-fmin1" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax1" type="number" value="3"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🚪部屋</td><td><input id="cfg-fmin2" type="number" value="2"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax2" type="number" value="5"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物</td><td><input id="cfg-fmin3" type="number" value="3"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax3" type="number" value="7"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">⚰️墓場</td><td><input id="cfg-fmin4" type="number" value="4"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax4" type="number" value="9"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏘村</td><td><input id="cfg-fmin5" type="number" value="5"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax5" type="number" value="12"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏛施設</td><td><input id="cfg-fmin6" type="number" value="6"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax6" type="number" value="14"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物b</td><td><input id="cfg-fmin7" type="number" value="7"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax7" type="number" value="16"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏙町</td><td><input id="cfg-fmin8" type="number" value="8"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax8" type="number" value="18"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🕳洞窟</td><td><input id="cfg-fmin9" type="number" value="9"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax9" type="number" value="20"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌲林</td><td><input id="cfg-fmin10" type="number" value="10"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax10" type="number" value="22"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏯城</td><td><input id="cfg-fmin11" type="number" value="12"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax11" type="number" value="26"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏰要塞</td><td><input id="cfg-fmin12" type="number" value="14"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax12" type="number" value="30"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌳森林</td><td><input id="cfg-fmin13" type="number" value="16"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax13" type="number" value="35"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🗺国家</td><td><input id="cfg-fmin14" type="number" value="20"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax14" type="number" value="45"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌐全国</td><td><input id="cfg-fmin15" type="number" value="25"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax15" type="number" value="55"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌍地球規模</td><td><input id="cfg-fmin16" type="number" value="35"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax16" type="number" value="75"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌌宇宙規模</td><td><input id="cfg-fmin17" type="number" value="50"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-fmax17" type="number" value="100"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+        </table>
       </div>
     </div>
 
-        <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">✓ 設定を適用</button>
+    <!-- タブ：LV成長 -->
+    <div class="settings-tab-content" id="stab-lv">
+      <div class="settings-section">
+        <div class="settings-section-title">ランク別LV上昇範囲（クリア時の成功度に応じて決定）</div>
+        <table class="rank-table">
+          <tr><th>規模</th><th>最小LV</th><th>最大LV</th></tr>
+<tr><td style="color:var(--text2)">🪑家具</td><td><input id="cfg-lvmin1" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax1" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🚪部屋</td><td><input id="cfg-lvmin2" type="number" value="0"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax2" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物</td><td><input id="cfg-lvmin3" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax3" type="number" value="2"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">⚰️墓場</td><td><input id="cfg-lvmin4" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax4" type="number" value="2"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏘村</td><td><input id="cfg-lvmin5" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax5" type="number" value="3"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏛施設</td><td><input id="cfg-lvmin6" type="number" value="1"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax6" type="number" value="3"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏗建物b</td><td><input id="cfg-lvmin7" type="number" value="2"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax7" type="number" value="4"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏙町</td><td><input id="cfg-lvmin8" type="number" value="2"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax8" type="number" value="5"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🕳洞窟</td><td><input id="cfg-lvmin9" type="number" value="3"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax9" type="number" value="6"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌲林</td><td><input id="cfg-lvmin10" type="number" value="3"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax10" type="number" value="7"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏯城</td><td><input id="cfg-lvmin11" type="number" value="4"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax11" type="number" value="8"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🏰要塞</td><td><input id="cfg-lvmin12" type="number" value="5"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax12" type="number" value="10"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌳森林</td><td><input id="cfg-lvmin13" type="number" value="6"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax13" type="number" value="12"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🗺国家</td><td><input id="cfg-lvmin14" type="number" value="8"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax14" type="number" value="15"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌐全国</td><td><input id="cfg-lvmin15" type="number" value="10"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax15" type="number" value="20"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌍地球規模</td><td><input id="cfg-lvmin16" type="number" value="15"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax16" type="number" value="30"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+<tr><td style="color:var(--text2)">🌌宇宙規模</td><td><input id="cfg-lvmin17" type="number" value="20"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td><td><input id="cfg-lvmax17" type="number" value="50"  oninput="updateViz()" style="width:72px;padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;text-align:right"></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- タブ：仲間 -->
+    <div class="settings-tab-content" id="stab-companion">
+      <div class="settings-section">
+        <div class="settings-section-title">仲間ボーナス</div>
+        <div class="settings-row"><label>仲間1人あたりのスコアボーナス</label><input class="settings-input" id="cfg-companion-per" type="number" value="1" oninput="updateViz()"></div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">仲間損失率（結果ごとの割合 %）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-loss-honor" type="number" value="10"></div>
+          <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-loss-mixed" type="number" value="20"></div>
+          <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-loss-flee" type="number" value="30"></div>
+          <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-loss-captured" type="number" value="40"></div>
+          <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-loss-missing" type="number" value="50"></div>
+          <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-loss-dead" type="number" value="50"></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">知名度変動量</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="settings-row"><label>大成功</label><input class="settings-input" id="cfg-f-great2" type="number" value="30"></div>
+          <div class="settings-row"><label>成功</label><input class="settings-input" id="cfg-f-great1" type="number" value="15"></div>
+          <div class="settings-row"><label>名誉の戦死</label><input class="settings-input" id="cfg-f-honor" type="number" value="10"></div>
+          <div class="settings-row"><label>波乱</label><input class="settings-input" id="cfg-f-mixed" type="number" value="5"></div>
+          <div class="settings-row"><label>逃げ帰る</label><input class="settings-input" id="cfg-f-flee" type="number" value="-10"></div>
+          <div class="settings-row"><label>捕虜</label><input class="settings-input" id="cfg-f-captured" type="number" value="-15"></div>
+          <div class="settings-row"><label>行方不明</label><input class="settings-input" id="cfg-f-missing" type="number" value="-20"></div>
+          <div class="settings-row"><label>死亡</label><input class="settings-input" id="cfg-f-dead" type="number" value="-25"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- タブ：補正値 -->
+    <div class="settings-tab-content" id="stab-bonus">
+      <div class="settings-section">
+        <div class="settings-section-title">性別補正</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">男性</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-男-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-gender-男-知恵" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-gender-男-魔力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">女性</div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-女-運" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-女-腕力" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-gender-女-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">不明</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-gender-謎-腕力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-gender-謎-運" type="number" value="1" oninput="onBonusInput()"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">年齢層補正</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🌱 少年・少女</div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-少年-体力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-少年-素早" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-少年-腕力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-少年-知恵" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-少年-魔力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-少年-運" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔️ 青年</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-青年-腕力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-青年-体力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-青年-素早" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-青年-知恵" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-青年-魔力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🛡 壮年</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-壮年-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-壮年-体力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-壮年-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-壮年-運" type="number" value="1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">📖 中年</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-中年-知恵" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-中年-魔力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-中年-運" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-中年-腕力" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-中年-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-中年-素早" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🌙 老練</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-老年-知恵" type="number" value="4" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-老年-魔力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-老年-運" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-老年-腕力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-老年-体力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-老年-素早" type="number" value="-2" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⭐ 超老齢</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-age-老齢-知恵" type="number" value="5" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-age-老齢-魔力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-age-老齢-運" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-age-老齢-腕力" type="number" value="-3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-age-老齢-体力" type="number" value="-3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-age-老齢-素早" type="number" value="-3" oninput="onBonusInput()"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">種族補正</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧑 人間</div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-人間-体力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-人間-素早" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-人間-運" type="number" value="1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🧝 エルフ</div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-エルフ-魔力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-エルフ-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-エルフ-腕力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-エルフ-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⛏ ドワーフ</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-ドワーフ-腕力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-ドワーフ-体力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-ドワーフ-素早" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-ドワーフ-魔力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐾 獣人</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-獣人-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-獣人-素早" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-獣人-知恵" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-獣人-魔力" type="number" value="-2" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">😈 魔族</div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-魔族-魔力" type="number" value="4" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-魔族-知恵" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-魔族-体力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-race-魔族-運" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🐉 竜人</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-race-竜人-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-race-竜人-体力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-race-竜人-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-race-竜人-素早" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-race-竜人-知恵" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">職業補正</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚔ 戦士</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-戦士-腕力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-戦士-体力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-戦士-魔力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-戦士-知恵" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🔮 魔法使い</div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-魔法使い-魔力" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-魔法使い-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-魔法使い-腕力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-魔法使い-体力" type="number" value="-2" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🗡 盗賊</div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-盗賊-素早" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-盗賊-運" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-盗賊-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-盗賊-魔力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">✨ 聖職者</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-聖職者-知恵" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-聖職者-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-聖職者-腕力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-聖職者-素早" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">🏹 弓使い</div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-job-弓使い-素早" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-弓使い-知恵" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-job-弓使い-運" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-弓使い-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">⚗ 錬金術師</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-job-錬金術師-知恵" type="number" value="3" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-job-錬金術師-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-job-錬金術師-腕力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-job-錬金術師-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">性格補正</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">勇敢</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-勇敢-腕力" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-勇敢-体力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-勇敢-知恵" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-勇敢-運" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">慎重</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-慎重-知恵" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-慎重-運" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-慎重-素早" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-慎重-腕力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">好奇心旺盛</div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-好奇心旺盛-知恵" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-好奇心旺盛-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-好奇心旺盛-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">義侠心</div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-義侠心-体力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-義侠心-運" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-義侠心-素早" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-義侠心-魔力" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">強欲</div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-強欲-運" type="number" value="2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>素早</label><input class="settings-input" id="cb-per-強欲-素早" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-強欲-体力" type="number" value="-2" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>知恵</label><input class="settings-input" id="cb-per-強欲-知恵" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">孤高</div>
+            <div class="settings-row"><label>腕力</label><input class="settings-input" id="cb-per-孤高-腕力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>魔力</label><input class="settings-input" id="cb-per-孤高-魔力" type="number" value="1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>体力</label><input class="settings-input" id="cb-per-孤高-体力" type="number" value="-1" oninput="onBonusInput()"></div>
+            <div class="settings-row"><label>運</label><input class="settings-input" id="cb-per-孤高-運" type="number" value="-1" oninput="onBonusInput()"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="applySettings()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;margin-top:12px">✓ 設定を適用</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       <button onclick="saveSettings()" style="padding:9px;background:rgba(79,201,126,.12);border:1px solid rgba(79,201,126,.3);border-radius:var(--radius);color:#4fc97e;font-size:12px;font-weight:600;cursor:pointer">💾 設定を保存</button>
       <button onclick="loadSettings()" style="padding:9px;background:rgba(124,111,255,.12);border:1px solid rgba(124,111,255,.3);border-radius:var(--radius);color:var(--accent2);font-size:12px;font-weight:600;cursor:pointer">📂 設定を読み込む</button>
