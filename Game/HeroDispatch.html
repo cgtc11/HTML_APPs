@@ -1019,12 +1019,13 @@ function calcOutcomeWeights(sv, race, job, personality, gender, age, heroCount, 
   const score = power + matchBonus - diffPenalty + companionBonus + rankBonus;
 
   // [大成功, 成功, 名誉の戦死, 波乱, 逃げ帰る, 捕虜, 行方不明, 死亡]
-  if(score >= CFG.t1) return [35, 35, 10, 12,  4,  2,  1,  1];
-  if(score >= CFG.t2) return [15, 30, 10, 20, 12,  6,  4,  3];
-  if(score >= CFG.t3) return [ 5, 18,  7, 22, 20, 12,  9,  7];
-  if(score >= CFG.t4) return [ 2,  8,  4, 18, 25, 18, 13, 12];
-  if(score >= CFG.t5) return [ 1,  3,  2, 12, 25, 20, 18, 19];
-  return                      [ 0,  1,  1,  8, 20, 22, 22, 26];
+  if(score >= CFG.t0) return CFG.p0;
+  if(score >= CFG.t1) return CFG.p1;
+  if(score >= CFG.t2) return CFG.p2;
+  if(score >= CFG.t3) return CFG.p3;
+  if(score >= CFG.t4) return CFG.p4;
+  if(score >= CFG.t5) return CFG.p5;
+  return CFG.p6;
 }
 
 // 計算内訳を返す関数（表示用）
@@ -1127,7 +1128,7 @@ function generateStory(name, gender, race, job, personality, age, sv, heroCount,
   const lv = calcLevel(outcome, sv, currentTrouble ? currentTrouble.scaleRank : 5);
   const finalStats = calcFinalStats(sv, outcome, race, job, lv);
 
-  return { story, result:`${enemy}${endData.r}`, outcome, worldImpact:endData.w, stage:stage.name, enemy, lv, finalStats, breakdown };
+  return { story, result:`${enemy}${endData.r}`, outcome, worldImpact:endData.w, stage:stage.name, enemy, lv, finalStats, breakdown, usedSv:{...sv} };
 }
 
 // ═══════════════════════════════════════════
@@ -1204,6 +1205,7 @@ let selectedTroubleIdx = 0;
 let fame = 0; // 知名度（-100〜∞）
 let gold = 0; // 所持金
 let activeHero = null; // 現在活動中の勇者（死亡・名誉の戦死でnull化）
+let uniqueHeroCount = 0; // ユニーク勇者数（同一勇者の再出撃はカウントしない）
 let companions = 0; // 雇った仲間の数
 const COMPANION_COST = 100; // 1人100G
 const COMPANION_BONUS_PER = 15; // 仲間1人あたりスコアボーナス
@@ -1373,21 +1375,12 @@ function sendHero(){
   const targetTrouble = activetroubles_displayed[selectedTroubleIdx] || null;
 
   // 前回が捕虜以下なら強制的に別キャラ
-  const lastHero = heroes[0];
-  if(lastHero && ['captured','missing'].includes(lastHero.outcome)){
-    // 捕虜・行方不明の場合も名前・ステータスをリセット
-    const pool = sel.gender==='男' ? RANDOM_NAMES_M : sel.gender==='女' ? RANDOM_NAMES_F : RANDOM_NAMES_N;
-    document.getElementById('name-input').value = pool[Math.floor(Math.random()*pool.length)];
-    sv = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
-    initSliders();
-    activeHero = null;
-    updatePanelHeroStatus();
-  }
+  // 捕虜・行方不明・死亡・名誉の戦死は即時リセット済みなのでここでは何もしない
   const name = document.getElementById('name-input').value.trim()||'名無し';
   // 同一勇者の引き継ぎ：activeHeroがいればfinalStatsを初期値として使う
   let baseSv = {...sv};
-  if(activeHero && activeHero.name === name && activeHero.finalStats){
-    // finalStatsのステータスをベースに（配分ポイントは加算）
+  if(activeHero && activeHero.finalStats){
+    // activeHeroがいればfinalStats（LV上昇後）をベースに使う
     STATS.forEach(s=>{ baseSv[s] = (activeHero.finalStats[s]||sv[s]); });
   }
   const result = generateStory(name, sel.gender, sel.race, sel.job, sel.personality, sel.age, baseSv,
@@ -1397,6 +1390,11 @@ function sendHero(){
     id:Date.now(), name,
     gender:sel.gender, race:sel.race, job:sel.job, personality:sel.personality, age:sel.age||'青年',
     companionLoss: 0,
+    prevLv: activeHero ? (activeHero.cumulativeLv || activeHero.lv || 0) : 0,
+    questScale: targetTrouble ? (targetTrouble.scaleName||'不明') : '不明',
+    questScaleIcon: targetTrouble ? (targetTrouble.scaleIcon||'📋') : '📋',
+    questTarget: targetTrouble ? (targetTrouble.targetName||'不明') : '不明',
+    questText: targetTrouble ? targetTrouble.text.substring(0,40)+'…' : '不明',
     initStats:{...sv},
     lv: result.lv,
     finalStats: result.finalStats,
@@ -1405,12 +1403,19 @@ function sendHero(){
     targetTrouble: targetTrouble ? targetTrouble.text : null,
     breakdown: result.breakdown,
   };
+  // 新しい勇者の場合のみカウントアップ
+  const isNewHero = !heroes.some(h => h.name === hero.name && !['dead','honor'].includes(h.outcome));
+  if(isNewHero || heroes.length === 0 || heroes[0].name !== hero.name) {
+    // 直前と同じ名前でないならユニーク勇者
+    if(heroes.length === 0 || heroes[0].name !== hero.name) uniqueHeroCount++;
+  }
+  // 累積LV = 前のLV + 今回のLV上昇
+  hero.cumulativeLv = hero.prevLv + (result.lv || 0);
   heroes.unshift(hero);
   pastImpacts.unshift(result.worldImpact);
   // activeHero更新
-  if(['honor','dead'].includes(result.outcome)){
-    activeHero = null; // 死亡系はリセット
-    // 即座にパラメーター・名前を初期化
+  if(['honor','dead','missing','captured'].includes(result.outcome)){
+    activeHero = null; // 死亡・名誉・行方不明・捕虜はリセット
     sv = {腕力:6,体力:6,魔力:6,素早:6,知恵:6,運:6};
     initSliders();
     document.getElementById('name-input').value = '';
@@ -1561,7 +1566,7 @@ function renderLog(){
   heroes.forEach(h=>gc[h.outcome]=(gc[h.outcome]||0)+1);
   const totalBar=document.createElement('div');
   totalBar.className='total-bar';
-  totalBar.innerHTML='<b>'+heroes.length+'</b> 人が旅立った'
+  totalBar.innerHTML='<b>'+uniqueHeroCount+'</b> 人が旅立った'
     +'<div class="outcome-dots">'
     +OUTCOMES8.map(k=>Array(Math.min(gc[k]||0,6)).fill('<div class="od" style="background:'+ODOT[k]+'" title="'+OL[k]+':'+(gc[k]||0)+'人"></div>').join('')).join('')
     +'</div>';
@@ -1583,6 +1588,15 @@ function renderLog(){
       </div>`;
     }).join('');
 
+    // 依頼情報HTML
+    const questHtml = (h.questScale||h.questScaleIcon)
+      ? '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px">'
+        +'<span style="color:var(--text3);font-size:10px;letter-spacing:.06em;text-transform:uppercase">依頼</span>　'
+        +(h.questScaleIcon||'📋')+' <b>'+(h.questScale||'')+'規模</b>'
+        +'　対象：<span style="color:var(--text2)">'+(h.questTarget||'不明')+'</span>'
+        +'</div>'
+      : '';
+
     // 計算内訳HTML
     let breakdownHtml = '';
     if(h.breakdown){
@@ -1596,6 +1610,34 @@ function renderLog(){
       const favorLine = b.favorStat
         ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px">要求ステータス: '+b.favorStat+'（×3.5重み）</div>'
         : '';
+      // スコア帯バー生成
+      const bScore = parseFloat(b.score);
+      const bT1=CFG.t1,bT2=CFG.t2,bT3=CFG.t3,bT4=CFG.t4,bT5=CFG.t5;
+      const bMax = Math.max(150, bT1*1.3);
+      const bSegs = [
+        {hi:bMax,  lo:bT1,      key:'great2',   label:'大成功'},
+        {hi:bT1,   lo:bT2,      key:'great1',   label:'成功'},
+        {hi:bT2,   lo:bT3,      key:'honor',    label:'名誉'},
+        {hi:bT3,   lo:bT4,      key:'mixed',    label:'波乱'},
+        {hi:bT4,   lo:bT5,      key:'flee',     label:'逃げ'},
+        {hi:bT5,   lo:bT5*0.7,  key:'captured', label:'捕虜'},
+        {hi:bT5*0.7,lo:bT5*0.35,key:'missing',  label:'不明'},
+        {hi:bT5*0.35,lo:0,      key:'dead',     label:'死亡'},
+      ];
+      const bColors={great2:'#4fc97e',great1:'#88e0a8',honor:'#ffd700',mixed:'#f0c040',flee:'#ff9966',captured:'#ff7777',missing:'#cc66cc',dead:'#ff4444'};
+      let barHtml='<div style="position:relative;height:20px;margin:8px 0 20px;border-radius:4px;overflow:visible">';
+      bSegs.forEach(seg=>{
+        const lp=((seg.lo/bMax)*100).toFixed(1);
+        const wp=(((seg.hi-seg.lo)/bMax)*100).toFixed(1);
+        if(parseFloat(wp)<=0) return;
+        barHtml+='<div style="position:absolute;left:'+lp+'%;width:'+wp+'%;height:100%;background:'+bColors[seg.key]+'44;border:1px solid '+bColors[seg.key]+'88;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+bColors[seg.key]+'">'+seg.label+'</div>';
+        if(seg.lo>0) barHtml+='<div style="position:absolute;left:'+lp+'%;top:22px;font-size:9px;color:var(--text3);transform:translateX(-50%)">'+Math.round(seg.lo)+'</div>';
+      });
+      const pinPct=Math.min(98,(bScore/bMax*100)).toFixed(1);
+      barHtml+='<div style="position:absolute;left:'+pinPct+'%;top:-5px;width:2px;height:30px;background:#fff;border-radius:1px;z-index:5"></div>';
+      barHtml+='<div style="position:absolute;left:'+pinPct+'%;top:-18px;font-size:10px;font-weight:700;color:#fff;transform:translateX(-50%);white-space:nowrap">▼'+Math.round(bScore)+'</div>';
+      barHtml+='</div>';
+
       breakdownHtml =
         '<div class="breakdown-box">' +
         '<div class="breakdown-title">📊 計算内訳</div>' +
@@ -1604,6 +1646,7 @@ function renderLog(){
         favorLine +
         '<div class="breakdown-row">'+matchTags+'</div>' +
         '<div class="bd-score">スコア: '+b.score+' <span class="bd-tier">（パワー'+b.power+' + 適性'+b.matchBonus+' → '+tierLabel+'）</span></div>' +
+        barHtml +
         '</div>';
     }
 
@@ -1622,9 +1665,10 @@ function renderLog(){
       '<div class="chr-result">📜 '+h.result+'</div>'
       +(h.earnedGold>0?'<div style="font-size:12px;color:#f0c040;margin-bottom:6px">💰 報酬獲得: '+h.earnedGold.toLocaleString()+' G</div>':'<div style="font-size:12px;color:var(--text3);margin-bottom:6px">💰 報酬なし（未達成）</div>')
       +(h.companionLoss>0?'<div style="font-size:12px;color:#ff7777;margin-bottom:6px">⚔️ 仲間が '+h.companionLoss+' 人失われた</div>':'')
+      +questHtml
       +
       '<div class="final-stats">' +
-        '<div class="final-stats-title">冒険後ステータス <span class="lv-badge">⭐ LV '+h.lv+'</span></div>' +
+        '<div class="final-stats-title">冒険後ステータス <span class="lv-badge">⭐ LV '+(h.cumulativeLv||h.lv)+(h.prevLv>0?' (+'+h.lv+')':'')+'</span></div>' +
         '<div class="final-stats-grid">'+diffHtml+'</div>' +
       '</div>' +
       breakdownHtml;
@@ -1637,7 +1681,15 @@ function renderLog(){
 // ═══════════════════════════════════════════
 // ── 設定値（calcOutcomeWeightsから参照） ──
 let CFG = {
-  t1:100, t2:82, t3:65, t4:45, t5:28,
+  t0:120, t1:100, t2:82, t3:65, t4:45, t5:28,
+  // 各スコア帯の確率 [大成功,成功,名誉,波乱,逃げ,捕虜,不明,死亡]
+  p0:[99, 1, 0, 0, 0, 0,0,0],
+  p1:[80,20, 0, 0, 0, 0,0,0],
+  p2:[10,55,35, 5, 0, 0,0,0],
+  p3:[ 2,15, 5,45,25, 5,2,1],
+  p4:[ 0, 5, 3,20,35,20,12,5],
+  p5:[ 0, 1, 2,12,28,22,20,15],
+  p6:[ 0, 0, 1, 8,20,22,24,25],
   jobBonus:15, raceBonus:10, statHi:12, statMd:7, statLo:3,
   fGreat2:30, fGreat1:15, fHonor:10, fMixed:5,
   fFlee:-10, fCaptured:-15, fMissing:-20, fDead:-25,
@@ -1839,7 +1891,7 @@ function renderScorePreview(bd, score, t1,t2,t3,t4,t5, trouble){
   total.innerHTML = 'スコア合計: <span style="color:'+tierColor+'">'+Math.round(score)+'</span> <span style="font-size:11px;color:var(--text3)">→ '+tierLabel+'</span>';
 
   // 確率チップ
-  const weights = score>=t1?[35,35,10,12,4,2,1,1]:score>=t2?[15,30,10,20,12,6,4,3]:score>=t3?[5,18,7,22,20,12,9,7]:score>=t4?[2,8,4,18,25,18,13,12]:score>=t5?[1,3,2,12,25,20,18,19]:[0,1,1,8,20,22,22,26];
+  const weights = score>=CFG.t0?CFG.p0:score>=t1?CFG.p1:score>=t2?CFG.p2:score>=t3?CFG.p3:score>=t4?CFG.p4:score>=t5?CFG.p5:CFG.p6;
   const total_w = weights.reduce((a,b)=>a+b,0);
   const KEYS8 = ['great2','great1','honor','mixed','flee','captured','missing','dead'];
   prob.innerHTML = KEYS8.map((k,i)=>
@@ -1903,6 +1955,117 @@ function applySettings(){
   CFG.lossCaptured = +document.getElementById('cfg-loss-captured').value;
   CFG.lossMissing  = +document.getElementById('cfg-loss-missing').value;
   CFG.lossDead     = +document.getElementById('cfg-loss-dead').value;
+  CFG['rewardMin1'] = +document.getElementById('cfg-rmin1').value;
+  CFG['rewardMax1'] = +document.getElementById('cfg-rmax1').value;
+  CFG['fameMin1']   = +document.getElementById('cfg-fmin1').value;
+  CFG['fameMax1']   = +document.getElementById('cfg-fmax1').value;
+  CFG['lvMin1']     = +document.getElementById('cfg-lvmin1').value;
+  CFG['lvMax1']     = +document.getElementById('cfg-lvmax1').value;
+  CFG['rewardMin2'] = +document.getElementById('cfg-rmin2').value;
+  CFG['rewardMax2'] = +document.getElementById('cfg-rmax2').value;
+  CFG['fameMin2']   = +document.getElementById('cfg-fmin2').value;
+  CFG['fameMax2']   = +document.getElementById('cfg-fmax2').value;
+  CFG['lvMin2']     = +document.getElementById('cfg-lvmin2').value;
+  CFG['lvMax2']     = +document.getElementById('cfg-lvmax2').value;
+  CFG['rewardMin3'] = +document.getElementById('cfg-rmin3').value;
+  CFG['rewardMax3'] = +document.getElementById('cfg-rmax3').value;
+  CFG['fameMin3']   = +document.getElementById('cfg-fmin3').value;
+  CFG['fameMax3']   = +document.getElementById('cfg-fmax3').value;
+  CFG['lvMin3']     = +document.getElementById('cfg-lvmin3').value;
+  CFG['lvMax3']     = +document.getElementById('cfg-lvmax3').value;
+  CFG['rewardMin4'] = +document.getElementById('cfg-rmin4').value;
+  CFG['rewardMax4'] = +document.getElementById('cfg-rmax4').value;
+  CFG['fameMin4']   = +document.getElementById('cfg-fmin4').value;
+  CFG['fameMax4']   = +document.getElementById('cfg-fmax4').value;
+  CFG['lvMin4']     = +document.getElementById('cfg-lvmin4').value;
+  CFG['lvMax4']     = +document.getElementById('cfg-lvmax4').value;
+  CFG['rewardMin5'] = +document.getElementById('cfg-rmin5').value;
+  CFG['rewardMax5'] = +document.getElementById('cfg-rmax5').value;
+  CFG['fameMin5']   = +document.getElementById('cfg-fmin5').value;
+  CFG['fameMax5']   = +document.getElementById('cfg-fmax5').value;
+  CFG['lvMin5']     = +document.getElementById('cfg-lvmin5').value;
+  CFG['lvMax5']     = +document.getElementById('cfg-lvmax5').value;
+  CFG['rewardMin6'] = +document.getElementById('cfg-rmin6').value;
+  CFG['rewardMax6'] = +document.getElementById('cfg-rmax6').value;
+  CFG['fameMin6']   = +document.getElementById('cfg-fmin6').value;
+  CFG['fameMax6']   = +document.getElementById('cfg-fmax6').value;
+  CFG['lvMin6']     = +document.getElementById('cfg-lvmin6').value;
+  CFG['lvMax6']     = +document.getElementById('cfg-lvmax6').value;
+  CFG['rewardMin7'] = +document.getElementById('cfg-rmin7').value;
+  CFG['rewardMax7'] = +document.getElementById('cfg-rmax7').value;
+  CFG['fameMin7']   = +document.getElementById('cfg-fmin7').value;
+  CFG['fameMax7']   = +document.getElementById('cfg-fmax7').value;
+  CFG['lvMin7']     = +document.getElementById('cfg-lvmin7').value;
+  CFG['lvMax7']     = +document.getElementById('cfg-lvmax7').value;
+  CFG['rewardMin8'] = +document.getElementById('cfg-rmin8').value;
+  CFG['rewardMax8'] = +document.getElementById('cfg-rmax8').value;
+  CFG['fameMin8']   = +document.getElementById('cfg-fmin8').value;
+  CFG['fameMax8']   = +document.getElementById('cfg-fmax8').value;
+  CFG['lvMin8']     = +document.getElementById('cfg-lvmin8').value;
+  CFG['lvMax8']     = +document.getElementById('cfg-lvmax8').value;
+  CFG['rewardMin9'] = +document.getElementById('cfg-rmin9').value;
+  CFG['rewardMax9'] = +document.getElementById('cfg-rmax9').value;
+  CFG['fameMin9']   = +document.getElementById('cfg-fmin9').value;
+  CFG['fameMax9']   = +document.getElementById('cfg-fmax9').value;
+  CFG['lvMin9']     = +document.getElementById('cfg-lvmin9').value;
+  CFG['lvMax9']     = +document.getElementById('cfg-lvmax9').value;
+  CFG['rewardMin10'] = +document.getElementById('cfg-rmin10').value;
+  CFG['rewardMax10'] = +document.getElementById('cfg-rmax10').value;
+  CFG['fameMin10']   = +document.getElementById('cfg-fmin10').value;
+  CFG['fameMax10']   = +document.getElementById('cfg-fmax10').value;
+  CFG['lvMin10']     = +document.getElementById('cfg-lvmin10').value;
+  CFG['lvMax10']     = +document.getElementById('cfg-lvmax10').value;
+  CFG['rewardMin11'] = +document.getElementById('cfg-rmin11').value;
+  CFG['rewardMax11'] = +document.getElementById('cfg-rmax11').value;
+  CFG['fameMin11']   = +document.getElementById('cfg-fmin11').value;
+  CFG['fameMax11']   = +document.getElementById('cfg-fmax11').value;
+  CFG['lvMin11']     = +document.getElementById('cfg-lvmin11').value;
+  CFG['lvMax11']     = +document.getElementById('cfg-lvmax11').value;
+  CFG['rewardMin12'] = +document.getElementById('cfg-rmin12').value;
+  CFG['rewardMax12'] = +document.getElementById('cfg-rmax12').value;
+  CFG['fameMin12']   = +document.getElementById('cfg-fmin12').value;
+  CFG['fameMax12']   = +document.getElementById('cfg-fmax12').value;
+  CFG['lvMin12']     = +document.getElementById('cfg-lvmin12').value;
+  CFG['lvMax12']     = +document.getElementById('cfg-lvmax12').value;
+  CFG['rewardMin13'] = +document.getElementById('cfg-rmin13').value;
+  CFG['rewardMax13'] = +document.getElementById('cfg-rmax13').value;
+  CFG['fameMin13']   = +document.getElementById('cfg-fmin13').value;
+  CFG['fameMax13']   = +document.getElementById('cfg-fmax13').value;
+  CFG['lvMin13']     = +document.getElementById('cfg-lvmin13').value;
+  CFG['lvMax13']     = +document.getElementById('cfg-lvmax13').value;
+  CFG['rewardMin14'] = +document.getElementById('cfg-rmin14').value;
+  CFG['rewardMax14'] = +document.getElementById('cfg-rmax14').value;
+  CFG['fameMin14']   = +document.getElementById('cfg-fmin14').value;
+  CFG['fameMax14']   = +document.getElementById('cfg-fmax14').value;
+  CFG['lvMin14']     = +document.getElementById('cfg-lvmin14').value;
+  CFG['lvMax14']     = +document.getElementById('cfg-lvmax14').value;
+  CFG['rewardMin15'] = +document.getElementById('cfg-rmin15').value;
+  CFG['rewardMax15'] = +document.getElementById('cfg-rmax15').value;
+  CFG['fameMin15']   = +document.getElementById('cfg-fmin15').value;
+  CFG['fameMax15']   = +document.getElementById('cfg-fmax15').value;
+  CFG['lvMin15']     = +document.getElementById('cfg-lvmin15').value;
+  CFG['lvMax15']     = +document.getElementById('cfg-lvmax15').value;
+  CFG['rewardMin16'] = +document.getElementById('cfg-rmin16').value;
+  CFG['rewardMax16'] = +document.getElementById('cfg-rmax16').value;
+  CFG['fameMin16']   = +document.getElementById('cfg-fmin16').value;
+  CFG['fameMax16']   = +document.getElementById('cfg-fmax16').value;
+  CFG['lvMin16']     = +document.getElementById('cfg-lvmin16').value;
+  CFG['lvMax16']     = +document.getElementById('cfg-lvmax16').value;
+  CFG['rewardMin17'] = +document.getElementById('cfg-rmin17').value;
+  CFG['rewardMax17'] = +document.getElementById('cfg-rmax17').value;
+  CFG['fameMin17']   = +document.getElementById('cfg-fmin17').value;
+  CFG['fameMax17']   = +document.getElementById('cfg-fmax17').value;
+  CFG['lvMin17']     = +document.getElementById('cfg-lvmin17').value;
+  CFG['lvMax17']     = +document.getElementById('cfg-lvmax17').value;
+  // 確率テーブル
+  const parseProb = (ids) => ids.map(id => +(document.getElementById(id).value)||0);
+  CFG.p0 = parseProb(['p0-0','p0-1','p0-2','p0-3','p0-4','p0-5','p0-6','p0-7']);
+  CFG.p1 = parseProb(['p1-0','p1-1','p1-2','p1-3','p1-4','p1-5','p1-6','p1-7']);
+  CFG.p2 = parseProb(['p2-0','p2-1','p2-2','p2-3','p2-4','p2-5','p2-6','p2-7']);
+  CFG.p3 = parseProb(['p3-0','p3-1','p3-2','p3-3','p3-4','p3-5','p3-6','p3-7']);
+  CFG.p4 = parseProb(['p4-0','p4-1','p4-2','p4-3','p4-4','p4-5','p4-6','p4-7']);
+  CFG.p5 = parseProb(['p5-0','p5-1','p5-2','p5-3','p5-4','p5-5','p5-6','p5-7']);
+  CFG.p6 = parseProb(['p6-0','p6-1','p6-2','p6-3','p6-4','p6-5','p6-6','p6-7']);
   closeSettings();
 }
 function resetSettings(){
@@ -1927,6 +2090,10 @@ function resetSettings(){
   document.getElementById('cfg-f-dead').value=CFG.fDead;
   FAME_DELTA.great2=30;FAME_DELTA.great1=15;FAME_DELTA.honor=10;FAME_DELTA.mixed=5;
   FAME_DELTA.flee=-10;FAME_DELTA.captured=-15;FAME_DELTA.missing=-20;FAME_DELTA.dead=-25;
+  const defP = [[99,1,0,0,0,0,0,0],[80,20,0,0,0,0,0,0],[10,55,35,5,0,0,0,0],[2,15,5,45,25,5,2,1],[0,5,3,20,35,20,12,5],[0,1,2,12,28,22,20,15],[0,0,1,8,20,22,24,25]];
+  document.getElementById('cfg-t0').value=120;
+  defP.forEach((p,pi)=>{ p.forEach((v,i)=>{ const el=document.getElementById('p'+(pi===0?'0':pi)+'-'+i); if(el) el.value=v; }); });
+  CFG.p0=defP[0];CFG.p1=defP[1];CFG.p2=defP[2];CFG.p3=defP[3];CFG.p4=defP[4];CFG.p5=defP[5];CFG.p6=defP[6];
   CFG.rankBonus1=50;CFG.rankBonus2=35;CFG.rankBonus3=20;CFG.rankBonus4=10;
   CFG.rankBonus5=0;CFG.rankBonus6=0;CFG.rankBonus7=0;CFG.rankBonus8=0;CFG.rankBonus9=0;
   CFG.rankBonus10=0;CFG.rankBonus11=0;CFG.rankBonus12=0;CFG.rankBonus13=0;
@@ -2251,6 +2418,7 @@ updatePanelHeroStatus();
         <div class="settings-section-title">スコア帯と結果の対応</div>
         <div style="position:relative;margin-bottom:36px"><div class="viz-bar-track" id="viz-track"></div></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="settings-row"><label>⓪ 超大成功帯 以上</label><input class="settings-input" id="cfg-t0" type="number" value="120" oninput="updateViz()"></div>
           <div class="settings-row"><label>① 大成功帯 以上</label><input class="settings-input" id="cfg-t1" type="number" value="100" oninput="updateViz()"></div>
           <div class="settings-row"><label>② 成功帯 以上</label><input class="settings-input" id="cfg-t2" type="number" value="82" oninput="updateViz()"></div>
           <div class="settings-row"><label>③ 波乱帯 以上</label><input class="settings-input" id="cfg-t3" type="number" value="65" oninput="updateViz()"></div>
@@ -2266,6 +2434,11 @@ updatePanelHeroStatus();
         <div class="settings-row"><label>要求ステータス 12〜15</label><input class="settings-input" id="cfg-stat-md" type="number" value="7" oninput="updateViz()"></div>
         <div class="settings-row"><label>要求ステータス 8〜11</label><input class="settings-input" id="cfg-stat-lo" type="number" value="3" oninput="updateViz()"></div>
       </div>
+      <div class="settings-section">
+        <div class="settings-section-title">結果確率テーブル（合計が100になるよう設定）</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">各行の合計が100になるようにしてください</div>
+<div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px"><div style="font-size:10px;color:var(--text3)">スコア帯</div><div style="font-size:9px;font-weight:700;color:#4fc97e;text-align:center">大成功</div><div style="font-size:9px;font-weight:700;color:#88e0a8;text-align:center">成功</div><div style="font-size:9px;font-weight:700;color:#ffd700;text-align:center">名誉</div><div style="font-size:9px;font-weight:700;color:#f0c040;text-align:center">波乱</div><div style="font-size:9px;font-weight:700;color:#ff9966;text-align:center">逃げ帰る</div><div style="font-size:9px;font-weight:700;color:#ff7777;text-align:center">捕虜</div><div style="font-size:9px;font-weight:700;color:#cc66cc;text-align:center">行方不明</div><div style="font-size:9px;font-weight:700;color:#ff4444;text-align:center">死亡</div></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">スコア120+(t0)以上</div><input id="p0-0" type="number" value="99" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-1" type="number" value="1" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-2" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-3" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-4" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-5" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-6" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p0-7" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">スコア100+(t1)以上</div><input id="p1-0" type="number" value="80" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-1" type="number" value="20" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-2" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-3" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-4" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-5" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-6" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p1-7" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">スコア82+(t2)以上</div><input id="p2-0" type="number" value="10" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-1" type="number" value="55" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-2" type="number" value="35" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-3" type="number" value="5" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-4" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-5" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-6" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p2-7" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">スコア65+(t3)以上</div><input id="p3-0" type="number" value="2" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-1" type="number" value="15" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-2" type="number" value="5" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-3" type="number" value="45" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-4" type="number" value="25" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-5" type="number" value="5" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-6" type="number" value="2" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p3-7" type="number" value="1" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">スコア45+(t4)以上</div><input id="p4-0" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-1" type="number" value="5" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-2" type="number" value="3" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-3" type="number" value="20" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-4" type="number" value="35" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-5" type="number" value="20" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-6" type="number" value="12" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p4-7" type="number" value="5" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">スコア28+(t5)以上</div><input id="p5-0" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-1" type="number" value="1" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-2" type="number" value="2" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-3" type="number" value="12" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-4" type="number" value="28" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-5" type="number" value="22" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-6" type="number" value="20" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p5-7" type="number" value="15" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div><div style="display:grid;grid-template-columns:80px repeat(8,1fr);gap:3px;margin-bottom:4px;align-items:center"><div style="font-size:10px;color:var(--text2)">t5未満</div><input id="p6-0" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-1" type="number" value="0" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-2" type="number" value="1" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-3" type="number" value="8" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-4" type="number" value="20" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-5" type="number" value="22" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-6" type="number" value="24" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"><input id="p6-7" type="number" value="25" min="0" max="100" style="width:100%;padding:2px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;text-align:center" oninput="updateViz()"></div>      </div>
+
       <div class="settings-section">
         <div class="settings-section-title">ランクボーナス（マイナスも可）</div>
         <table class="rank-table">
