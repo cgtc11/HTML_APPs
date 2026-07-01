@@ -13,6 +13,7 @@
   }
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <input type="file" id="hdr-input" accept=".hdr,.exr" style="display:none">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap');
@@ -140,7 +141,30 @@ canvas { display: block; }
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 5px;
 }
+.render-preset-btn {
+  font-size: 0.62rem; font-family: var(--mono); padding: 2px 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border-hi);
+  color: var(--text-dim); border-radius: 4px; cursor: pointer; letter-spacing: .04em;
+}
+.render-preset-btn:hover { border-color: var(--accent); color: var(--accent); }
 .info-label { font-size: 0.68rem; font-family: var(--mono); color: var(--text-dim); }
+.tex-drop {
+  width: 22px; height: 22px; flex-shrink: 0; margin-left: 4px;
+  border: 1px dashed var(--text-dim); border-radius: 4px; cursor: pointer;
+  background-size: cover; background-position: center; background-color: rgba(255,255,255,0.03);
+  position: relative; transition: border-color 0.15s, transform 0.1s;
+}
+.tex-drop:hover { border-color: var(--accent); }
+.tex-drop.drag-over { border-color: var(--accent); transform: scale(1.12); box-shadow: 0 0 8px rgba(91,141,239,0.5); }
+.tex-drop.has-tex { border-style: solid; border-color: var(--accent2); }
+.tex-drop .tex-drop-x {
+  display: none; position: absolute; top: -6px; right: -6px; width: 14px; height: 14px;
+  border-radius: 50%; background: #c0392b; color: #fff; font-size: 10px; line-height: 14px;
+  text-align: center; cursor: pointer; font-family: var(--mono);
+}
+.tex-drop.has-tex .tex-drop-x { display: block; }
+.lrow.has-map input[type="color"] { opacity: 0.35; pointer-events: none; }
+.tex-drop-label { font-size: 0.6rem; color: var(--text-dim); font-family: var(--mono); margin-left: 4px; }
 .info-value { font-size: 0.72rem; font-family: var(--mono); color: var(--text); }
 
 #open-btn {
@@ -438,6 +462,30 @@ body.ui-sleeping { cursor: none; }
 
 <!-- Canvas -->
 <div id="canvas-wrap"></div>
+<!-- Render Area Overlay -->
+<div id="render-area-overlay" style="
+  display:none; position:fixed; inset:0; pointer-events:none; z-index:500;
+">
+  <!-- 上下左右のマスク(暗転) -->
+  <div id="rao-top"    style="position:absolute;left:0;right:0;top:0;background:rgba(0,0,0,0.55)"></div>
+  <div id="rao-bottom" style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55)"></div>
+  <div id="rao-left"   style="position:absolute;top:0;bottom:0;left:0;background:rgba(0,0,0,0.55)"></div>
+  <div id="rao-right"  style="position:absolute;top:0;bottom:0;right:0;background:rgba(0,0,0,0.55)"></div>
+  <!-- フレームボーダー -->
+  <div id="rao-frame" style="position:absolute;box-sizing:border-box;
+    border:1px solid rgba(232,160,64,0.85);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.5);
+    outline: 1px dashed rgba(232,160,64,0.4);">
+    <!-- サイズラベル -->
+    <div id="rao-label" style="
+      position:absolute;top:6px;left:8px;
+      font-family:var(--mono);font-size:0.68rem;
+      color:rgba(232,160,64,0.9);
+      text-shadow:0 1px 3px rgba(0,0,0,0.9);
+      pointer-events:none;letter-spacing:.05em;
+    "></div>
+  </div>
+</div>
 
 <!-- VRM Badge -->
 <div id="vrm-badge">▸ VRM</div>
@@ -670,6 +718,307 @@ body.ui-sleeping { cursor: none; }
   </div>
 </div>
 
+
+<!-- Render Panel -->
+<div class="panel" id="panel-render" style="display:none;width:260px">
+  <div class="panel-header">
+    <div class="dot" style="background:#e8a040;box-shadow:0 0 6px #e8a040"></div>
+    <span>Render</span>
+  </div>
+
+  <!-- Size -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#e8a040"></div>Size</div>
+    <div class="lrow" style="gap:4px">
+      <label style="min-width:28px">W</label>
+      <input type="number" id="render-w" min="1" max="16384" value="1920"
+        style="width:70px;background:rgba(255,255,255,0.05);border:1px solid var(--border-hi);color:var(--text);font-family:var(--mono);font-size:0.75rem;padding:2px 4px;border-radius:4px">
+      <label style="min-width:12px">H</label>
+      <input type="number" id="render-h" min="1" max="16384" value="1080"
+        style="width:70px;background:rgba(255,255,255,0.05);border:1px solid var(--border-hi);color:var(--text);font-family:var(--mono);font-size:0.75rem;padding:2px 4px;border-radius:4px">
+    </div>
+    <div class="lrow" style="flex-wrap:wrap;gap:4px;margin-top:2px">
+      <button class="render-preset-btn" data-w="1280"  data-h="720">HD</button>
+      <button class="render-preset-btn" data-w="1920"  data-h="1080">FHD</button>
+      <button class="render-preset-btn" data-w="2560"  data-h="1440">2K</button>
+      <button class="render-preset-btn" data-w="3840"  data-h="2160">4K</button>
+      <button class="render-preset-btn" data-w="1080"  data-h="1080">1:1</button>
+      <button class="render-preset-btn" id="render-preset-current">NOW</button>
+    </div>
+    <div class="lrow" style="margin-top:4px">
+      <button id="render-preview-btn" style="flex:1;padding:5px;background:rgba(232,160,64,0.12);border:1px solid #e8a040;color:#e8a040;font-family:var(--mono);font-size:0.72rem;border-radius:5px;cursor:pointer;letter-spacing:.05em">🔲 SHOW RENDER AREA</button>
+    </div>
+  </div>
+
+  <!-- Single -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#7fe8a0"></div>Screenshot (1枚)</div>
+    <div class="lrow" style="margin-top:4px">
+      <button id="render-single-btn" style="flex:1;padding:6px;background:rgba(91,141,239,0.15);border:1px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:0.72rem;border-radius:5px;cursor:pointer;letter-spacing:.05em">📷 RENDER &amp; SAVE PNG</button>
+    </div>
+  </div>
+
+  <!-- Sequence -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#d97fde"></div>Turntable Sequence (連番)</div>
+    <div class="lrow" style="gap:4px">
+      <label style="min-width:52px">FRAMES</label>
+      <input type="number" id="render-frames" min="1" max="9999" value="360"
+        style="width:70px;background:rgba(255,255,255,0.05);border:1px solid var(--border-hi);color:var(--text);font-family:var(--mono);font-size:0.75rem;padding:2px 4px;border-radius:4px">
+    </div>
+    <div class="lrow"><label style="min-width:52px">PREFIX</label>
+      <input type="text" id="render-prefix" value="frame"
+        style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border-hi);color:var(--text);font-family:var(--mono);font-size:0.75rem;padding:2px 4px;border-radius:4px">
+    </div>
+    <div class="lrow" style="margin-top:4px">
+      <button id="render-seq-btn" style="flex:1;padding:6px;background:rgba(155,111,239,0.15);border:1px solid var(--accent2);color:var(--accent2);font-family:var(--mono);font-size:0.72rem;border-radius:5px;cursor:pointer;letter-spacing:.05em">🎞 RENDER SEQUENCE → ZIP</button>
+    </div>
+    <!-- Progress -->
+    <div id="render-progress-wrap" style="display:none;margin-top:6px">
+      <div style="font-size:0.65rem;font-family:var(--mono);color:var(--text-dim);margin-bottom:3px" id="render-progress-label">0 / 360</div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;overflow:hidden">
+        <div id="render-progress-bar" style="height:100%;width:0%;background:var(--accent2);transition:width 0.1s"></div>
+      </div>
+      <button id="render-cancel-btn" style="margin-top:5px;font-size:0.65rem;font-family:var(--mono);background:rgba(200,60,60,0.15);border:1px solid #c03c3c;color:#e08080;padding:2px 8px;border-radius:4px;cursor:pointer">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Post Processing Panel -->
+<div class="panel" id="panel-post" style="display:none">
+  <div class="panel-header">
+    <div class="dot" style="background:#52d9c8;box-shadow:0 0 6px #52d9c8"></div>
+    <span>Post Processing</span>
+    <button id="post-reset-btn" style="margin-left:auto;font-size:0.65rem;font-family:var(--mono);background:rgba(255,255,255,0.06);border:1px solid var(--border-hi);color:var(--text-dim);padding:2px 8px;border-radius:4px;cursor:pointer;letter-spacing:.05em">RESET</button>
+  </div>
+
+  <!-- Enable -->
+  <div class="light-section">
+    <div class="lrow"><label>ENABLE</label>
+      <label class="toggle" style="margin-left:auto">
+        <input type="checkbox" id="post-enable">
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Bloom -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#ffe066"></div>Bloom</div>
+    <div class="lrow"><label>ENABLE</label>
+      <label class="toggle" style="margin-left:auto">
+        <input type="checkbox" id="bloom-enable" checked>
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="lrow"><label>STRENGTH</label>
+      <input type="range" id="bloom-strength" min="0" max="3" step="0.01" value="0.4">
+      <span class="lval" id="bloom-strength-v">0.40</span></div>
+    <div class="lrow"><label>RADIUS</label>
+      <input type="range" id="bloom-radius" min="0" max="1" step="0.01" value="0.4">
+      <span class="lval" id="bloom-radius-v">0.40</span></div>
+    <div class="lrow"><label>THRESHOLD</label>
+      <input type="range" id="bloom-threshold" min="0" max="1" step="0.01" value="0.5">
+      <span class="lval" id="bloom-threshold-v">0.50</span></div>
+  </div>
+
+  <!-- Color Grading -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#d97fde"></div>Color Grading</div>
+    <div class="lrow"><label>BRIGHTNESS</label>
+      <input type="range" id="post-brightness" min="-1" max="1" step="0.01" value="0">
+      <span class="lval" id="post-brightness-v">0.00</span></div>
+    <div class="lrow"><label>CONTRAST</label>
+      <input type="range" id="post-contrast" min="-1" max="1" step="0.01" value="0">
+      <span class="lval" id="post-contrast-v">0.00</span></div>
+    <div class="lrow"><label>SATURATION</label>
+      <input type="range" id="post-saturation" min="-1" max="1" step="0.01" value="0">
+      <span class="lval" id="post-saturation-v">0.00</span></div>
+    <div class="lrow"><label>HUE</label>
+      <input type="range" id="post-hue" min="-180" max="180" step="1" value="0">
+      <span class="lval" id="post-hue-v">0°</span></div>
+  </div>
+
+  <!-- Levels -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#7fb8e8"></div>Levels</div>
+    <div class="lrow"><label>IN BLACK</label>
+      <input type="range" id="post-in-black" min="0" max="1" step="0.01" value="0">
+      <span class="lval" id="post-in-black-v">0.00</span></div>
+    <div class="lrow"><label>IN WHITE</label>
+      <input type="range" id="post-in-white" min="0" max="1" step="0.01" value="1">
+      <span class="lval" id="post-in-white-v">1.00</span></div>
+    <div class="lrow"><label>GAMMA</label>
+      <input type="range" id="post-gamma" min="0.1" max="4" step="0.01" value="1">
+      <span class="lval" id="post-gamma-v">1.00</span></div>
+    <div class="lrow"><label>OUT BLACK</label>
+      <input type="range" id="post-out-black" min="0" max="1" step="0.01" value="0">
+      <span class="lval" id="post-out-black-v">0.00</span></div>
+    <div class="lrow"><label>OUT WHITE</label>
+      <input type="range" id="post-out-white" min="0" max="1" step="0.01" value="1">
+      <span class="lval" id="post-out-white-v">1.00</span></div>
+  </div>
+
+  <!-- Vignette -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#e87a7a"></div>Vignette</div>
+    <div class="lrow"><label>INTENSITY</label>
+      <input type="range" id="post-vignette" min="0" max="1" step="0.01" value="0">
+      <span class="lval" id="post-vignette-v">0.00</span></div>
+    <div class="lrow"><label>SMOOTHNESS</label>
+      <input type="range" id="post-vignette-sm" min="0.1" max="1" step="0.01" value="0.5">
+      <span class="lval" id="post-vignette-sm-v">0.50</span></div>
+  </div>
+
+  <!-- Chromatic Aberration -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#7fe8a0"></div>Chromatic Aberration</div>
+    <div class="lrow"><label>INTENSITY</label>
+      <input type="range" id="post-chroma" min="0" max="0.02" step="0.0001" value="0">
+      <span class="lval" id="post-chroma-v">0.000</span></div>
+  </div>
+</div>
+
+<!-- Toon Panel -->
+<div class="panel" id="panel-toon" style="display:none">
+  <div class="panel-header">
+    <div class="dot" style="background:#e87040;box-shadow:0 0 6px #e87040"></div>
+    <span>SP Toon Shader</span>
+  </div>
+
+  <!-- Light Position -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#f0c060"></div>Light Position</div>
+    <div class="lrow"><label>X</label>
+      <input type="range" id="toon-lx" min="-20" max="20" step="0.1" value="10">
+      <span class="lval" id="toon-lx-v">10.0</span></div>
+    <div class="lrow"><label>Y</label>
+      <input type="range" id="toon-ly" min="-20" max="20" step="0.1" value="10">
+      <span class="lval" id="toon-ly-v">10.0</span></div>
+    <div class="lrow"><label>Z</label>
+      <input type="range" id="toon-lz" min="-20" max="20" step="0.1" value="10">
+      <span class="lval" id="toon-lz-v">10.0</span></div>
+  </div>
+
+  <!-- Outline -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#5b8def"></div>Outline</div>
+    <div class="lrow">
+      <label style="min-width:52px">ENABLE</label>
+      <label class="toggle" style="margin-left:auto">
+        <input type="checkbox" id="toon-use-outline" checked>
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="lrow"><label>THICK</label>
+      <input type="range" id="toon-ot" min="0" max="1" step="0.005" value="0.2">
+      <span class="lval" id="toon-ot-v">0.200</span></div>
+    <div class="lrow"><label>BLUR</label>
+      <input type="range" id="toon-ob" min="0" max="5" step="0.01" value="0">
+      <span class="lval" id="toon-ob-v">0.000</span></div>
+    <div class="lrow"><label>COLOR</label>
+      <input type="color" id="toon-oc" value="#004cff" style="flex:1;height:22px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-oc-tex" data-key="uOutlineColor" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div>
+    </div>
+  </div>
+
+  <!-- Inline -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#e87040"></div>Inline</div>
+    <div class="lrow"><label>THICK</label>
+      <input type="range" id="toon-it" min="0" max="1" step="0.005" value="0.3">
+      <span class="lval" id="toon-it-v">0.300</span></div>
+    <div class="lrow"><label>BLUR</label>
+      <input type="range" id="toon-ib" min="0" max="5" step="0.01" value="0">
+      <span class="lval" id="toon-ib-v">0.000</span></div>
+    <div class="lrow"><label>ON TOP</label>
+      <input type="range" id="toon-ion" min="0" max="1" step="0.01" value="1">
+      <span class="lval" id="toon-ion-v">1.00</span></div>
+    <div class="lrow"><label>COLOR</label>
+      <input type="color" id="toon-ic" value="#5d0700" style="flex:1;height:22px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-ic-tex" data-key="uInlineColor" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div>
+    </div>
+  </div>
+
+  <!-- Maps -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#52d97f"></div>Maps</div>
+    <div class="lrow"><label>CURVATURE</label>
+      <div class="tex-drop" id="toon-curv-tex" data-key="uCurvatureMap" title="曲率マップをドラッグ&amp;ドロップ"><span class="tex-drop-x">×</span></div>
+      <span class="tex-drop-label">未割当=近似曲率を使用</span></div>
+    <div class="lrow"><label>CURV INV</label>
+      <label class="toggle" style="margin-left:auto">
+        <input type="checkbox" id="toon-curv-invert">
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="lrow"><label>NORMAL</label>
+      <div class="tex-drop" id="toon-normal-tex" data-key="uNormalMap" title="ノーマルマップをドラッグ&amp;ドロップ"><span class="tex-drop-x">×</span></div>
+      <span class="tex-drop-label">タンジェント空間</span></div>
+    <div class="lrow"><label>N-SCALE</label>
+      <input type="range" id="toon-nscale" min="0" max="3" step="0.01" value="1">
+      <span class="lval" id="toon-nscale-v">1.00</span></div>
+  </div>
+
+  <!-- Toon Gradation -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#9b6fef"></div>Toon Gradation</div>
+    <div class="lrow"><label>P2</label>
+      <input type="range" id="toon-p2" min="-1" max="1" step="0.01" value="0">
+      <span class="lval" id="toon-p2-v">0.00</span></div>
+    <div class="lrow"><label>P3</label>
+      <input type="range" id="toon-p3" min="-1" max="1" step="0.01" value="-1">
+      <span class="lval" id="toon-p3-v">-1.00</span></div>
+    <div class="lrow"><label>P4</label>
+      <input type="range" id="toon-p4" min="-1" max="1" step="0.01" value="-1">
+      <span class="lval" id="toon-p4-v">-1.00</span></div>
+    <div class="lrow"><label>P5</label>
+      <input type="range" id="toon-p5" min="-1" max="1" step="0.01" value="-1">
+      <span class="lval" id="toon-p5-v">-1.00</span></div>
+    <div class="lrow"><label>P6</label>
+      <input type="range" id="toon-p6" min="-1" max="1" step="0.01" value="-1">
+      <span class="lval" id="toon-p6-v">-1.00</span></div>
+    <div class="lrow"><label>P7</label>
+      <input type="range" id="toon-p7" min="-1" max="1" step="0.01" value="-1">
+      <span class="lval" id="toon-p7-v">-1.00</span></div>
+    <div class="lrow"><label>BLUR</label>
+      <input type="range" id="toon-tb" min="0" max="5" step="0.01" value="0">
+      <span class="lval" id="toon-tb-v">0.000</span></div>
+  </div>
+
+  <!-- Colors -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#aaa"></div>Toon Colors</div>
+    <div class="lrow"><label style="min-width:52px">ORIG TEX</label>
+      <label class="toggle" style="margin-left:auto">
+        <input type="checkbox" id="toon-c0-use-orig" checked>
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="lrow"><label>BASE</label>
+      <input type="color" id="toon-c0" value="#ffffff" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c0-tex" data-key="uBaseColor" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+    <div class="lrow"><label>C2</label>
+      <input type="color" id="toon-c2" value="#8d8d8d" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c2-tex" data-key="uToonColor2" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+    <div class="lrow"><label>C3</label>
+      <input type="color" id="toon-c3" value="#3b3b3b" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c3-tex" data-key="uToonColor3" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+    <div class="lrow"><label>C4</label>
+      <input type="color" id="toon-c4" value="#181818" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c4-tex" data-key="uToonColor4" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+    <div class="lrow"><label>C5</label>
+      <input type="color" id="toon-c5" value="#121212" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c5-tex" data-key="uToonColor5" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+    <div class="lrow"><label>C6</label>
+      <input type="color" id="toon-c6" value="#060606" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c6-tex" data-key="uToonColor6" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+    <div class="lrow"><label>C7</label>
+      <input type="color" id="toon-c7" value="#040404" style="flex:1;height:20px;border:none;background:none;cursor:pointer">
+      <div class="tex-drop" id="toon-c7-tex" data-key="uToonColor7" title="ドラッグ&amp;ドロップでテクスチャ割り当て"><span class="tex-drop-x">×</span></div></div>
+  </div>
+</div>
+
 <!-- Anim Panel -->
 <div class="panel" id="panel-anim">
   <div class="panel-header">
@@ -697,6 +1046,8 @@ body.ui-sleeping { cursor: none; }
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-xray">XRAY</button>
     <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-toon">TOON</button>
+    <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-light">LIGHT</button>
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-physics">PHYSICS</button>
@@ -707,12 +1058,25 @@ body.ui-sleeping { cursor: none; }
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-bg">BG</button>
     <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-post">POST</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-render">RENDER</button>
+    <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-fs">⛶ FULL</button>
   </div>
   <div class="toolbar-row">
     <button class="tool-btn active" id="btn-rot-cam">ROT:CAM</button>
     <button class="tool-btn" id="btn-rot-obj">ROT:OBJ</button>
     <div class="tool-sep"></div>
+    <button class="tool-btn active" id="btn-persp">PERSP</button>
+    <button class="tool-btn" id="btn-ortho">ORTHO</button>
+    <div class="tool-sep"></div>
+    <div class="tool-slider-group">
+      <span class="tool-slider-label">FOV</span>
+      <input type="range" id="cam-fov" min="5" max="120" step="1" value="45">
+      <span class="tool-slider-val" id="cam-fov-v">45°</span>
+    </div>
+    <div class="tool-sep" style="height:14px;width:1px;margin:0 4px"></div>
     <div class="tool-slider-group">
       <span class="tool-slider-label">IDLE</span>
       <input type="range" id="idle-time" min="3" max="60" step="1" value="10">
@@ -741,12 +1105,16 @@ import { RGBELoader }      from 'three/addons/loaders/RGBELoader.js';
 import { EXRLoader }       from 'three/addons/loaders/EXRLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass }      from 'three/addons/postprocessing/ShaderPass.js';
 
 // ════════════════════════════════════════
 //  Renderer
 // ════════════════════════════════════════
 const wrap = document.getElementById('canvas-wrap');
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -765,7 +1133,13 @@ scene.background = new THREE.Color(0x0d0d0f);
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 2000);
 camera.position.set(0, 1.5, 4);
 
-const controls = new OrbitControls(camera, renderer.domElement);
+// 正投影カメラ(サイズはリセット時に調整)
+const orthoCamera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.01, 2000);
+orthoCamera.position.set(0, 1.5, 4);
+
+let activeCamera = camera;  // 現在使用中のカメラ
+
+const controls = new OrbitControls(activeCamera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.minDistance = 0.01;
@@ -1113,6 +1487,12 @@ function onLoaded(model, name, fmt) {
   // ── Physics setup ──
   setupPhysicsPanel(fmt);
 
+  // Toonが有効なら新しいモデルにも適用
+  if (toonMode && typeof applyToonToModel !== 'undefined') {
+    toonBackup.length = 0;
+    applyToonToModel(model, true);
+  }
+
   wakeUp();
   toast(`✓  ${name} を読み込みました`);
 }
@@ -1423,8 +1803,20 @@ function resetCamera() {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
   const fitDist = maxDim * 1.8;
+  const targetY = size.y * 0.4;
+
   camera.position.set(fitDist * 0.5, size.y * 0.5, fitDist);
-  controls.target.set(0, size.y * 0.4, 0);
+  controls.target.set(0, targetY, 0);
+
+  // 正投影カメラも同期
+  const h = fitDist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const aspect = window.innerWidth / window.innerHeight;
+  orthoCamera.position.set(fitDist * 0.5, size.y * 0.5, fitDist);
+  orthoCamera.top    =  h; orthoCamera.bottom = -h;
+  orthoCamera.left   = -h * aspect; orthoCamera.right = h * aspect;
+  orthoCamera.near   = camera.near; orthoCamera.far   = camera.far;
+  orthoCamera.updateProjectionMatrix();
+
   controls.update();
 }
 
@@ -1507,6 +1899,59 @@ let rotMode = 'cam'; // 'cam' | 'obj'
 
 const btnRotCam = document.getElementById('btn-rot-cam');
 const btnRotObj = document.getElementById('btn-rot-obj');
+
+// ── PERSP / ORTHO ──
+const btnPersp = document.getElementById('btn-persp');
+const btnOrtho = document.getElementById('btn-ortho');
+
+function switchToPersp() {
+  // 現在のOrbitControlsの視点をperspカメラに引き継ぐ
+  activeCamera = camera;
+  controls.object = camera;
+  camera.position.copy(orthoCamera.position);
+  controls.target.copy(controls.target); // targetは共有済み
+  controls.update();
+  renderPass.camera = camera;
+  btnPersp.classList.add('active');
+  btnOrtho.classList.remove('active');
+  document.getElementById('cam-fov').disabled = false;
+}
+
+function switchToOrtho() {
+  // 現在のperspカメラの位置を正投影カメラに引き継ぐ
+  orthoCamera.position.copy(camera.position);
+  // frustrum高さ: 距離とFOVから計算
+  const dist = camera.position.distanceTo(controls.target);
+  const h = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const aspect = window.innerWidth / window.innerHeight;
+  orthoCamera.top    =  h;
+  orthoCamera.bottom = -h;
+  orthoCamera.left   = -h * aspect;
+  orthoCamera.right  =  h * aspect;
+  orthoCamera.near   = camera.near;
+  orthoCamera.far    = camera.far;
+  orthoCamera.updateProjectionMatrix();
+  activeCamera = orthoCamera;
+  controls.object = orthoCamera;
+  controls.update();
+  renderPass.camera = orthoCamera;
+  btnOrtho.classList.add('active');
+  btnPersp.classList.remove('active');
+  document.getElementById('cam-fov').disabled = true;
+}
+
+btnPersp.addEventListener('click', switchToPersp);
+btnOrtho.addEventListener('click', switchToOrtho);
+
+// ── FOV スライダー ──
+const fovSlider = document.getElementById('cam-fov');
+const fovLabel  = document.getElementById('cam-fov-v');
+fovSlider.addEventListener('input', () => {
+  camera.fov = parseFloat(fovSlider.value);
+  camera.updateProjectionMatrix();
+  fovLabel.textContent = fovSlider.value + '°';
+});
+
 
 btnRotCam.addEventListener('click', () => {
   rotMode = 'cam';
@@ -1857,8 +2302,14 @@ loopBtn.classList.add('active');
 //  Resize
 // ════════════════════════════════════════
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = aspect;
   camera.updateProjectionMatrix();
+  // 正投影カメラのfrustrumも比率維持して更新
+  const h = orthoCamera.top;
+  orthoCamera.left   = -h * aspect;
+  orthoCamera.right  =  h * aspect;
+  orthoCamera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
@@ -1880,9 +2331,959 @@ function animate() {
     springSim.update(delta, currentModel.rotation.y);
   }
 
-  renderer.render(scene, camera);
+  if (postEnabled) composer.render(); else renderer.render(scene, activeCamera);
 }
+
+// ════════════════════════════════════════
+//  Post Processing
+// ════════════════════════════════════════
+let postEnabled = false;
+
+// ── カラーグレーディング + レベル補正 + ビネット + 色収差 ShaderPass ──
+const ColorGradeShader = {
+  uniforms: {
+    tDiffuse:    { value: null },
+    brightness:  { value: 0.0 },
+    contrast:    { value: 0.0 },
+    saturation:  { value: 0.0 },
+    hue:         { value: 0.0 },
+    inBlack:     { value: 0.0 },
+    inWhite:     { value: 1.0 },
+    gamma:       { value: 1.0 },
+    outBlack:    { value: 0.0 },
+    outWhite:    { value: 1.0 },
+    vigIntensity:{ value: 0.0 },
+    vigSmoothness:{ value: 0.5 },
+    chroma:      { value: 0.0 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float brightness, contrast, saturation, hue;
+    uniform float inBlack, inWhite, gamma, outBlack, outWhite;
+    uniform float vigIntensity, vigSmoothness;
+    uniform float chroma;
+    varying vec2 vUv;
+
+    vec3 hueRotate(vec3 col, float angle) {
+      float c = cos(angle), s = sin(angle);
+      mat3 m = mat3(
+        vec3(0.213+c*0.787-s*0.213, 0.715-c*0.715-s*0.715, 0.072-c*0.072+s*0.928),
+        vec3(0.213-c*0.213+s*0.143, 0.715+c*0.285+s*0.140, 0.072-c*0.072-s*0.283),
+        vec3(0.213-c*0.213-s*0.787, 0.715-c*0.715+s*0.715, 0.072+c*0.928+s*0.072)
+      );
+      return clamp(m * col, 0.0, 1.0);
+    }
+
+    float applyLevels(float v) {
+      v = clamp((v - inBlack) / max(inWhite - inBlack, 0.0001), 0.0, 1.0);
+      v = pow(v, 1.0 / max(gamma, 0.0001));
+      return outBlack + v * (outWhite - outBlack);
+    }
+
+    void main() {
+      // Chromatic Aberration
+      vec2 dir = vUv - 0.5;
+      vec3 col;
+      col.r = texture2D(tDiffuse, vUv + dir * chroma).r;
+      col.g = texture2D(tDiffuse, vUv).g;
+      col.b = texture2D(tDiffuse, vUv - dir * chroma).b;
+
+      // Brightness
+      col += brightness;
+
+      // Contrast (pivot=0.5)
+      col = (col - 0.5) * (1.0 + contrast) + 0.5;
+
+      // Saturation
+      float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+      col = mix(vec3(lum), col, 1.0 + saturation);
+
+      // Hue
+      if (abs(hue) > 0.0001) col = hueRotate(col, hue);
+
+      // Levels (per channel)
+      col.r = applyLevels(col.r);
+      col.g = applyLevels(col.g);
+      col.b = applyLevels(col.b);
+
+      col = clamp(col, 0.0, 1.0);
+
+      // Vignette
+      float vd = length(dir) * 1.41421;
+      float vig = smoothstep(1.0 - vigSmoothness, 1.0, vd * vigIntensity * 2.0);
+      col *= 1.0 - vig;
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+};
+
+// Composer構築
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, activeCamera);
+composer.addPass(renderPass);
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.4, 0.4, 0.5
+);
+bloomPass.enabled = true;
+composer.addPass(bloomPass);
+
+const colorGradePass = new ShaderPass(ColorGradeShader);
+colorGradePass.renderToScreen = true;
+composer.addPass(colorGradePass);
+
+// resize対応
+window.addEventListener('resize', () => {
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── パネル & バインディング ──
+const panelPost = document.getElementById('panel-post');
+document.getElementById('btn-post').addEventListener('click', () => {
+  const isOpen = panelPost.style.display !== 'none';
+  panelPost.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('btn-post').classList.toggle('active', !isOpen);
+});
+
+function bindPostCheck(id, fn) {
+  document.getElementById(id).addEventListener('change', e => fn(e.target.checked));
+}
+function bindPostRange(id, labelId, decimals, fn) {
+  const el = document.getElementById(id);
+  const lbl = document.getElementById(labelId);
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    lbl.textContent = labelId.includes('hue') ? v + '°' : v.toFixed(decimals);
+    fn(v);
+  });
+}
+
+bindPostCheck('post-enable', v => { postEnabled = v; });
+bindPostCheck('bloom-enable', v => { bloomPass.enabled = v; });
+
+// ── POST RESET ──
+const POST_DEFAULTS = {
+  'bloom-strength':  0.4,  'bloom-radius':   0.4,  'bloom-threshold': 0.5,
+  'post-brightness': 0,    'post-contrast':  0,     'post-saturation': 0,    'post-hue': 0,
+  'post-in-black':   0,    'post-in-white':  1,     'post-gamma':      1,
+  'post-out-black':  0,    'post-out-white': 1,
+  'post-vignette':   0,    'post-vignette-sm': 0.5,
+  'post-chroma':     0,
+};
+document.getElementById('post-reset-btn').addEventListener('click', () => {
+  document.getElementById('post-enable').checked  = false; postEnabled = false;
+  document.getElementById('bloom-enable').checked = true;  bloomPass.enabled = true;
+  for (const [id, val] of Object.entries(POST_DEFAULTS)) {
+    const el = document.getElementById(id);
+    if (el) { el.value = val; el.dispatchEvent(new Event('input')); }
+  }
+});
+
+bindPostRange('bloom-strength',  'bloom-strength-v',  2, v => bloomPass.strength  = v);
+bindPostRange('bloom-radius',    'bloom-radius-v',    2, v => bloomPass.radius    = v);
+bindPostRange('bloom-threshold', 'bloom-threshold-v', 2, v => bloomPass.threshold = v);
+
+const cgu = colorGradePass.uniforms;
+bindPostRange('post-brightness',   'post-brightness-v',   2, v => cgu.brightness.value    = v);
+bindPostRange('post-contrast',     'post-contrast-v',     2, v => cgu.contrast.value      = v);
+bindPostRange('post-saturation',   'post-saturation-v',   2, v => cgu.saturation.value    = v);
+bindPostRange('post-hue',          'post-hue-v',          0, v => cgu.hue.value           = v * Math.PI / 180);
+bindPostRange('post-in-black',     'post-in-black-v',     2, v => cgu.inBlack.value       = v);
+bindPostRange('post-in-white',     'post-in-white-v',     2, v => cgu.inWhite.value       = v);
+bindPostRange('post-gamma',        'post-gamma-v',        2, v => cgu.gamma.value         = v);
+bindPostRange('post-out-black',    'post-out-black-v',    2, v => cgu.outBlack.value      = v);
+bindPostRange('post-out-white',    'post-out-white-v',    2, v => cgu.outWhite.value      = v);
+bindPostRange('post-vignette',     'post-vignette-v',     2, v => cgu.vigIntensity.value  = v);
+bindPostRange('post-vignette-sm',  'post-vignette-sm-v',  2, v => cgu.vigSmoothness.value = v);
+bindPostRange('post-chroma',       'post-chroma-v',       3, v => cgu.chroma.value        = v);
+// ════════════════════════════════════════
+const TOON_VERT = `
+varying vec3 vNormalW;
+varying vec3 vPosW;
+varying vec3 vViewDir;
+varying vec2 vUv;
+
+void main() {
+  vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  vPosW    = worldPos.xyz;
+  vNormalW = normalize(mat3(modelMatrix) * normal);
+  vViewDir = normalize(cameraPosition - worldPos.xyz);
+  vUv      = uv;
+  gl_Position = projectionMatrix * viewMatrix * worldPos;
+}
+`;
+
+const TOON_FRAG = `
+precision highp float;
+
+varying vec3 vNormalW;
+varying vec3 vPosW;
+varying vec3 vViewDir;
+varying vec2 vUv;
+
+uniform vec3  uLightPos;
+uniform int   uUseOutline;
+uniform float uOutlineThickness;
+uniform float uOutlineBlur;
+uniform float uInlineThickness;
+uniform float uInlineBlur;
+uniform float uInlineOnTop;
+uniform float uToonParam2;
+uniform float uToonParam3;
+uniform float uToonParam4;
+uniform float uToonParam5;
+uniform float uToonParam6;
+uniform float uToonParam7;
+uniform float uToonBlur;
+uniform vec3  uBaseColor;
+uniform vec3  uOutlineColor;
+uniform vec3  uInlineColor;
+uniform vec3  uToonColor2;
+uniform vec3  uToonColor3;
+uniform vec3  uToonColor4;
+uniform vec3  uToonColor5;
+uniform vec3  uToonColor6;
+uniform vec3  uToonColor7;
+
+// オリジナルGLBテクスチャ (ORIG TEX乗算用・メッシュ固有)
+uniform sampler2D uOrigMap;
+uniform int       uHasOrigMap;
+uniform int       uUseOrigTex;   // ORIG TEXトグル(0/1)
+
+// ユーザーがBASEスロットへドロップしたテクスチャ
+uniform sampler2D uUserBaseMap;
+uniform int       uHasUserBaseMap;
+
+// 各カラースロットのテクスチャ
+uniform sampler2D uOutlineColorMap; uniform int uHasOutlineColorMap;
+uniform sampler2D uInlineColorMap;  uniform int uHasInlineColorMap;
+uniform sampler2D uToonColor2Map;   uniform int uHasToonColor2Map;
+uniform sampler2D uToonColor3Map;   uniform int uHasToonColor3Map;
+uniform sampler2D uToonColor4Map;   uniform int uHasToonColor4Map;
+uniform sampler2D uToonColor5Map;   uniform int uHasToonColor5Map;
+uniform sampler2D uToonColor6Map;   uniform int uHasToonColor6Map;
+uniform sampler2D uToonColor7Map;   uniform int uHasToonColor7Map;
+
+// 曲率マップ
+uniform sampler2D uCurvatureMap;
+uniform int       uHasCurvatureMap;
+uniform int       uInvertCurvature; // 0=そのまま, 1=反転
+
+// ノーマルマップ
+uniform sampler2D uNormalMap;
+uniform int       uHasNormalMap;
+uniform float     uNormalScale;
+
+float toonMix(float ndl, float param, float blur) {
+  if (blur <= 0.000001) return ndl <= param ? 1.0 : 0.0;
+  return 1.0 - smoothstep(param - blur, param + blur, ndl);
+}
+
+float curvatureApprox() {
+  vec2 uv = vUv;
+  float edge = min(min(uv.x, 1.0-uv.x), min(uv.y, 1.0-uv.y));
+  float normEdge = 1.0 - abs(vNormalW.y);
+  return clamp(edge * 2.0 * normEdge, 0.0, 1.0);
+}
+
+// Three.js公式準拠のタンジェント空間ノーマルパータベーション(ワールド空間版)
+vec3 perturbNormal2Arb(vec3 posW, vec3 surfNormal, vec2 uv) {
+  vec3 q0  = dFdx(posW);
+  vec3 q1  = dFdy(posW);
+  vec2 st0 = dFdx(uv);
+  vec2 st1 = dFdy(uv);
+  vec3 N   = normalize(surfNormal);
+  float sc = sign(st1.t * st0.s - st0.t * st1.s);
+  vec3 S   = normalize((q0 * st1.t - q1 * st0.t) * sc);
+  vec3 T   = normalize((-q0 * st1.s + q1 * st0.s) * sc);
+  mat3 tsn = mat3(S, T, N);
+  vec2 mapN = texture2D(uNormalMap, uv).xy * 2.0 - 1.0;
+  mapN *= uNormalScale;
+  return normalize(tsn * vec3(mapN, sqrt(1.0 - clamp(dot(mapN, mapN), 0.0, 1.0))));
+}
+
+// 共有ベーステクスチャを取得:
+//   優先順位: BASEスロットにドロップされたテクスチャ
+//           > ORIG TEX(元のGLBテクスチャ)
+//           > 白(乗算ニュートラル)
+vec3 getSharedBaseTex() {
+  if (uHasUserBaseMap == 1) return texture2D(uUserBaseMap, vUv).rgb;
+  if (uUseOrigTex == 1 && uHasOrigMap == 1) return texture2D(uOrigMap, vUv).rgb;
+  return vec3(1.0);
+}
+
+// 各スロットのサンプリング:
+//   スロット固有テクスチャがあればそれ×スロットカラー
+//   なければ共有ベーステクスチャ×スロットカラー
+vec3 sampleSlot(vec3 col, sampler2D slotMap, int hasSlot, vec3 sharedTex) {
+  if (hasSlot == 1) {
+    return texture2D(slotMap, vUv).rgb * col;
+  }
+  return sharedTex * col;
+}
+
+void main() {
+  vec3 Ns = normalize(vNormalW);
+  vec3 V  = normalize(vViewDir);
+
+  if (uHasNormalMap == 1) {
+    Ns = perturbNormal2Arb(vPosW, Ns, vUv);
+  }
+
+  vec3 lightVec = uLightPos - vPosW;
+  float lLen = length(lightVec);
+  vec3 Ls = lLen < 0.000001 ? vec3(0,1,0) : lightVec / lLen;
+
+  float NdV = dot(Ns, V);
+  float NdL = dot(Ns, Ls);
+
+  vec3 sharedTex = getSharedBaseTex();
+
+  vec3 baseCol  = sampleSlot(uBaseColor,  uUserBaseMap,   uHasUserBaseMap,  sharedTex);
+  vec3 toonCol2 = sampleSlot(uToonColor2, uToonColor2Map, uHasToonColor2Map, sharedTex);
+  vec3 toonCol3 = sampleSlot(uToonColor3, uToonColor3Map, uHasToonColor3Map, sharedTex);
+  vec3 toonCol4 = sampleSlot(uToonColor4, uToonColor4Map, uHasToonColor4Map, sharedTex);
+  vec3 toonCol5 = sampleSlot(uToonColor5, uToonColor5Map, uHasToonColor5Map, sharedTex);
+  vec3 toonCol6 = sampleSlot(uToonColor6, uToonColor6Map, uHasToonColor6Map, sharedTex);
+  vec3 toonCol7 = sampleSlot(uToonColor7, uToonColor7Map, uHasToonColor7Map, sharedTex);
+
+  vec3 outlineCol = (uHasOutlineColorMap==1) ? texture2D(uOutlineColorMap, vUv).rgb : uOutlineColor;
+  vec3 inlineCol  = (uHasInlineColorMap ==1) ? texture2D(uInlineColorMap,  vUv).rgb : uInlineColor;
+
+  // Toon gradation
+  vec3 result = baseCol;
+  result = mix(result, toonCol2, toonMix(NdL, uToonParam2, uToonBlur));
+  result = mix(result, toonCol3, toonMix(NdL, uToonParam3, uToonBlur));
+  result = mix(result, toonCol4, toonMix(NdL, uToonParam4, uToonBlur));
+  result = mix(result, toonCol5, toonMix(NdL, uToonParam5, uToonBlur));
+  result = mix(result, toonCol6, toonMix(NdL, uToonParam6, uToonBlur));
+  result = mix(result, toonCol7, toonMix(NdL, uToonParam7, uToonBlur));
+
+  // Outline
+  float outlineMask = 0.0;
+  if (uUseOutline == 1) {
+    if (uOutlineBlur <= 0.000001)
+      outlineMask = NdV < uOutlineThickness ? 1.0 : 0.0;
+    else
+      outlineMask = 1.0 - smoothstep(
+        uOutlineThickness - uOutlineBlur,
+        uOutlineThickness + uOutlineBlur, NdV);
+  }
+
+  // Inline(Curvature)
+  float curv = (uHasCurvatureMap == 1)
+    ? texture2D(uCurvatureMap, vUv).r
+    : curvatureApprox();
+  if (uInvertCurvature == 1) curv = 1.0 - curv;
+
+  float inlineMask = 0.0;
+  if (uInlineBlur <= 0.000001)
+    inlineMask = curv < uInlineThickness ? 1.0 : 0.0;
+  else
+    inlineMask = 1.0 - smoothstep(
+      uInlineThickness - uInlineBlur,
+      uInlineThickness + uInlineBlur, curv);
+
+  vec3 pathA = mix(mix(result, inlineCol, inlineMask), outlineCol, outlineMask);
+  vec3 pathB = mix(mix(result, outlineCol, outlineMask), inlineCol, inlineMask);
+  result = mix(pathA, pathB, clamp(uInlineOnTop, 0.0, 1.0));
+
+  gl_FragColor = vec4(result, 1.0);
+}
+`;
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3), 16) / 255;
+  const g = parseInt(hex.slice(3,5), 16) / 255;
+  const b = parseInt(hex.slice(5,7), 16) / 255;
+  return new THREE.Color(r, g, b);
+}
+
+function makeToonUniforms() {
+  return {
+    uLightPos:          { value: new THREE.Vector3(10, 10, 10) },
+    uUseOutline:        { value: 1 },
+    uOutlineThickness:  { value: 0.2 },
+    uOutlineBlur:       { value: 0.0 },
+    uInlineThickness:   { value: 0.3 },
+    uInlineBlur:        { value: 0.0 },
+    uInlineOnTop:       { value: 1.0 },
+    uToonParam2:        { value: 0.0 },
+    uToonParam3:        { value: -1.0 },
+    uToonParam4:        { value: -1.0 },
+    uToonParam5:        { value: -1.0 },
+    uToonParam6:        { value: -1.0 },
+    uToonParam7:        { value: -1.0 },
+    uToonBlur:          { value: 0.0 },
+    uBaseColor:         { value: new THREE.Color(1, 1, 1) },
+    uOutlineColor:      { value: new THREE.Color(0.0, 0.297, 1.0) },
+    uInlineColor:       { value: new THREE.Color(0.366, 0.027, 0.0) },
+    uToonColor2:        { value: new THREE.Color(0.554, 0.554, 0.554) },
+    uToonColor3:        { value: new THREE.Color(0.232, 0.232, 0.232) },
+    uToonColor4:        { value: new THREE.Color(0.095, 0.095, 0.095) },
+    uToonColor5:        { value: new THREE.Color(0.070, 0.070, 0.070) },
+    uToonColor6:        { value: new THREE.Color(0.025, 0.025, 0.025) },
+    uToonColor7:        { value: new THREE.Color(0.016, 0.016, 0.016) },
+    uOrigMap:           { value: null },
+    uHasOrigMap:        { value: 0 },
+    uUseOrigTex:        { value: 1 },   // ORIG TEXトグル
+
+    uUserBaseMap:       { value: null },
+    uHasUserBaseMap:    { value: 0 },
+
+    uOutlineColorMap:   { value: null }, uHasOutlineColorMap: { value: 0 },
+    uInlineColorMap:    { value: null }, uHasInlineColorMap:  { value: 0 },
+    uToonColor2Map:     { value: null }, uHasToonColor2Map:   { value: 0 },
+    uToonColor3Map:     { value: null }, uHasToonColor3Map:   { value: 0 },
+    uToonColor4Map:     { value: null }, uHasToonColor4Map:   { value: 0 },
+    uToonColor5Map:     { value: null }, uHasToonColor5Map:   { value: 0 },
+    uToonColor6Map:     { value: null }, uHasToonColor6Map:   { value: 0 },
+    uToonColor7Map:     { value: null }, uHasToonColor7Map:   { value: 0 },
+
+    uCurvatureMap:      { value: null }, uHasCurvatureMap:    { value: 0 },
+    uInvertCurvature:   { value: 0 },
+
+    uNormalMap:         { value: null }, uHasNormalMap:       { value: 0 },
+    uNormalScale:       { value: 1.0 },
+  };
+}
+
+// 色uniform key → 対応するMapキー / Hasキーの対応表
+const TOON_COLOR_TO_MAP_KEY = {
+  uOutlineColor: 'uOutlineColorMap',
+  uInlineColor:  'uInlineColorMap',
+  uToonColor2:   'uToonColor2Map',
+  uToonColor3:   'uToonColor3Map',
+  uToonColor4:   'uToonColor4Map',
+  uToonColor5:   'uToonColor5Map',
+  uToonColor6:   'uToonColor6Map',
+  uToonColor7:   'uToonColor7Map',
+  uBaseColor:    'uUserBaseMap',
+};
+function hasKeyFor(mapKey) {
+  return 'uHas' + mapKey.slice(1);
+}
+
+// 現在の共有uniformsインスタンス
+let toonUniforms = makeToonUniforms();
+let toonMode = false;
+// 元マテリアルの退避: [{mesh, mats}]
+const toonBackup = [];
+
+// ── BASEマップの解決ロジック (元テクスチャ / 明示ドロップ / 単色 の優先順位) ──
+// 優先順位: ① ユーザーがBASEスロットへ明示的にドロップしたテクスチャ
+//           ② ORIG TEXがONかつ元マテリアルにmapがある場合はそれを使用
+//           ③ どちらも無ければ uBaseColor(単色)
+let useOrigBaseMap = true;
+function resolveBaseMap(uni, origMap) {
+  uni._origBaseMap = origMap || null;
+  // オリジナルテクスチャはuOrigMapへ常時保存(シェーダー内でuUseOrigTexで制御)
+  uni.uOrigMap.value   = origMap || null;
+  uni.uHasOrigMap.value = origMap ? 1 : 0;
+}
+
+function applyToonToModel(model, on) {
+  if (!model) return;
+  if (on) {
+    toonBackup.length = 0;
+    model.traverse(c => {
+      if (!c.isMesh) return;
+      const origMats = Array.isArray(c.material) ? [...c.material] : [c.material];
+      toonBackup.push({ mesh: c, mats: origMats });
+      const toonMats = origMats.map(orig => {
+        // 元テクスチャをbaseMapとして流用
+        const uni = makeToonUniforms();
+        // uniformsを共有インスタンスから同期
+        syncUniformsFromShared(uni);
+        resolveBaseMap(uni, orig && orig.map);
+        const mat = new THREE.ShaderMaterial({
+          vertexShader:   TOON_VERT,
+          fragmentShader: TOON_FRAG,
+          uniforms:       uni,
+          extensions:     { derivatives: true },
+        });
+        mat._toonUni = uni; // 参照保存
+        return mat;
+      });
+      c.material = toonMats.length === 1 ? toonMats[0] : toonMats;
+    });
+  } else {
+    toonBackup.forEach(({ mesh, mats }) => {
+      mesh.material = mats.length === 1 ? mats[0] : mats;
+    });
+    toonBackup.length = 0;
+  }
+}
+
+function syncUniformsFromShared(uni) {
+  // 共有toonUniformsからuniへ値をコピー
+  const keys = ['uLightPos','uUseOutline','uOutlineThickness','uOutlineBlur',
+    'uInlineThickness','uInlineBlur','uInlineOnTop',
+    'uToonParam2','uToonParam3','uToonParam4','uToonParam5','uToonParam6','uToonParam7','uToonBlur',
+    'uOutlineColor','uInlineColor','uBaseColor',
+    'uToonColor2','uToonColor3','uToonColor4','uToonColor5','uToonColor6','uToonColor7',
+    'uUseOrigTex',
+    'uUserBaseMap','uHasUserBaseMap',
+    'uOutlineColorMap','uHasOutlineColorMap','uInlineColorMap','uHasInlineColorMap',
+    'uToonColor2Map','uHasToonColor2Map','uToonColor3Map','uHasToonColor3Map',
+    'uToonColor4Map','uHasToonColor4Map','uToonColor5Map','uHasToonColor5Map',
+    'uToonColor6Map','uHasToonColor6Map','uToonColor7Map','uHasToonColor7Map',
+    'uCurvatureMap','uHasCurvatureMap','uInvertCurvature',
+    'uNormalMap','uHasNormalMap','uNormalScale'];
+  for (const k of keys) {
+    if (!uni[k]) continue;
+    const src = toonUniforms[k].value;
+    if (src && src.isVector3) uni[k].value.copy(src);
+    else if (src && src.isColor) uni[k].value.copy(src);
+    else uni[k].value = src;
+  }
+}
+
+function broadcastToonUniforms() {
+  if (!currentModel) return;
+  currentModel.traverse(c => {
+    if (!c.isMesh) return;
+    const mats = Array.isArray(c.material) ? c.material : [c.material];
+    mats.forEach(m => {
+      if (!m._toonUni) return;
+      syncUniformsFromShared(m._toonUni);
+      // uOrigMapはメッシュ固有(syncで上書きしない)
+      // uUseOrigTexはsyncでコピー済みなのでシェーダーが判断する
+    });
+  });
+}
+
+// ── Toon パネルUI ──
+const panelToon = document.getElementById('panel-toon');
+const btnToon   = document.getElementById('btn-toon');
+
+function toggleToonPanel() {
+  const vis = panelToon.style.display === 'block';
+  const next = !vis;
+  panelToon.style.display = next ? 'block' : 'none';
+  btnToon.classList.toggle('active', next);
+  toonMode = next;
+  if (toonMode) {
+    toonBackup.length = 0;
+    applyToonToModel(currentModel, true);
+  } else {
+    applyToonToModel(currentModel, false);
+  }
+}
+btnToon.addEventListener('click', toggleToonPanel);
+
+function bindToonFloat(id, valId, decimals, uniformKey) {
+  const sl = document.getElementById(id);
+  const vl = document.getElementById(valId);
+  if (!sl) return;
+  sl.addEventListener('input', () => {
+    const v = parseFloat(sl.value);
+    vl.textContent = v.toFixed(decimals);
+    if (uniformKey && toonUniforms[uniformKey] !== undefined)
+      toonUniforms[uniformKey].value = v;
+    broadcastToonUniforms();
+  });
+}
+function bindToonColor(id, uniformKey) {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    toonUniforms[uniformKey].value = hexToRgb(el.value);
+    broadcastToonUniforms();
+  });
+}
+
+// LightPos はupdateLightPosで一括更新するのでここはスキップ
+
+// LightPos は xyz をまとめて更新
+function updateLightPos() {
+  const x = parseFloat(document.getElementById('toon-lx').value);
+  const y = parseFloat(document.getElementById('toon-ly').value);
+  const z = parseFloat(document.getElementById('toon-lz').value);
+  document.getElementById('toon-lx-v').textContent = x.toFixed(1);
+  document.getElementById('toon-ly-v').textContent = y.toFixed(1);
+  document.getElementById('toon-lz-v').textContent = z.toFixed(1);
+  toonUniforms.uLightPos.value.set(x, y, z);
+  broadcastToonUniforms();
+}
+['toon-lx','toon-ly','toon-lz'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updateLightPos));
+
+document.getElementById('toon-use-outline').addEventListener('change', e => {
+  toonUniforms.uUseOutline.value = e.target.checked ? 1 : 0;
+  broadcastToonUniforms();
+});
+
+document.getElementById('toon-c0-use-orig').addEventListener('change', e => {
+  toonUniforms.uUseOrigTex.value = e.target.checked ? 1 : 0;
+  broadcastToonUniforms();
+});
+
+document.getElementById('toon-curv-invert').addEventListener('change', e => {
+  toonUniforms.uInvertCurvature.value = e.target.checked ? 1 : 0;
+  broadcastToonUniforms();
+});
+
+bindToonFloat('toon-ot',  'toon-ot-v',  3, 'uOutlineThickness');
+bindToonFloat('toon-ob',  'toon-ob-v',  3, 'uOutlineBlur');
+bindToonFloat('toon-it',  'toon-it-v',  3, 'uInlineThickness');
+bindToonFloat('toon-ib',  'toon-ib-v',  3, 'uInlineBlur');
+bindToonFloat('toon-ion', 'toon-ion-v', 2, 'uInlineOnTop');
+bindToonFloat('toon-p2',  'toon-p2-v',  2, 'uToonParam2');
+bindToonFloat('toon-p3',  'toon-p3-v',  2, 'uToonParam3');
+bindToonFloat('toon-p4',  'toon-p4-v',  2, 'uToonParam4');
+bindToonFloat('toon-p5',  'toon-p5-v',  2, 'uToonParam5');
+bindToonFloat('toon-p6',  'toon-p6-v',  2, 'uToonParam6');
+bindToonFloat('toon-p7',  'toon-p7-v',  2, 'uToonParam7');
+bindToonFloat('toon-tb',  'toon-tb-v',  3, 'uToonBlur');
+
+bindToonColor('toon-oc', 'uOutlineColor');
+bindToonColor('toon-ic', 'uInlineColor');
+bindToonColor('toon-c0', 'uBaseColor');
+bindToonColor('toon-c2', 'uToonColor2');
+bindToonColor('toon-c3', 'uToonColor3');
+bindToonColor('toon-c4', 'uToonColor4');
+bindToonColor('toon-c5', 'uToonColor5');
+bindToonColor('toon-c6', 'uToonColor6');
+bindToonColor('toon-c7', 'uToonColor7');
+
+bindToonFloat('toon-nscale', 'toon-nscale-v', 2, 'uNormalScale');
+
+// ── 各カラー/曲率/ノーマルスロットへのテクスチャ ドラッグ&ドロップ ──
+const texLoader = new THREE.TextureLoader();
+const texObjectUrls = new Map(); // slotEl -> objectURL (後でrevoke用)
+
+function applyTextureToSlot(el, mapKey, hasKey, file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const url = URL.createObjectURL(file);
+  texLoader.load(url, (tex) => {
+    // ノーマルマップはOpenGL/Substance Painter標準でflipY=true(デフォルト)
+    // カラー系テクスチャはGLB UVに合わせてflipY=false
+    const isNormalMap = (mapKey === 'uNormalMap');
+    tex.flipY = isNormalMap;
+    if (!isNormalMap) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+
+    // 古いobjectURLがあれば破棄
+    const prevUrl = texObjectUrls.get(el);
+    if (prevUrl) URL.revokeObjectURL(prevUrl);
+    texObjectUrls.set(el, url);
+
+    toonUniforms[mapKey].value = tex;
+    toonUniforms[hasKey].value = 1;
+
+    el.style.backgroundImage = `url(${url})`;
+    el.classList.add('has-tex');
+    const row = el.closest('.lrow');
+    if (row) row.classList.add('has-map');
+
+    broadcastToonUniforms();
+  }, undefined, (err) => {
+    console.error('テクスチャ読み込み失敗:', err);
+    URL.revokeObjectURL(url);
+  });
+}
+
+function clearTextureSlot(el, mapKey, hasKey) {
+  toonUniforms[hasKey].value = 0;
+  toonUniforms[mapKey].value = null;
+  el.style.backgroundImage = '';
+  el.classList.remove('has-tex');
+  const row = el.closest('.lrow');
+  if (row) row.classList.remove('has-map');
+  const prevUrl = texObjectUrls.get(el);
+  if (prevUrl) { URL.revokeObjectURL(prevUrl); texObjectUrls.delete(el); }
+  broadcastToonUniforms();
+}
+
+function setupTexDropSlot(el) {
+  if (!el) return;
+  const dataKey = el.dataset.key;
+  const mapKey  = TOON_COLOR_TO_MAP_KEY[dataKey] || dataKey; // 色キー→Mapキー解決 / 曲率・法線はそのまま
+  const hasKey  = hasKeyFor(mapKey);
+
+  // 隠しfile inputでクリックでも選択可能に
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  el.appendChild(fileInput);
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) applyTextureToSlot(el, mapKey, hasKey, fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  el.addEventListener('click', (e) => {
+    if (e.target.classList.contains('tex-drop-x')) return; // ×クリックは下で処理
+    fileInput.click();
+  });
+
+  el.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', (e) => { e.stopPropagation(); el.classList.remove('drag-over'); });
+  el.addEventListener('drop', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    el.classList.remove('drag-over');
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) applyTextureToSlot(el, mapKey, hasKey, file);
+  });
+
+  const xBtn = el.querySelector('.tex-drop-x');
+  if (xBtn) {
+    xBtn.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      clearTextureSlot(el, mapKey, hasKey);
+    });
+  }
+}
+
+document.querySelectorAll('#panel-toon .tex-drop[data-key]').forEach(setupTexDropSlot);
+
+// ── TOONボタン押下 → モデルにシェーダー適用 ──
+// onLoaded 後に toonMode が有効なら自動適用するためのフック
+// (onLoadedはvar宣言ではなくfunction宣言なので後からパッチ)
+const _origOnLoaded_ref = window.__toonHooked; // ダブル登録防止
+
+// onLoaded の最後でtoonModeをチェックして適用
+// → onLoaded内の最後に追記するのが確実だが、
+//    ここでは MutationObserver で panel-info の表示を監視して対応
+const _toonObserver = new MutationObserver(() => {
+  if (toonMode && currentModel) {
+    // バックアップ済みでなければ適用
+    if (toonBackup.length === 0) applyToonToModel(currentModel, true);
+  }
+});
+_toonObserver.observe(document.getElementById('panel-info'), { attributes: true, attributeFilter: ['style'] });
+
+// (TOONボタンの適用はtoggleToonPanelで一括管理)
+
+
 animate();
+
+// ── Render Area Overlay ──
+const raoOverlay = document.getElementById('render-area-overlay');
+const raoFrame   = document.getElementById('rao-frame');
+const raoLabel   = document.getElementById('rao-label');
+const raoTop     = document.getElementById('rao-top');
+const raoBottom  = document.getElementById('rao-bottom');
+const raoLeft    = document.getElementById('rao-left');
+const raoRight   = document.getElementById('rao-right');
+let raoVisible   = false;
+
+function updateRenderAreaOverlay() {
+  const rw = parseInt(document.getElementById('render-w').value) || 1920;
+  const rh = parseInt(document.getElementById('render-h').value) || 1080;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const renderAspect = rw / rh;
+  const viewAspect   = vw / vh;
+
+  let fw, fh, fx, fy;
+  if (renderAspect > viewAspect) {
+    // レンダーの方が横長 → 横幅いっぱい、上下にマスク
+    fw = vw;
+    fh = vw / renderAspect;
+  } else {
+    // レンダーの方が縦長 → 高さいっぱい、左右にマスク
+    fh = vh;
+    fw = vh * renderAspect;
+  }
+  fx = (vw - fw) / 2;
+  fy = (vh - fh) / 2;
+
+  raoFrame.style.left   = fx + 'px';
+  raoFrame.style.top    = fy + 'px';
+  raoFrame.style.width  = fw + 'px';
+  raoFrame.style.height = fh + 'px';
+
+  raoTop.style.height    = fy + 'px';
+  raoBottom.style.height = fy + 'px';
+  raoLeft.style.width    = fx + 'px';  raoLeft.style.top  = fy + 'px'; raoLeft.style.bottom = fy + 'px';
+  raoRight.style.width   = fx + 'px'; raoRight.style.top = fy + 'px'; raoRight.style.bottom = fy + 'px';
+
+  raoLabel.textContent = `${rw} × ${rh}`;
+}
+
+const renderPreviewBtn = document.getElementById('render-preview-btn');
+renderPreviewBtn.addEventListener('click', () => {
+  raoVisible = !raoVisible;
+  raoOverlay.style.display = raoVisible ? 'block' : 'none';
+  renderPreviewBtn.textContent = raoVisible ? '🔲 HIDE RENDER AREA' : '🔲 SHOW RENDER AREA';
+  renderPreviewBtn.style.background = raoVisible ? 'rgba(232,160,64,0.25)' : 'rgba(232,160,64,0.12)';
+  if (raoVisible) updateRenderAreaOverlay();
+});
+
+// W/H変更時にオーバーレイを即更新
+document.getElementById('render-w').addEventListener('input', () => { if (raoVisible) updateRenderAreaOverlay(); });
+document.getElementById('render-h').addEventListener('input', () => { if (raoVisible) updateRenderAreaOverlay(); });
+// プリセット変更時も更新(preset-btnは既存のclickで値変更するので少し遅延)
+document.querySelectorAll('.render-preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => { if (raoVisible) setTimeout(updateRenderAreaOverlay, 0); });
+});
+// リサイズ時も更新
+window.addEventListener('resize', () => { if (raoVisible) updateRenderAreaOverlay(); });
+
+const panelRender = document.getElementById('panel-render');
+document.getElementById('btn-render').addEventListener('click', () => {
+  const isOpen = panelRender.style.display !== 'none';
+  panelRender.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('btn-render').classList.toggle('active', !isOpen);
+});
+
+// NOWプリセット: 現在のウィンドウサイズを入力欄に反映
+document.getElementById('render-preset-current').addEventListener('click', () => {
+  document.getElementById('render-w').value = window.innerWidth;
+  document.getElementById('render-h').value = window.innerHeight;
+});
+// 固定プリセット
+document.querySelectorAll('.render-preset-btn[data-w]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('render-w').value = btn.dataset.w;
+    document.getElementById('render-h').value = btn.dataset.h;
+  });
+});
+
+// ── オフスクリーンレンダラー(透過、書き出し専用) ──
+// ── メインrendererで1回書き出し(色完全一致) ──
+function renderFrameToBlob(w, h) {
+  return new Promise(resolve => {
+    const vw     = window.innerWidth;
+    const vh     = window.innerHeight;
+    const origBg = scene.background;
+    const origPR = renderer.getPixelRatio();
+    const gridWas = gridHelper.visible;
+    gridHelper.visible = false;
+    scene.background = null;
+
+    const cam = activeCamera;
+    function setAspect(a) {
+      if (cam.isPerspectiveCamera) {
+        cam.aspect = a; cam.updateProjectionMatrix();
+      } else {
+        const hh = cam.top;
+        cam.left = -hh * a; cam.right = hh * a;
+        cam.updateProjectionMatrix();
+      }
+    }
+
+    renderer.setPixelRatio(1);
+    renderer.setSize(w, h);
+    setAspect(w / h);
+
+    renderer.render(scene, cam);
+
+    renderer.domElement.toBlob(blob => {
+      // 元に戻す
+      scene.background = origBg;
+      gridHelper.visible = gridWas;
+      renderer.setPixelRatio(origPR);
+      renderer.setSize(vw, vh);
+      setAspect(vw / vh);
+      resolve(blob);
+    }, 'image/png');
+  });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ── 1枚書き出し ──
+document.getElementById('render-single-btn').addEventListener('click', async () => {
+  const w = parseInt(document.getElementById('render-w').value) || 1920;
+  const h = parseInt(document.getElementById('render-h').value) || 1080;
+  const btn = document.getElementById('render-single-btn');
+  btn.textContent = '⏳ Rendering...'; btn.disabled = true;
+  try {
+    const blob = await renderFrameToBlob(w, h);
+    downloadBlob(blob, `render_${w}x${h}.png`);
+  } finally {
+    btn.textContent = '📷 RENDER & SAVE PNG'; btn.disabled = false;
+  }
+});
+
+// ── 連番書き出し ──
+let renderCancelled = false;
+
+document.getElementById('render-cancel-btn').addEventListener('click', () => {
+  renderCancelled = true;
+});
+
+document.getElementById('render-seq-btn').addEventListener('click', async () => {
+  if (!currentModel) { alert('モデルを読み込んでください'); return; }
+
+  const w       = parseInt(document.getElementById('render-w').value)      || 1920;
+  const h       = parseInt(document.getElementById('render-h').value)      || 1080;
+  const frames  = parseInt(document.getElementById('render-frames').value)  || 360;
+  const prefix  = document.getElementById('render-prefix').value || 'frame';
+
+  const seqBtn   = document.getElementById('render-seq-btn');
+  const progWrap = document.getElementById('render-progress-wrap');
+  const progBar  = document.getElementById('render-progress-bar');
+  const progLabel= document.getElementById('render-progress-label');
+
+  seqBtn.disabled = true;
+  seqBtn.textContent = '⏳ Rendering...';
+  progWrap.style.display = 'block';
+  renderCancelled = false;
+
+  // ── レンダリング中は自動回転・スリープ・カメラ操作を全停止 ──
+  clearTimeout(idleTimer);           // スリープタイマーをクリア
+  const wasAutoRotate = controls.autoRotate;
+  const wasSleeping   = isSleeping;
+  if (isSleeping) {                  // スリープ中なら強制ウェイク(タイマーは再セットしない)
+    isSleeping = false;
+    document.body.classList.remove('ui-sleeping');
+    controls.autoRotate = false;
+    if (springSim) springSim.reset();
+  }
+  controls.autoRotate = false;       // 自動回転停止
+  controls.enabled    = false;       // カメラ操作を無効化
+
+  const zip    = new window.JSZip();
+  const origY  = currentModel.rotation.y;
+
+  try {
+    for (let i = 0; i < frames; i++) {
+      if (renderCancelled) break;
+      currentModel.rotation.y = origY + (i / frames) * Math.PI * 2;
+      await new Promise(r => requestAnimationFrame(r));
+      const blob = await renderFrameToBlob(w, h);
+      const pad  = String(i).padStart(String(frames).length, '0');
+      zip.file(`${prefix}_${pad}.png`, blob);
+      progLabel.textContent = `${i + 1} / ${frames}`;
+      progBar.style.width   = `${((i + 1) / frames) * 100}%`;
+    }
+    if (!renderCancelled) {
+      progLabel.textContent = 'ZIPを生成中...';
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      downloadBlob(zipBlob, `${prefix}_${w}x${h}_${frames}f.zip`);
+    }
+  } finally {
+    currentModel.rotation.y = origY;
+    controls.enabled    = true;      // カメラ操作を再有効化
+    controls.autoRotate = wasAutoRotate;
+    // スリープタイマーを再開(wakeUpは呼ばず、タイマーだけセット)
+    if (currentModel) {
+      idleTimer = setTimeout(goSleep, IDLE_MS);
+    }
+    seqBtn.disabled = false;
+    seqBtn.textContent = '🎞 RENDER SEQUENCE → ZIP';
+    progWrap.style.display = 'none';
+    progBar.style.width = '0%';
+    renderCancelled = false;
+  }
+});
+
+
 </script>
 </body>
 </html>
