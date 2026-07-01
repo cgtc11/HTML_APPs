@@ -300,6 +300,12 @@ body.simple-mode #tlZoomBtn:hover{color:#ddd;background:#1e1e1e;}
         <option value="30000000">30 Mbps</option>
       </select>
     </div>
+    <div class="exp-row"><label>音声</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="expNoAudio" style="cursor:pointer">
+        <span style="font-size:12px;color:#aaa">音声なし（映像のみ）</span>
+      </label>
+    </div>
     <div class="exp-info" id="expInfo"></div>
     <div class="exp-btns">
       <button class="btn" onclick="hideExpModal()">キャンセル</button>
@@ -3181,7 +3187,7 @@ function showExpModal(){
   g('expFpsLbl').textContent=S.fps+' fps';
   g('expInfo').textContent=typeof VideoEncoder==='undefined'
     ?'⚠ WebCodecs非対応。Chrome 94以降が必要です。'
-    :'コンポ「'+(comp?comp.name:'?')+'」をH.264 MP4で書き出します。\n音声トラックがある場合はAAC音声も含まれます。\n\n総フレーム数: '+(comp?Math.ceil(comp.dur*S.fps):0)+' フレーム';
+    :'コンポ「'+(comp?comp.name:'?')+'」をH.264 MP4で書き出します。\n\n総フレーム数: '+(comp?Math.ceil(comp.dur*S.fps):0)+' フレーム';
   g('expModal').classList.add('show');
 }
 function hideExpModal(){g('expModal').classList.remove('show');}
@@ -3190,14 +3196,18 @@ async function startExport(){
   if(typeof VideoEncoder==='undefined'){alert('Chrome 94以降が必要です。');return;}
   hideExpModal();
   var comp=AC();if(!comp)return;
-  var bitrate=parseInt(g('expBitrate').value,10)||8000000;
+  var bitrate=parseInt(g('expBitrate').value,10)||16000000;
+  var audioOff=g('expNoAudio')&&g('expNoAudio').checked;
   showLoad('mp4-muxerを読み込み中...','',0.02);await tick();
   if(!window.Mp4Muxer){try{await loadScript('https://cdn.jsdelivr.net/npm/mp4-muxer@5/build/mp4-muxer.js');}catch(e){hideLoad();alert('mp4-muxer読み込み失敗: '+e.message);return;}}
   var wasPlaying=S.playing;if(wasPlaying)pause();
   var savedTime=S.time;isExporting=true;
-  setLoad(0.03,'音声ミックス中...','');await tick();
-  var hasAudio=comp.aClips.length>0&&S.assets.some(function(a){return a.type==='aud'&&!a.stub;});
-  var mixedAudio=null;if(hasAudio){try{mixedAudio=await mixAudio(comp);}catch(e){console.warn('audio mix fail',e);}}
+  var hasAudio=!audioOff&&comp.aClips.length>0&&S.assets.some(function(a){return a.type==='aud'&&!a.stub;});
+  var mixedAudio=null;
+  if(hasAudio){
+    setLoad(0.03,'音声ミックス中...','');await tick();
+    try{mixedAudio=await mixAudio(comp);}catch(e){console.warn('audio mix fail',e);}
+  }
   var codec=await pickVideoCodec();
   if(!codec){isExporting=false;hideLoad();alert('H.264コーデックが見つかりませんでした。');S.time=savedTime;return;}
   var sr=mixedAudio?mixedAudio.sampleRate:44100,nCh=mixedAudio?mixedAudio.numberOfChannels:2;
@@ -3224,12 +3234,19 @@ async function startExport(){
     }catch(e){console.warn('audio encode fail',e);}
   }
   var totalF=Math.ceil(comp.dur*S.fps);setLoad(0.1,'映像エンコード中...','0/'+totalF);await tick();
+  // 動画クリップがあるか確認
+  var hasVid=comp.clips.some(function(cl){var a=findAsset(cl.assetId);return a&&a.type==='vid'&&!a.stub;});
   for(var f=0;f<totalF;f++){
     if(vEncErr)break;
-    S.time=f/S.fps;await seekAllVideos(comp,S.time);renderFrame();
+    S.time=f/S.fps;
+    // 動画クリップがある場合は毎フレームシーク待機、なければskip
+    if(hasVid)await seekAllVideos(comp,S.time);
+    // renderFrameを2回実行して描画が確実に完了するのを待つ
+    renderFrame();
+    if(hasVid)await new Promise(function(r){requestAnimationFrame(function(){renderFrame();requestAnimationFrame(r);});});
     var ts=Math.round(f*1e6/S.fps),dur2=Math.round(1e6/S.fps);
     var vf=new VideoFrame(C,{timestamp:ts,duration:dur2});vEnc.encode(vf,{keyFrame:f%60===0});vf.close();
-    if(f%8===0){setLoad(0.1+0.89*(f/totalF),'映像エンコード中...',(f+1)+'/'+totalF);await tick();}
+    if(f%4===0){setLoad(0.1+0.89*(f/totalF),'映像エンコード中...',(f+1)+'/'+totalF);await tick();}
   }
   if(vEncErr){isExporting=false;hideLoad();alert('エンコードエラー: '+vEncErr.message);S.time=savedTime;return;}
   setLoad(0.99,'ファイル生成中...','');await tick();
