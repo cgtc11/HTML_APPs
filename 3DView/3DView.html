@@ -886,18 +886,15 @@ body.ui-sleeping { cursor: none; }
     <span>SP Toon Shader</span>
   </div>
 
-  <!-- Light Position -->
+  <!-- Light Direction -->
   <div class="light-section">
-    <div class="light-section-title"><div class="light-dot" style="background:#f0c060"></div>Light Position</div>
-    <div class="lrow"><label>X</label>
-      <input type="range" id="toon-lx" min="-20" max="20" step="0.1" value="10">
-      <span class="lval" id="toon-lx-v">10.0</span></div>
-    <div class="lrow"><label>Y</label>
-      <input type="range" id="toon-ly" min="-20" max="20" step="0.1" value="10">
-      <span class="lval" id="toon-ly-v">10.0</span></div>
-    <div class="lrow"><label>Z</label>
-      <input type="range" id="toon-lz" min="-20" max="20" step="0.1" value="10">
-      <span class="lval" id="toon-lz-v">10.0</span></div>
+    <div class="light-section-title"><div class="light-dot" style="background:#f0c060"></div>Light Direction</div>
+    <div class="lrow"><label>AZIMUTH</label>
+      <input type="range" id="toon-lazim" min="-180" max="180" step="1" value="45">
+      <span class="lval" id="toon-lazim-v">45°</span></div>
+    <div class="lrow"><label>ELEVATION</label>
+      <input type="range" id="toon-lelev" min="-90" max="90" step="1" value="45">
+      <span class="lval" id="toon-lelev-v">45°</span></div>
   </div>
 
   <!-- Outline -->
@@ -956,7 +953,7 @@ body.ui-sleeping { cursor: none; }
       <div class="tex-drop" id="toon-normal-tex" data-key="uNormalMap" title="ノーマルマップをドラッグ&amp;ドロップ"><span class="tex-drop-x">×</span></div>
       <span class="tex-drop-label">タンジェント空間</span></div>
     <div class="lrow"><label>N-SCALE</label>
-      <input type="range" id="toon-nscale" min="0" max="3" step="0.01" value="1">
+      <input type="range" id="toon-nscale" min="-3" max="3" step="0.01" value="1">
       <span class="lval" id="toon-nscale-v">1.00</span></div>
   </div>
 
@@ -2240,19 +2237,20 @@ bindPhysSlider('phys-grav',      'phys-grav-v',      2, '',  (s,v) => s.gravity 
 let IDLE_MS    = 10000;
 let idleTimer  = null;
 let isSleeping = false;
+let isSequenceRendering = false;  // 連番レンダリング中フラグ
 
 controls.autoRotate      = false;
 controls.autoRotateSpeed = 0.4;
-let objRotSpeed = 0.4; // rad/s相当 (autoRotateSpeedと同値で管理)
+let objRotSpeed = 0.4;
 
 function goSleep() {
   if (isSleeping) return;
+  if (isSequenceRendering) return;  // レンダリング中は何もしない
   isSleeping = true;
   document.body.classList.add('ui-sleeping');
   if (rotMode === 'cam') {
     controls.autoRotate = true;
   }
-  // OBJ modeはrenderLoop内でmodelを回す
 }
 
 function wakeUp() {
@@ -2263,7 +2261,7 @@ function wakeUp() {
     if (springSim) springSim.reset();
   }
   clearTimeout(idleTimer);
-  if (currentModel) {
+  if (currentModel && !isSequenceRendering) {  // レンダリング中はタイマー再セットしない
     idleTimer = setTimeout(goSleep, IDLE_MS);
   }
 }
@@ -2527,7 +2525,7 @@ varying vec3 vPosW;
 varying vec3 vViewDir;
 varying vec2 vUv;
 
-uniform vec3  uLightPos;
+uniform vec3  uLightDir;   // 正規化済みライト方向ベクトル(ワールド空間、ライトから見てシーンへ向かう方向)
 uniform int   uUseOutline;
 uniform float uOutlineThickness;
 uniform float uOutlineBlur;
@@ -2636,12 +2634,10 @@ void main() {
     Ns = perturbNormal2Arb(vPosW, Ns, vUv);
   }
 
-  vec3 lightVec = uLightPos - vPosW;
-  float lLen = length(lightVec);
-  vec3 Ls = lLen < 0.000001 ? vec3(0,1,0) : lightVec / lLen;
+  vec3 lightVec = uLightDir;  // 方向ライト: 正規化済みベクトルをそのまま使用
 
   float NdV = dot(Ns, V);
-  float NdL = dot(Ns, Ls);
+  float NdL = dot(Ns, lightVec);
 
   vec3 sharedTex = getSharedBaseTex();
 
@@ -2707,7 +2703,7 @@ function hexToRgb(hex) {
 
 function makeToonUniforms() {
   return {
-    uLightPos:          { value: new THREE.Vector3(10, 10, 10) },
+    uLightDir:          { value: new THREE.Vector3(0.5773, 0.5773, 0.5773) }, // azim=45, elev=45の初期値
     uUseOutline:        { value: 1 },
     uOutlineThickness:  { value: 0.2 },
     uOutlineBlur:       { value: 0.0 },
@@ -2823,7 +2819,7 @@ function applyToonToModel(model, on) {
 
 function syncUniformsFromShared(uni) {
   // 共有toonUniformsからuniへ値をコピー
-  const keys = ['uLightPos','uUseOutline','uOutlineThickness','uOutlineBlur',
+  const keys = ['uLightDir','uUseOutline','uOutlineThickness','uOutlineBlur',
     'uInlineThickness','uInlineBlur','uInlineOnTop',
     'uToonParam2','uToonParam3','uToonParam4','uToonParam5','uToonParam6','uToonParam7','uToonBlur',
     'uOutlineColor','uInlineColor','uBaseColor',
@@ -2900,19 +2896,25 @@ function bindToonColor(id, uniformKey) {
 
 // LightPos はupdateLightPosで一括更新するのでここはスキップ
 
-// LightPos は xyz をまとめて更新
-function updateLightPos() {
-  const x = parseFloat(document.getElementById('toon-lx').value);
-  const y = parseFloat(document.getElementById('toon-ly').value);
-  const z = parseFloat(document.getElementById('toon-lz').value);
-  document.getElementById('toon-lx-v').textContent = x.toFixed(1);
-  document.getElementById('toon-ly-v').textContent = y.toFixed(1);
-  document.getElementById('toon-lz-v').textContent = z.toFixed(1);
-  toonUniforms.uLightPos.value.set(x, y, z);
+
+// 方向ライト: 仰角(elevation)・方位角(azimuth) → 正規化方向ベクトル
+function updateLightDir() {
+  const azimDeg = parseFloat(document.getElementById('toon-lazim').value);
+  const elevDeg = parseFloat(document.getElementById('toon-lelev').value);
+  document.getElementById('toon-lazim-v').textContent = azimDeg + '°';
+  document.getElementById('toon-lelev-v').textContent = elevDeg + '°';
+
+  const azim = THREE.MathUtils.degToRad(azimDeg);
+  const elev = THREE.MathUtils.degToRad(elevDeg);
+  // 球面座標 → XYZ方向ベクトル
+  const x = Math.cos(elev) * Math.sin(azim);
+  const y = Math.sin(elev);
+  const z = Math.cos(elev) * Math.cos(azim);
+  toonUniforms.uLightDir.value.set(x, y, z).normalize();
   broadcastToonUniforms();
 }
-['toon-lx','toon-ly','toon-lz'].forEach(id =>
-  document.getElementById(id).addEventListener('input', updateLightPos));
+['toon-lazim','toon-lelev'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updateLightDir));
 
 document.getElementById('toon-use-outline').addEventListener('change', e => {
   toonUniforms.uUseOutline.value = e.target.checked ? 1 : 0;
@@ -3236,17 +3238,17 @@ document.getElementById('render-seq-btn').addEventListener('click', async () => 
   renderCancelled = false;
 
   // ── レンダリング中は自動回転・スリープ・カメラ操作を全停止 ──
-  clearTimeout(idleTimer);           // スリープタイマーをクリア
+  isSequenceRendering = true;        // スリープ・wakeUpタイマーを封印
+  clearTimeout(idleTimer);
   const wasAutoRotate = controls.autoRotate;
-  const wasSleeping   = isSleeping;
-  if (isSleeping) {                  // スリープ中なら強制ウェイク(タイマーは再セットしない)
+  if (isSleeping) {
     isSleeping = false;
     document.body.classList.remove('ui-sleeping');
     controls.autoRotate = false;
     if (springSim) springSim.reset();
   }
-  controls.autoRotate = false;       // 自動回転停止
-  controls.enabled    = false;       // カメラ操作を無効化
+  controls.autoRotate = false;
+  controls.enabled    = false;
 
   const zip    = new window.JSZip();
   const origY  = currentModel.rotation.y;
@@ -3269,9 +3271,10 @@ document.getElementById('render-seq-btn').addEventListener('click', async () => 
     }
   } finally {
     currentModel.rotation.y = origY;
-    controls.enabled    = true;      // カメラ操作を再有効化
+    isSequenceRendering = false;     // フラグ解除
+    controls.enabled    = true;
     controls.autoRotate = wasAutoRotate;
-    // スリープタイマーを再開(wakeUpは呼ばず、タイマーだけセット)
+    // スリープタイマーを再開
     if (currentModel) {
       idleTimer = setTimeout(goSleep, IDLE_MS);
     }
