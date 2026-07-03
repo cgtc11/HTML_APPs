@@ -1113,6 +1113,7 @@ import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass }      from 'three/addons/postprocessing/ShaderPass.js';
+import { SavePass }        from 'three/addons/postprocessing/SavePass.js';
 
 // ════════════════════════════════════════
 //  Renderer
@@ -2452,12 +2453,51 @@ const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, activeCamera);
 composer.addPass(renderPass);
 
+// BloomPass前にアルファ付きフレームを保存
+const savePass = new SavePass(
+  new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    format:    THREE.RGBAFormat,
+  })
+);
+composer.addPass(savePass);
+
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   0.1, 0.4, 0.5
 );
 bloomPass.enabled = true;
 composer.addPass(bloomPass);
+
+// Bloomにオリジナルのアルファマスクをかけるパス
+const AlphaMaskShader = {
+  uniforms: {
+    tDiffuse: { value: null },         // Bloom適用後フレーム
+    tSaved:   { value: null },         // Bloom前のオリジナルフレーム
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tSaved;
+    varying vec2 vUv;
+    void main() {
+      vec4  bloom     = texture2D(tDiffuse, vUv);
+      float origAlpha = texture2D(tSaved,   vUv).a;
+      // Bloomの輝度をグラデーションアルファとして使用
+      // モデル部分は元のアルファ、グロー部分は輝度がアルファになって外に広がる
+      float bloomLum  = dot(bloom.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float finalAlpha = max(origAlpha, bloomLum);
+      gl_FragColor = vec4(bloom.rgb, finalAlpha);
+    }
+  `,
+};
+const alphaMaskPass = new ShaderPass(AlphaMaskShader);
+alphaMaskPass.uniforms['tSaved'].value = savePass.renderTarget.texture;
+composer.addPass(alphaMaskPass);
 
 const colorGradePass = new ShaderPass(ColorGradeShader);
 colorGradePass.renderToScreen = true;
@@ -2466,6 +2506,7 @@ composer.addPass(colorGradePass);
 // resize対応
 window.addEventListener('resize', () => {
   composer.setSize(window.innerWidth, window.innerHeight);
+  savePass.renderTarget.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ── パネル & バインディング ──
