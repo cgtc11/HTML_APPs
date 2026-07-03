@@ -726,6 +726,15 @@ body.ui-sleeping { cursor: none; }
     <span>Render</span>
   </div>
 
+  <!-- Background -->
+  <div class="light-section">
+    <div class="light-section-title"><div class="light-dot" style="background:#7fb8e8"></div>Background</div>
+    <div class="lrow"><label>COLOR</label>
+      <input type="color" id="render-bg-color" value="#0d0d0f"
+        style="flex:1;height:22px;border:none;background:none;cursor:pointer">
+    </div>
+  </div>
+
   <!-- Size -->
   <div class="light-section">
     <div class="light-section-title"><div class="light-dot" style="background:#e8a040"></div>Size</div>
@@ -1053,8 +1062,6 @@ body.ui-sleeping { cursor: none; }
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-reset">RESET CAM</button>
     <div class="tool-sep"></div>
-    <button class="tool-btn" id="btn-bg">BG</button>
-    <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-post">POST</button>
     <div class="tool-sep"></div>
     <button class="tool-btn" id="btn-render">RENDER</button>
@@ -1125,7 +1132,7 @@ wrap.appendChild(renderer.domElement);
 //  Scene
 // ════════════════════════════════════════
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0d0f);
+// scene.backgroundはapplyBgColor()で管理するので直接設定しない
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 2000);
 camera.position.set(0, 1.5, 4);
@@ -1195,7 +1202,8 @@ let clock         = new THREE.Clock();
 let wireMode      = false;
 let bgIdx         = 0;
 let loopMode      = true;
-const bgColors    = [0x0d0d0f, 0x1a1a2e, 0x161620, 0x202020, 0xffffff];
+const bgColors    = [0x0d0d0f];
+let bgUserColor   = new THREE.Color(0x0d0d0f);
 let pendingFiles  = {};
 
 // ════════════════════════════════════════
@@ -1628,7 +1636,7 @@ function applyHDRToggles() {
   if (hasHDR && hdrAsBgChk.checked) {
     scene.background = hdrEnvTex;
   } else if (hasHDR) {
-    scene.background = new THREE.Color(bgColors[bgIdx]);
+    scene.background = bgUserColor;
   }
   updateLightSectionDim();
 }
@@ -1666,7 +1674,7 @@ hdrClearBtn.addEventListener('click', () => {
   hdrEnvTex.dispose();
   hdrEnvTex = null;
   scene.environment = roomEnvTex;
-  scene.background  = new THREE.Color(bgColors[bgIdx]);
+  scene.background  = bgUserColor;
   // スライダーリセット
   hdrRotSl.value = 0;
   hdrRotVal.textContent = '0°';
@@ -1722,7 +1730,6 @@ const btnGrid    = document.getElementById('btn-grid');
 const btnWire    = document.getElementById('btn-wire');
 const btnLight   = document.getElementById('btn-light');
 const btnReset   = document.getElementById('btn-reset');
-const btnBg      = document.getElementById('btn-bg');
 const btnAnimOff = document.getElementById('btn-anim-off');
 
 btnGrid.addEventListener('click', () => {
@@ -1740,11 +1747,13 @@ btnLight.addEventListener('click', () => {
   btnLight.classList.toggle('active', !visible);
 });
 btnReset.addEventListener('click', resetCamera);
-btnBg.addEventListener('click', () => {
-  if (hdrEnvTex && hdrAsBgChk.checked) return;
-  bgIdx = (bgIdx + 1) % bgColors.length;
-  scene.background = new THREE.Color(bgColors[bgIdx]);
-});
+
+// ── 背景色更新 ──
+function applyBgColor() {
+  scene.background = bgUserColor.clone();
+  renderer.setClearColor(bgUserColor, 1);
+}
+applyBgColor(); // 起動時に確実に適用
 
 // ── Fullscreen ──
 const btnFs = document.getElementById('btn-fs');
@@ -2366,14 +2375,24 @@ const ColorGradeShader = {
     uniform float chroma;
     varying vec2 vUv;
 
+    // RGB→HSV→RGB変換による正確な色相回転
+    vec3 rgb2hsv(vec3 c) {
+      vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
+      vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+      vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+      float d = q.x - min(q.w, q.y);
+      float e = 1.0e-10;
+      return vec3(abs(q.z + (q.w - q.y) / (6.0*d + e)), d / (q.x + e), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+      vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+      vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+      return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
     vec3 hueRotate(vec3 col, float angle) {
-      float c = cos(angle), s = sin(angle);
-      mat3 m = mat3(
-        vec3(0.213+c*0.787-s*0.213, 0.715-c*0.715-s*0.715, 0.072-c*0.072+s*0.928),
-        vec3(0.213-c*0.213+s*0.143, 0.715+c*0.285+s*0.140, 0.072-c*0.072-s*0.283),
-        vec3(0.213-c*0.213-s*0.787, 0.715-c*0.715+s*0.715, 0.072+c*0.928+s*0.072)
-      );
-      return clamp(m * col, 0.0, 1.0);
+      vec3 hsv = rgb2hsv(col);
+      hsv.x = fract(hsv.x + angle / 6.28318530718);
+      return hsv2rgb(hsv);
     }
 
     float applyLevels(float v) {
@@ -2383,7 +2402,15 @@ const ColorGradeShader = {
     }
 
     void main() {
-      // Chromatic Aberration
+      float alpha = texture2D(tDiffuse, vUv).a;
+
+      // 背景(透過)ピクセルは全エフェクトをスルー
+      if (alpha <= 0.0) {
+        gl_FragColor = vec4(0.0);
+        return;
+      }
+
+      // Chromatic Aberration(モデルピクセルのみ)
       vec2 dir = vUv - 0.5;
       vec3 col;
       col.r = texture2D(tDiffuse, vUv + dir * chroma).r;
@@ -2410,12 +2437,12 @@ const ColorGradeShader = {
 
       col = clamp(col, 0.0, 1.0);
 
-      // Vignette
+      // Vignette(モデルピクセルのみ)
       float vd = length(dir) * 1.41421;
       float vig = smoothstep(1.0 - vigSmoothness, 1.0, vd * vigIntensity * 2.0);
       col *= 1.0 - vig;
 
-      gl_FragColor = vec4(col, 1.0);
+      gl_FragColor = vec4(col, alpha);
     }
   `,
 };
@@ -3130,6 +3157,12 @@ document.querySelectorAll('.render-preset-btn').forEach(btn => {
 // リサイズ時も更新
 window.addEventListener('resize', () => { if (raoVisible) updateRenderAreaOverlay(); });
 
+// ── Render BG設定 ──
+document.getElementById('render-bg-color').addEventListener('input', e => {
+  bgUserColor = new THREE.Color(e.target.value);
+  applyBgColor();
+});
+
 const panelRender = document.getElementById('panel-render');
 document.getElementById('btn-render').addEventListener('click', () => {
   const isOpen = panelRender.style.display !== 'none';
@@ -3160,7 +3193,10 @@ function renderFrameToBlob(w, h) {
     const origPR = renderer.getPixelRatio();
     const gridWas = gridHelper.visible;
     gridHelper.visible = false;
+
+    // 書き出しは常に透過背景
     scene.background = null;
+    renderer.setClearColor(0x000000, 0);
 
     const cam = activeCamera;
     function setAspect(a) {
@@ -3177,14 +3213,24 @@ function renderFrameToBlob(w, h) {
     renderer.setSize(w, h);
     setAspect(w / h);
 
-    renderer.render(scene, cam);
+    if (postEnabled) {
+      composer.setSize(w, h);
+      renderPass.camera = cam;
+      renderer.setClearColor(0x000000, 0);
+      composer.render();
+      renderer.setClearColor(0x000000, 1);
+      composer.setSize(vw, vh);
+    } else {
+      renderer.render(scene, cam);
+    }
 
     renderer.domElement.toBlob(blob => {
-      // 元に戻す
       scene.background = origBg;
+      applyBgColor(); // ビューポートの背景色を復元
       gridHelper.visible = gridWas;
       renderer.setPixelRatio(origPR);
       renderer.setSize(vw, vh);
+      if (postEnabled) composer.setSize(vw, vh);
       setAspect(vw / vh);
       resolve(blob);
     }, 'image/png');
