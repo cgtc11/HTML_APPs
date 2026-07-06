@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ドキュメント⇔Excel 相互変換ツール</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            color: #333;
+            background-color: #fcfcfc;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .vertical-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .converter-box {
+            background: #fff;
+            border: 1px solid #e1e4e6;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+        }
+        .converter-box h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: #222;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+        }
+        .drop-zone {
+            border: 2px dashed #bbb;
+            border-radius: 10px;
+            padding: 35px 15px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: #666;
+        }
+        .drop-zone.hover {
+            border-color: #007bff;
+            background: #e9f3ff;
+            color: #007bff;
+        }
+        .file-list {
+            margin-top: 15px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+            background: #fafafa;
+        }
+        .file-item {
+            padding: 4px;
+            border-bottom: 1px solid #eee;
+            word-break: break-all;
+        }
+        .success { color: #28a745; font-weight: bold; }
+        
+        .box-to-html { border-left: 6px solid #e44d26; }
+        .box-to-md { border-left: 6px solid #0083ca; }
+        .box-to-xlsx { border-left: 6px solid #107c41; }
+        .box-from-xlsx { border-left: 6px solid #1f9a55; }
+    </style>
+</head>
+<body>
+
+    <h1>ドキュメント ⇔ Excel 相互一括変換ツール</h1>
+    <div class="subtitle">ファイルを該当するエリアに落とすだけで、自動変換・保存されます。</div>
+
+    <div class="vertical-container">
+        
+        <div class="converter-box box-to-html">
+            <h2>① Markdown / TXT を HTML に変換する</h2>
+            <div id="drop-to-html" class="drop-zone">ここに【 .md 】または【 .txt 】ファイルをドロップしてください</div>
+            <div id="list-to-html" class="file-list"></div>
+        </div>
+
+        <div class="converter-box box-to-md">
+            <h2>② HTML を Markdown に変換する</h2>
+            <div id="drop-to-md" class="drop-zone">ここに【 .html 】ファイルをドロップしてください（.mdに変換されます）</div>
+            <div id="list-to-md" class="file-list"></div>
+        </div>
+
+        <div class="converter-box box-to-xlsx">
+            <h2>③ テキストや表データを Excel に変換する</h2>
+            <div id="drop-to-xlsx" class="drop-zone">ここに【 .md 】/【 .html 】/【 .txt 】をドロップ（.xlsxに変換されます）</div>
+            <div id="list-to-xlsx" class="file-list"></div>
+        </div>
+
+        <div class="converter-box box-from-xlsx">
+            <h2>④ Excel を Markdown / HTML の表に変換する</h2>
+            <div id="drop-from-xlsx" class="drop-zone">ここに【 .xlsx 】ファイルをドロップ（.mdと.htmlの表データが出力されます）</div>
+            <div id="list-from-xlsx" class="file-list"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const turndownService = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+        turndownService.keep(['table', 'thead', 'tbody', 'tr', 'th', 'td']);
+
+        const zones = {
+            html: { zone: document.getElementById('drop-to-html'), list: document.getElementById('list-to-html') },
+            md: { zone: document.getElementById('drop-to-md'), list: document.getElementById('list-to-md') },
+            xlsx: { zone: document.getElementById('drop-to-xlsx'), list: document.getElementById('list-to-xlsx') },
+            fromXlsx: { zone: document.getElementById('drop-from-xlsx'), list: document.getElementById('list-from-xlsx') }
+        };
+
+        function initDragAndDrop(targetKey, callback) {
+            const item = zones[targetKey];
+            ['dragenter', 'dragover'].forEach(eName => {
+                item.zone.addEventListener(eName, (e) => { e.preventDefault(); item.zone.classList.add('hover'); }, false);
+            });
+            ['dragleave', 'drop'].forEach(eName => {
+                item.zone.addEventListener(eName, (e) => { e.preventDefault(); item.zone.classList.remove('hover'); }, false);
+            });
+            item.zone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    item.list.style.display = 'block';
+                    callback(files, item.list);
+                }
+            });
+        }
+
+        // --- ① MD/TXT ➔ HTML 変換処理 ---
+        initDragAndDrop('html', (files, listLog) => {
+            Array.from(files).forEach(file => {
+                if (!file.name.match(/\.(md|txt)$/)) return alert("対象外のファイルです。 .md または .txt を入れてください");
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const htmlContent = marked.parse(e.target.result);
+                    const fullHtml = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${file.name.replace(/\.[^/.]+$/, "")}</title><style>body{font-family:sans-serif;line-height:1.6;max-width:800px;margin:0 auto;padding:20px;}table{width:100%;border-collapse:collapse;margin:20px 0;}th,td{border:1px solid #ccc;padding:8px;}th{background:#f2f2f2;}pre{background:#f4f4f4;padding:10px;border-radius:4px;}</style></head><body>${htmlContent}</body></html>`;
+                    triggerDownload(fullHtml, file.name.replace(/\.[^/.]+$/, "") + ".html", 'text/html');
+                    logSuccess(listLog, `HTML化完了: ${file.name.replace(/\.[^/.]+$/, "") + ".html"}`);
+                };
+                reader.readAsText(file);
+            });
+        });
+
+        // --- ② HTML ➔ Markdown 変換処理 ---
+        initDragAndDrop('md', (files, listLog) => {
+            Array.from(files).forEach(file => {
+                if (!file.name.match(/\.(html|htm)$/)) return alert("HTMLファイルをドロップしてください");
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(e.target.result, 'text/html');
+                    const mdContent = turndownService.turndown(doc.body ? doc.body.innerHTML : e.target.result);
+                    triggerDownload(mdContent, file.name.replace(/\.[^/.]+$/, "") + ".md", 'text/markdown');
+                    logSuccess(listLog, `MD化完了: ${file.name.replace(/\.[^/.]+$/, "") + ".md"}`);
+                };
+                reader.readAsText(file);
+            });
+        });
+
+        // --- ③ MD / HTML / TXT ➔ Excel 変換処理 ---
+        initDragAndDrop('xlsx', (files, listLog) => {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    let text = e.target.result;
+                    let rows = [];
+                    const isTxt = file.name.endsWith('.txt');
+                    const isMd = file.name.endsWith('.md');
+
+                    if (file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+                        const div = document.createElement('div');
+                        div.innerHTML = text;
+                        const table = div.querySelector('table');
+                        if (table) {
+                            const wb = XLSX.utils.table_to_book(table);
+                            XLSX.writeFile(wb, file.name.replace(/\.[^/.]+$/, "") + ".xlsx");
+                            logSuccess(listLog, `Excel化完了: ${file.name.replace(/\.[^/.]+$/, "") + ".xlsx"}`);
+                            return;
+                        }
+                        text = div.innerText;
+                    }
+
+                    const lines = text.split(/\r?\n/);
+                    lines.forEach(line => {
+                        // 空行（空白やタブのみの行も含む）の場合は、空文字を1つ入れた配列にして空行を維持する
+                        if (line.trim() === "") {
+                            rows.push([""]);
+                            return;
+                        }
+
+                        let cells = [];
+                        if (isMd && line.includes('|')) {
+                            // Markdownの表構造の場合のみセル分割を行う
+                            cells = line.split('|').map(c => c.trim()).filter((c, i, a) => {
+                                return !( (i === 0 || i === a.length - 1) && c === "" );
+                            });
+                            // MDの区切り線行（|---|---|）はスキップ
+                            if (cells.every(c => /^:-*|-+:$/.test(c) || c.includes('-'))) return;
+                        } else {
+                            // .txtファイル、またはMDの通常の文章は、分割せずにすべてA列（配列の0番目）に入れる
+                            cells = [line];
+                        }
+                        rows.push(cells);
+                    });
+
+                    const ws = XLSX.utils.aoa_to_sheet(rows);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+                    XLSX.writeFile(wb, file.name.replace(/\.[^/.]+$/, "") + ".xlsx");
+                    logSuccess(listLog, `Excel化完了: ${file.name.replace(/\.[^/.]+$/, "") + ".xlsx"}`);
+                };
+                reader.readAsText(file);
+            });
+        });
+
+        // --- ④ Excel ➔ MD / HTML 変換処理 ---
+        initDragAndDrop('fromXlsx', (files, listLog) => {
+            Array.from(files).forEach(file => {
+                if (!file.name.match(/\.(xlsx|xls)$/)) return alert("Excelファイル(.xlsx)をドロップしてください");
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        let mdTable = "";
+                        let htmlTable = "<table border='1'>\n";
+
+                        aoa.forEach((row, index) => {
+                            const cleanRow = Array.from(row, item => item === undefined || item === null ? "" : item);
+                            mdTable += "| " + cleanRow.join(" | ") + " |\n";
+                            if (index === 0) {
+                                mdTable += "| " + cleanRow.map(() => "---").join(" | ") + " |\n";
+                            }
+                            htmlTable += "  <tr>\n" + cleanRow.map(c => `    <td>${c}</td>`).join("\n") + "\n  </tr>\n";
+                        });
+                        htmlTable += "</table>";
+
+                        const baseName = file.name.replace(/\.[^/.]+$/, "");
+                        triggerDownload(mdTable, baseName + "_table.md", 'text/markdown');
+                        triggerDownload(htmlTable, baseName + "_table.html", 'text/html');
+                        
+                        logSuccess(listLog, `解体完了: ${baseName}_table.md / .html を出力`);
+                    } catch (err) {
+                        alert("Excelの解析に失敗しました。");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        });
+
+        function triggerDownload(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function logSuccess(element, msg) {
+            const div = document.createElement('div');
+            div.className = 'file-item success';
+            div.innerText = msg;
+            element.appendChild(div);
+        }
+    </script>
+</body>
+</html>
