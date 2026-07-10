@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>MD Editor v01</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f6f8fa; --text:#24292f; --accent:#0969da;
+    --border:#d0d7de; --btnbg:#f6f8fa; --btnhover:#eaeef2;
+    --code-bg:#f6f8fa;
+  }
+  html.dark{
+    --bg:#1e1e1e; --panel:#252526; --text:#d4d4d4; --accent:#3b82f6;
+    --border:#3c3c3c; --btnbg:#2d2d2d; --btnhover:#3a3a3a;
+    --code-bg:#2d2d2d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; height:100vh; display:flex; flex-direction:column;
+    font-family:"Segoe UI",Meiryo,sans-serif; background:var(--bg); color:var(--text);
+    font-size:13px;
+  }
+  #toolbar{
+    display:flex; align-items:center; gap:6px; padding:6px 8px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  #toolbar button{
+    background:var(--btnbg); color:var(--text); border:1px solid var(--border);
+    padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px;
+  }
+  #toolbar button:hover{background:var(--btnhover);}
+  #toolbar span#filename{margin-left:8px; opacity:0.7; font-size:12px;}
+  #toolbar label{font-size:12px; display:flex; align-items:center; gap:4px; margin-left:auto;}
+  #main{flex:1; display:flex; min-height:0;}
+  #editor, #preview{
+    flex:1; overflow:auto; padding:10px; min-width:0;
+  }
+  #editor{
+    background:var(--bg); color:var(--text); border:none; outline:none;
+    resize:none; font-family:Consolas,monospace; font-size:13px; line-height:1.5;
+    border-right:1px solid var(--border);
+  }
+  #preview{
+    background:var(--bg); color:var(--text); line-height:1.6;
+  }
+  #preview.hidden, #editor.hidden{display:none;}
+  #preview h1,#preview h2,#preview h3{border-bottom:1px solid var(--border); padding-bottom:4px;}
+  #preview code{background:var(--code-bg); padding:1px 4px; border-radius:3px; font-family:Consolas,monospace;}
+  #preview pre code{display:block; padding:8px; overflow:auto;}
+  #preview table{border-collapse:collapse;}
+  #preview table td,#preview table th{border:1px solid var(--border); padding:4px 8px;}
+  #preview blockquote{border-left:3px solid var(--accent); margin:0; padding-left:10px; opacity:0.85;}
+  #status{
+    padding:2px 8px; font-size:11px; color:#888; background:var(--panel);
+    border-top:1px solid var(--border);
+  }
+  #status.dirty{color:#e5a13d;}
+
+  #cheatBar{
+    display:flex; flex-wrap:wrap; gap:4px; padding:5px 8px;
+    background:var(--panel); border-bottom:1px solid var(--border);
+  }
+  .cheatBtn{
+    background:var(--btnbg); color:var(--text); border:1px solid var(--border);
+    padding:2px 9px; border-radius:4px; cursor:pointer; font-size:11px; white-space:nowrap;
+  }
+  .cheatBtn:hover{background:var(--btnhover);}
+  .cheatSelect{
+    background:var(--btnbg); color:var(--text); border:1px solid var(--border);
+    padding:2px 4px; border-radius:4px; cursor:pointer; font-size:11px;
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button id="btnOpen">開く</button>
+  <button id="btnSave">保存</button>
+  <button id="btnSaveAs">名前を付けて保存</button>
+  <button id="btnTheme">ダークモード</button>
+  <span id="filename">(無題)</span>
+  <label><input type="checkbox" id="chkPreviewOnly"> プレビューのみ</label>
+</div>
+
+<div id="cheatBar"></div>
+
+<div id="main">
+  <textarea id="editor" spellcheck="false" placeholder="ここにMarkdownを入力、またはファイルを開いてください..."></textarea>
+  <div id="preview"></div>
+</div>
+
+<div id="status">未編集</div>
+
+<input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none">
+
+<script>
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const filenameEl = document.getElementById('filename');
+const statusEl = document.getElementById('status');
+const fileInput = document.getElementById('fileInput');
+const chkPreviewOnly = document.getElementById('chkPreviewOnly');
+
+let fileHandle = null;   // File System Access API 用
+let currentFilename = null;
+let isDirty = false;
+const supportsFSA = 'showOpenFilePicker' in window;
+
+function renderPreview(){
+  preview.innerHTML = marked.parse(editor.value);
+}
+
+function setDirty(d){
+  isDirty = d;
+  statusEl.textContent = d ? '未保存の変更あり' : '保存済み';
+  statusEl.className = d ? 'dirty' : '';
+}
+
+function setFilename(name){
+  currentFilename = name;
+  filenameEl.textContent = name || '(無題)';
+}
+
+editor.addEventListener('input', () => {
+  renderPreview();
+  setDirty(true);
+});
+
+chkPreviewOnly.addEventListener('change', () => {
+  editor.classList.toggle('hidden', chkPreviewOnly.checked);
+  preview.style.flex = chkPreviewOnly.checked ? '1' : '';
+});
+
+// ---- 開く ----
+document.getElementById('btnOpen').addEventListener('click', async () => {
+  if (supportsFSA){
+    try{
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'Markdown', accept: {'text/markdown': ['.md', '.markdown']} }]
+      });
+      fileHandle = handle;
+      const file = await handle.getFile();
+      const text = await file.text();
+      editor.value = text;
+      renderPreview();
+      setFilename(file.name);
+      setDirty(false);
+    }catch(e){ /* キャンセル等は無視 */ }
+  } else {
+    fileInput.click();
+  }
+});
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    editor.value = reader.result;
+    renderPreview();
+    setFilename(file.name);
+    fileHandle = null;
+    setDirty(false);
+  };
+  reader.readAsText(file, 'utf-8');
+});
+
+// ---- 保存 ----
+async function saveToHandle(handle){
+  const writable = await handle.createWritable();
+  await writable.write(editor.value);
+  await writable.close();
+}
+
+document.getElementById('btnSave').addEventListener('click', async () => {
+  if (supportsFSA && fileHandle){
+    try{
+      await saveToHandle(fileHandle);
+      setDirty(false);
+    }catch(e){ alert('保存に失敗しました: ' + e.message); }
+  } else {
+    downloadFile(currentFilename || 'untitled.md');
+  }
+});
+
+document.getElementById('btnSaveAs').addEventListener('click', async () => {
+  if (supportsFSA){
+    try{
+      const handle = await window.showSaveFilePicker({
+        suggestedName: currentFilename || 'untitled.md',
+        types: [{ description: 'Markdown', accept: {'text/markdown': ['.md']} }]
+      });
+      fileHandle = handle;
+      await saveToHandle(handle);
+      const file = await handle.getFile();
+      setFilename(file.name);
+      setDirty(false);
+    }catch(e){ /* キャンセル等は無視 */ }
+  } else {
+    const name = prompt('ファイル名', currentFilename || 'untitled.md');
+    if (name) downloadFile(name);
+  }
+});
+
+function downloadFile(name){
+  const blob = new Blob([editor.value], {type:'text/markdown'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setFilename(name);
+  setDirty(false);
+}
+
+// ---- ドラッグ&ドロップ ----
+document.body.addEventListener('dragover', e => e.preventDefault());
+document.body.addEventListener('drop', async e => {
+  e.preventDefault();
+  const item = e.dataTransfer.items && e.dataTransfer.items[0];
+  if (supportsFSA && item && item.kind === 'file' && item.getAsFileSystemHandle){
+    try{
+      const handle = await item.getAsFileSystemHandle();
+      if (handle.kind === 'file'){
+        fileHandle = handle;
+        const file = await handle.getFile();
+        editor.value = await file.text();
+        renderPreview();
+        setFilename(file.name);
+        setDirty(false);
+        return;
+      }
+    }catch(err){}
+  }
+  const file = e.dataTransfer.files[0];
+  if (file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      editor.value = reader.result;
+      renderPreview();
+      setFilename(file.name);
+      fileHandle = null;
+      setDirty(false);
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+});
+
+// ---- 離脱時の警告 ----
+window.addEventListener('beforeunload', (e) => {
+  if (isDirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+// ---- Ctrl+S ----
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's'){
+    e.preventDefault();
+    document.getElementById('btnSave').click();
+  }
+});
+
+// ---- テーマ切替 ----
+const btnTheme = document.getElementById('btnTheme');
+function applyTheme(dark){
+  document.documentElement.classList.toggle('dark', dark);
+  btnTheme.textContent = dark ? 'ライトモード' : 'ダークモード';
+  localStorage.setItem('md_editor_theme', dark ? 'dark' : 'light');
+}
+btnTheme.addEventListener('click', () => {
+  applyTheme(!document.documentElement.classList.contains('dark'));
+});
+applyTheme(localStorage.getItem('md_editor_theme') === 'dark');
+
+// ---- 記法早見表 ----
+const cheatData = [
+  { label:'見出し', variants:[
+      { label:'# 見出し1',      type:'line', prefix:'# ',      placeholder:'見出し1' },
+      { label:'## 見出し2',     type:'line', prefix:'## ',     placeholder:'見出し2' },
+      { label:'### 見出し3',    type:'line', prefix:'### ',    placeholder:'見出し3' },
+      { label:'#### 見出し4',   type:'line', prefix:'#### ',   placeholder:'見出し4' },
+      { label:'##### 見出し5',  type:'line', prefix:'##### ',  placeholder:'見出し5' },
+      { label:'###### 見出し6', type:'line', prefix:'###### ', placeholder:'見出し6' },
+  ]},
+  { label:'太字', variants:[
+      { label:'**太字**', type:'wrap', prefix:'**', suffix:'**', placeholder:'太字' },
+      { label:'__太字__', type:'wrap', prefix:'__', suffix:'__', placeholder:'太字' },
+  ]},
+  { label:'斜体', variants:[
+      { label:'*斜体*', type:'wrap', prefix:'*', suffix:'*', placeholder:'斜体' },
+      { label:'_斜体_', type:'wrap', prefix:'_', suffix:'_', placeholder:'斜体' },
+  ]},
+  { label:'取り消し線',     syntax:'~~取り消し線~~', type:'wrap', prefix:'~~', suffix:'~~', placeholder:'取り消し線' },
+  { label:'インラインコード', syntax:'`code`',     type:'wrap', prefix:'`',  suffix:'`',  placeholder:'code' },
+  { label:'コードブロック',  syntax:'```\ncode\n```', type:'wrap', prefix:'```\n', suffix:'\n```', placeholder:'code' },
+  { label:'リンク',        syntax:'[表示名](URL)', type:'link', placeholder:'表示名' },
+  { label:'画像',          syntax:'![alt](URL)',  type:'image', placeholder:'alt' },
+  { label:'箇条書き', variants:[
+      { label:'- 項目', type:'line', prefix:'- ', placeholder:'項目' },
+      { label:'* 項目', type:'line', prefix:'* ', placeholder:'項目' },
+      { label:'+ 項目', type:'line', prefix:'+ ', placeholder:'項目' },
+  ]},
+  { label:'番号付きリスト',  syntax:'1. 項目',      type:'line', prefix:'1. ',   placeholder:'項目' },
+  { label:'チェックボックス', syntax:'- [ ] タスク', type:'line', prefix:'- [ ] ', placeholder:'タスク' },
+  { label:'引用',          syntax:'> 引用文',      type:'line', prefix:'> ',    placeholder:'引用文' },
+  { label:'水平線', variants:[
+      { label:'---',   type:'fixed', insert:'\n---\n' },
+      { label:'***',   type:'fixed', insert:'\n***\n' },
+      { label:'___',   type:'fixed', insert:'\n___\n' },
+      { label:'* * *', type:'fixed', insert:'\n* * *\n' },
+  ]},
+  { label:'テーブル',       syntax:'| A | B |\n|---|---|\n| 1 | 2 |', type:'fixed', insert:'| 見出し1 | 見出し2 |\n|---|---|\n| 内容1 | 内容2 |' },
+  { label:'改行(強制)',    syntax:'行末に半角スペース2つ', type:'fixed', insert:'  \n' },
+];
+
+// 選択テキスト(selText、無ければ空文字)に対して構文を適用し、
+// { result: 置換後の文字列, selStart: 選択範囲開始(result内の相対位置), selLen: 選択範囲の長さ } を返す
+function applyItem(item, selText){
+  const hasSel = selText.length > 0;
+  const text = hasSel ? selText : item.placeholder;
+
+  if (item.type === 'wrap'){
+    return { result:item.prefix + text + item.suffix, selStart:item.prefix.length, selLen:text.length };
+  }
+  if (item.type === 'line'){
+    const result = text.split('\n').map(l => item.prefix + l).join('\n');
+    return { result, selStart:0, selLen:result.length };
+  }
+  if (item.type === 'link' || item.type === 'image'){
+    const url = item.type === 'link' ? 'https://example.com' : 'https://example.com/image.png';
+    const mark = item.type === 'image' ? '!' : '';
+    const result = `${mark}[${text}](${url})`;
+    const selStart = result.indexOf('](') + 2; // URL部分を選択状態にする
+    return { result, selStart, selLen:url.length };
+  }
+  // fixed
+  return { result:item.insert, selStart:0, selLen:item.insert.length };
+}
+
+const cheatBar = document.getElementById('cheatBar');
+
+function applyCheat(item){
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const selText = editor.value.slice(start, end);
+  const { result, selStart, selLen } = applyItem(item, selText);
+  const scrollTop = editor.scrollTop; // スクロール位置を保持してジャンプを防ぐ
+
+  const value = editor.value;
+  editor.value = value.slice(0, start) + result + value.slice(end);
+
+  const newStart = start + selStart;
+  editor.focus({ preventScroll:true });
+  editor.selectionStart = newStart;
+  editor.selectionEnd = newStart + selLen;
+  editor.scrollTop = scrollTop;
+
+  renderPreview();
+  setDirty(true);
+}
+
+cheatData.forEach(item => {
+  if (item.variants){
+    const select = document.createElement('select');
+    select.className = 'cheatSelect';
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.textContent = item.label;
+    placeholderOpt.value = '';
+    placeholderOpt.disabled = true;
+    placeholderOpt.selected = true;
+    select.appendChild(placeholderOpt);
+    item.variants.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.textContent = v.label;
+      opt.value = i;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => {
+      const variant = item.variants[select.value];
+      applyCheat(variant);
+      select.selectedIndex = 0; // 次回また選べるようプレースホルダーに戻す
+    });
+    cheatBar.appendChild(select);
+  } else {
+    const btn = document.createElement('button');
+    btn.className = 'cheatBtn';
+    btn.textContent = item.label;
+    btn.title = item.syntax;
+    btn.addEventListener('click', () => applyCheat(item));
+    cheatBar.appendChild(btn);
+  }
+});
+
+renderPreview();
+</script>
+</body>
+</html>
