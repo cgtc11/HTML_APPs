@@ -245,36 +245,36 @@ F1Face
 <tr>
 
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/maze_game.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html">
 <img src="https://github.com/cgtc11/image/blob/main/17_ico.png" width="120"><br>
-<b>2D迷路</b>
+<b>戦国武将</b>
 </a>
 <br>
 戦国武将
 </td>
   
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/star_luster.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/wars.html">
 <img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
-<b>star_luster</b>
+<b>うぉーず</b>
 </a>
 <br>
 うぉーず
 </td>
 
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/F1Race.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/street_brawler.html">
 <img src="https://github.com/cgtc11/image/blob/main/16_ico.png" width="120"><br>
-<b>F1Race</b>
+<b>パルタンX</b>
 </a>
 <br>
 パルタンX
 </td>
 
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/dungeon_rpg.html">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/Survivors.html">
 <img src="https://github.com/cgtc11/image/blob/main/14_ico.png" width="120"><br>
-<b>dungeon_rpg</b>
+<b>Survivors</b>
 </a>
 <br>
 サバイバー
