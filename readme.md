@@ -246,7 +246,7 @@ F1Face
 
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html">
-<img src="https://github.com/cgtc11/image/blob/main/22_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/23_ico.png" width="120"><br>
 <b>戦国武将</b>
 </a>
 <br>
@@ -255,7 +255,7 @@ F1Face
   
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/wars.html">
-<img src="https://github.com/cgtc11/image/blob/main/23_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/22_ico.png" width="120"><br>
 <b>うぉーず</b>
 </a>
 <br>
