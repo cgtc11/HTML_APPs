@@ -334,3 +334,7 @@ https://cgtc11.github.io/HTML_APPs/Game/dungeon_rpg.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/maze_game.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/concentration.html<br>
 https://cgtc11.github.io/HTML_APPs/Game/HeroDispatch.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/wars.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/Survivors.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html<br>
+https://cgtc11.github.io/HTML_APPs/Game/street_brawler.html<br>
