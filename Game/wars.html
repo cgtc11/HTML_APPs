@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ミニ・ウォーズ</title>
+<style>
+  :root{
+    --bg:#23261e;
+    --panel:#2f331f;
+    --panel-edge:#4a4f34;
+    --ink:#e9e4c8;
+    --muted:#a7a184;
+    --red:#c0392b;
+    --red-dark:#7f2418;
+    --blue:#2d6fa3;
+    --blue-dark:#1c4a6e;
+    --gold:#d4a72c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Yu Gothic","Hiragino Sans",sans-serif;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  h1{
+    font-size:20px; letter-spacing:4px; margin:4px 0;
+    color:var(--gold); text-shadow:1px 1px 0 #000;
+  }
+  #wrap{display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; justify-content:center;}
+  #board{
+    display:grid;
+    border:3px solid var(--panel-edge);
+    background:#1a1c14;
+  }
+  .cell{
+    width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    font-size:22px;
+    border:1px solid rgba(0,0,0,0.25);
+    cursor:pointer;
+    user-select:none;
+  }
+  .t-plain{background:#7a9c4e;}
+  .t-forest{background:#3d6b2c;}
+  .t-mountain{background:#7a6a52;}
+  .t-road{background:#b5a97c;}
+  .t-city{background:#8d8d78;}
+  .t-hq-red{background:#8d5148;}
+  .t-hq-blue{background:#456f8d;}
+  .t-river{background:#3a6b8a;}
+
+  .cell.movable::after{
+    content:""; position:absolute; inset:2px;
+    background:rgba(255,255,180,0.35);
+    border-radius:3px; pointer-events:none;
+  }
+  .cell.attackable::after{
+    content:""; position:absolute; inset:2px;
+    background:rgba(255,60,60,0.4);
+    border-radius:3px; pointer-events:none;
+  }
+  .cell.selected{outline:3px solid var(--gold); outline-offset:-3px;}
+
+  .unit{
+    position:relative; z-index:2;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:6px;
+    font-size:20px; line-height:1;
+  }
+  .unit.owner-red{background:rgba(192,57,43,0.85); border:1px solid #7f2418;}
+  .unit.owner-blue{background:rgba(45,111,163,0.85); border:1px solid #1c4a6e;}
+  .unit.done{opacity:0.5;}
+  .hpbar{
+    position:absolute; bottom:1px; left:2px; right:2px; height:3px;
+    background:#000; border-radius:2px; overflow:hidden;
+  }
+  .hpfill{height:100%; background:#4caf50;}
+
+  .cityowner-mark{
+    position:absolute; top:1px; left:1px; width:8px; height:8px; border-radius:50%;
+  }
+
+  #side{
+    width:260px; background:var(--panel); border:2px solid var(--panel-edge);
+    border-radius:6px; padding:10px 12px; font-size:13px;
+  }
+  #side h2{font-size:14px; margin:0 0 6px; color:var(--gold);}
+  #turnInfo{margin-bottom:8px; padding:6px; border-radius:4px; background:#1a1c14;}
+  #turnInfo.red{border-left:4px solid var(--red);}
+  #turnInfo.blue{border-left:4px solid var(--blue);}
+  .funds{font-weight:bold; color:var(--gold);}
+  #log{
+    height:120px; overflow-y:auto; background:#1a1c14; padding:6px; border-radius:4px;
+    font-size:12px; color:var(--muted); margin-bottom:8px;
+  }
+  #log div{margin-bottom:2px;}
+  button{
+    font-family:inherit; background:#4a4f34; color:var(--ink); border:1px solid #6b7050;
+    border-radius:4px; padding:6px 10px; cursor:pointer; font-size:13px; margin:2px 2px 2px 0;
+  }
+  button:hover{background:#5c6242;}
+  button:disabled{opacity:0.4; cursor:not-allowed;}
+  #shopList{display:flex; flex-direction:column; gap:4px; margin-top:6px;}
+  .shopItem{
+    display:flex; justify-content:space-between; align-items:center;
+    background:#1a1c14; padding:4px 6px; border-radius:4px;
+  }
+  .legend{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.6;}
+  #actionPanel{margin-top:8px; min-height:34px;}
+  #overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.75);
+    display:none; align-items:center; justify-content:center; z-index:99;
+  }
+  #overlay .box{
+    background:var(--panel); border:2px solid var(--gold); border-radius:8px;
+    padding:24px 30px; text-align:center;
+  }
+  #overlay h2{font-size:24px; margin:0 0 10px;}
+</style>
+</head>
+<body>
+<h1>MINI WARS 〜 陣取り戦略シミュレーション 〜</h1>
+<div id="wrap">
+  <div id="board"></div>
+  <div id="side">
+    <h2>状況</h2>
+    <div id="turnInfo"></div>
+    <div id="log"></div>
+    <div id="actionPanel"></div>
+    <h2>生産（都市/本拠地を選択）</h2>
+    <div id="shopList">都市か本拠地(自軍・ユニット無し)をクリックすると生産できます</div>
+    <div class="legend">
+      🪖歩兵(100) 移動2 対歩兵に強い・都市占領可<br>
+      🎯対戦車兵(250) 移動2 対戦車に強い<br>
+      🚙戦車(500) 移動4 総合的に強い、山地不可<br>
+      🏍️偵察(200) 移動6 弱いが速い、占領可<br>
+      💣大砲(400) 移動3 遠距離攻撃専用(隣接攻撃不可)<br>
+      地形: 森=防御+2 山=防御+3 都市=防御+1
+    </div>
+  </div>
+</div>
+<div id="overlay"><div class="box"><h2 id="overText"></h2><button onclick="location.reload()">もう一度プレイ</button></div></div>
+
+<script>
+const COLS=12, ROWS=9;
+const TILE = {P:'plain',F:'forest',M:'mountain',R:'road',C:'city',HR:'hq-red',HB:'hq-blue',W:'river'};
+
+// Map layout (hand designed)
+const mapKeys = [
+ "P,P,F,P,P,R,R,P,P,F,P,P",
+ "P,HR,P,P,F,R,R,F,P,P,HB,P",
+ "P,P,P,M,P,R,R,P,M,P,P,P",
+ "F,P,C,P,P,R,R,P,P,C,P,F",
+ "P,P,P,P,W,W,W,W,P,P,P,P",
+ "F,P,C,P,P,R,R,P,P,C,P,F",
+ "P,P,P,M,P,R,R,P,M,P,P,P",
+ "P,P,P,P,F,R,R,F,P,P,P,P",
+ "P,P,F,P,P,R,R,P,P,F,P,P"
+];
+let terrain = mapKeys.map(row=>row.split(',').map(k=>TILE[k]));
+
+const UNIT_TYPES = {
+  infantry:{name:'歩兵', icon:'🪖', cost:100, hp:10, move:2, canCapture:true, kind:'foot',
+    power:{infantry:55, antitank:45, tank:15, recon:55, artillery:55}},
+  antitank:{name:'対戦車兵', icon:'🎯', cost:250, hp:10, move:2, canCapture:false, kind:'foot',
+    power:{infantry:60, antitank:55, tank:70, recon:65, artillery:60}},
+  tank:{name:'戦車', icon:'🚙', cost:500, hp:10, move:4, canCapture:false, kind:'vehicle',
+    power:{infantry:75, antitank:50, tank:55, recon:80, artillery:75}},
+  recon:{name:'偵察', icon:'🏍️', cost:200, hp:10, move:6, canCapture:true, kind:'vehicle',
+    power:{infantry:35, antitank:20, tank:15, recon:45, artillery:40}},
+  artillery:{name:'大砲', icon:'💣', cost:400, hp:10, move:3, canCapture:false, kind:'vehicle', ranged:true, minRange:2, maxRange:3,
+    power:{infantry:80, antitank:75, tank:65, recon:75, artillery:70}},
+};
+
+function moveCost(type, t){
+  const k = UNIT_TYPES[type].kind;
+  if(t==='river') return Infinity;
+  if(t==='mountain'){
+    if(type==='infantry') return 2;
+    if(type==='recon') return 3;
+    return Infinity;
+  }
+  if(t==='forest') return k==='foot'?1:2;
+  return 1;
+}
+function defBonus(t){
+  if(t==='forest') return 2;
+  if(t==='mountain') return 3;
+  if(t==='city'||t==='hq-red'||t==='hq-blue') return 1;
+  return 0;
+}
+
+let units = []; // {id,side,type,x,y,hp,moved,attacked}
+let cityOwner = {}; // "x,y" -> 'red'|'blue'|null (only for city tiles; hq owners fixed by map but can be captured too)
+let uidc=0;
+
+function key(x,y){return x+','+y;}
+
+function initCities(){
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t = terrain[y][x];
+    if(t==='city') cityOwner[key(x,y)] = null;
+    if(t==='hq-red') cityOwner[key(x,y)] = 'red';
+    if(t==='hq-blue') cityOwner[key(x,y)] = 'blue';
+  }
+}
+initCities();
+
+function addUnit(side,type,x,y){
+  units.push({id:uidc++, side, type, x, y, hp:10, moved:false, attacked:false});
+}
+// initial armies
+addUnit('red','infantry',1,1);
+addUnit('red','infantry',2,3);
+addUnit('red','tank',1,3);
+addUnit('blue','infantry',10,1);
+addUnit('blue','infantry',9,5);
+addUnit('blue','tank',10,5);
+
+let funds = {red:200, blue:200};
+let turn = 'red';
+let turnNum = 1;
+let selected = null; // unit id
+let phase = 'select'; // select | moved (choose action)
+let movableTiles = [];
+let attackableTargets = [];
+let pendingMove = null;
+let gameOver=false;
+
+const boardEl = document.getElementById('board');
+boardEl.style.gridTemplateColumns = `repeat(${COLS}, 44px)`;
+boardEl.style.gridTemplateRows = `repeat(${ROWS}, 44px)`;
+
+function unitAt(x,y){ return units.find(u=>u.x===x&&u.y===y&&u.hp>0); }
+
+function log(msg){
+  const l = document.getElementById('log');
+  const d = document.createElement('div');
+  d.textContent = msg;
+  l.prepend(d);
+}
+
+function render(){
+  boardEl.innerHTML='';
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const t = terrain[y][x];
+      const cell = document.createElement('div');
+      let cls = 't-'+t;
+      cell.className = 'cell '+cls;
+      cell.dataset.x=x; cell.dataset.y=y;
+
+      if(t==='city'||t==='hq-red'||t==='hq-blue'){
+        const owner = cityOwner[key(x,y)];
+        const mark = document.createElement('div');
+        mark.className='cityowner-mark';
+        mark.style.background = owner==='red'?'#c0392b':owner==='blue'?'#2d6fa3':'#ccc';
+        cell.appendChild(mark);
+        if(!unitAt(x,y)){
+          const label=document.createElement('div');
+          label.style.fontSize='11px';
+          label.style.opacity='0.8';
+          label.textContent = (t==='hq-red')?'本拠':(t==='hq-blue')?'本拠':'都市';
+          cell.appendChild(label);
+        }
+      }
+
+      const u = unitAt(x,y);
+      if(u){
+        const ue=document.createElement('div');
+        ue.className='unit owner-'+u.side+(u.moved&&u.attacked?' done':(turn===u.side && u.moved && u.attacked)?' done':'');
+        if(u.moved && u.attacked) ue.classList.add('done');
+        ue.innerHTML = `<span>${UNIT_TYPES[u.type].icon}</span>`;
+        const hpbar=document.createElement('div');
+        hpbar.className='hpbar';
+        const hpfill=document.createElement('div');
+        hpfill.className='hpfill';
+        hpfill.style.width=(u.hp*10)+'%';
+        if(u.hp<=4) hpfill.style.background='#c0392b'; else if(u.hp<=7) hpfill.style.background='#e0a020';
+        hpbar.appendChild(hpfill);
+        ue.appendChild(hpbar);
+        cell.appendChild(ue);
+      }
+
+      if(movableTiles.some(m=>m.x===x&&m.y===y)) cell.classList.add('movable');
+      if(attackableTargets.some(a=>a.x===x&&a.y===y)) cell.classList.add('attackable');
+      if(selected!==null){
+        const su = units.find(u=>u.id===selected);
+        if(su && su.x===x && su.y===y) cell.classList.add('selected');
+      }
+
+      cell.onclick = ()=>onCellClick(x,y);
+      boardEl.appendChild(cell);
+    }
+  }
+  const ti = document.getElementById('turnInfo');
+  ti.className = turn;
+  ti.innerHTML = `<b>${turnNum}ターン目 - ${turn==='red'?'あなた(赤軍)':'CPU(青軍)'}の番</b><br>資金: <span class="funds">${funds[turn]}G</span>`;
+  renderActionPanel();
+}
+
+function bfsMove(unit){
+  const type = unit.type;
+  const maxMove = UNIT_TYPES[type].move;
+  const dist = {};
+  dist[key(unit.x,unit.y)]=0;
+  const queue=[[unit.x,unit.y]];
+  const result=[];
+  while(queue.length){
+    const [cx,cy]=queue.shift();
+    const cd = dist[key(cx,cy)];
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=cx+dx, ny=cy+dy;
+      if(nx<0||ny<0||nx>=COLS||ny>=ROWS) continue;
+      const occ = unitAt(nx,ny);
+      if(occ && occ.side!==unit.side) continue; // can't pass through enemy
+      const mc = moveCost(type, terrain[ny][nx]);
+      if(mc===Infinity) continue;
+      const nd = cd+mc;
+      if(nd>maxMove) continue;
+      if(dist[key(nx,ny)]!==undefined && dist[key(nx,ny)]<=nd) continue;
+      dist[key(nx,ny)]=nd;
+      queue.push([nx,ny]);
+    }
+  }
+  for(const k in dist){
+    const [x,y]=k.split(',').map(Number);
+    if(unitAt(x,y) && !(x===unit.x&&y===unit.y)) continue; // occupied by ally, can't end there (except own tile)
+    result.push({x,y});
+  }
+  return result;
+}
+
+function distance(x1,y1,x2,y2){ return Math.abs(x1-x2)+Math.abs(y1-y2); }
+
+function getAttackTargets(unit, fromX, fromY){
+  const ut = UNIT_TYPES[unit.type];
+  const targets=[];
+  if(ut.ranged){
+    for(const e of units){
+      if(e.side===unit.side||e.hp<=0) continue;
+      const d = distance(fromX,fromY,e.x,e.y);
+      if(d>=ut.minRange && d<=ut.maxRange) targets.push({x:e.x,y:e.y,enemy:e});
+    }
+  } else {
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=fromX+dx, ny=fromY+dy;
+      const e = unitAt(nx,ny);
+      if(e && e.side!==unit.side) targets.push({x:nx,y:ny,enemy:e});
+    }
+  }
+  return targets;
+}
+
+function onCellClick(x,y){
+  if(gameOver || turn!=='red') return;
+  const clickedUnit = unitAt(x,y);
+
+  if(selected===null){
+    if(clickedUnit && clickedUnit.side==='red' && !(clickedUnit.moved&&clickedUnit.attacked)){
+      selected = clickedUnit.id;
+      pendingMove=null;
+      movableTiles = clickedUnit.moved? [] : bfsMove(clickedUnit);
+      attackableTargets = clickedUnit.attacked? [] : getAttackTargets(clickedUnit, clickedUnit.x, clickedUnit.y);
+      render();
+    } else if(clickedUnit && clickedUnit.side==='red'){
+      // fully done unit, nothing
+    } else {
+      // maybe city for shop
+      showShopIfApplicable(x,y);
+    }
+    return;
+  }
+
+  const su = units.find(u=>u.id===selected);
+  if(!su){selected=null;render();return;}
+
+  // clicking same unit -> deselect
+  if(clickedUnit && clickedUnit.id===su.id){
+    selected=null; movableTiles=[]; attackableTargets=[]; render(); return;
+  }
+
+  // attack?
+  const atkTarget = attackableTargets.find(a=>a.x===x&&a.y===y);
+  if(atkTarget && !su.attacked){
+    doAttack(su, atkTarget.enemy);
+    selected=null; movableTiles=[]; attackableTargets=[];
+    render();
+    return;
+  }
+
+  // move?
+  const moveTile = movableTiles.find(m=>m.x===x&&m.y===y);
+  if(moveTile && !su.moved){
+    su.x = x; su.y = y; su.moved = true;
+    attackableTargets = su.attacked? [] : getAttackTargets(su, x, y);
+    movableTiles = [];
+    // check capture
+    const t = terrain[y][x];
+    if((t==='city'||t==='hq-red'||t==='hq-blue') && UNIT_TYPES[su.type].canCapture && cityOwner[key(x,y)]!==su.side){
+      cityOwner[key(x,y)] = su.side;
+      log(`${UNIT_TYPES[su.type].name}が拠点(${x},${y})を占領した！`);
+      checkVictory();
+    }
+    if(attackableTargets.length===0){
+      su.attacked = true; // no targets, effectively done
+    }
+    render();
+    return;
+  }
+
+  // clicked elsewhere -> reselect or deselect
+  if(clickedUnit && clickedUnit.side==='red' && !(clickedUnit.moved&&clickedUnit.attacked)){
+    selected = clickedUnit.id;
+    movableTiles = clickedUnit.moved? [] : bfsMove(clickedUnit);
+    attackableTargets = clickedUnit.attacked? [] : getAttackTargets(clickedUnit, clickedUnit.x, clickedUnit.y);
+  } else {
+    selected=null; movableTiles=[]; attackableTargets=[];
+  }
+  render();
+}
+
+function doAttack(attacker, defender){
+  const at = UNIT_TYPES[attacker.type];
+  const dt = UNIT_TYPES[defender.type];
+  const dTerrain = terrain[defender.y][defender.x];
+  const def = defBonus(dTerrain);
+  let dmg = Math.round(at.power[defender.type] * (attacker.hp/10) * (1 - def*0.08));
+  dmg = Math.max(1, dmg);
+  defender.hp -= Math.round(dmg/10);
+  attacker.attacked = true;
+  log(`${UNIT_TYPES[attacker.type].name}(${attacker.side==='red'?'赤':'青'})が${UNIT_TYPES[defender.type].name}(${defender.side==='red'?'赤':'青'})を攻撃！ダメージ${Math.round(dmg/10)}`);
+  if(defender.hp<=0){
+    defender.hp=0;
+    units = units.filter(u=>u.id!==defender.id);
+    log(`${UNIT_TYPES[defender.type].name}(${defender.side==='red'?'赤':'青'})は撃破された！`);
+  } else if(!at.ranged){
+    // counterattack if adjacent and not ranged-only attacker
+    const aTerrain = terrain[attacker.y][attacker.x];
+    const adef = defBonus(aTerrain);
+    let cdmg = Math.round(dt.power[attacker.type] * (defender.hp/10) * (1 - adef*0.08));
+    cdmg = Math.max(1, cdmg);
+    attacker.hp -= Math.round(cdmg/10);
+    log(`${UNIT_TYPES[defender.type].name}が反撃！ダメージ${Math.round(cdmg/10)}`);
+    if(attacker.hp<=0){
+      attacker.hp=0;
+      units = units.filter(u=>u.id!==attacker.id);
+      log(`${UNIT_TYPES[attacker.type].name}(${attacker.side==='red'?'赤':'青'})は撃破された！`);
+    }
+  }
+  checkVictory();
+}
+
+function checkVictory(){
+  const redAlive = units.some(u=>u.side==='red');
+  const blueAlive = units.some(u=>u.side==='blue');
+  const redHQ = Object.keys(cityOwner).find(k=>terrain[+k.split(',')[1]][+k.split(',')[0]]==='hq-red');
+  const blueHQ = Object.keys(cityOwner).find(k=>terrain[+k.split(',')[1]][+k.split(',')[0]]==='hq-blue');
+  if(cityOwner[redHQ]==='blue' || !redAlive){ endGame('blue'); return; }
+  if(cityOwner[blueHQ]==='red' || !blueAlive){ endGame('red'); return; }
+}
+
+function endGame(winner){
+  gameOver=true;
+  const ov = document.getElementById('overlay');
+  ov.style.display='flex';
+  document.getElementById('overText').textContent = winner==='red' ? '勝利！ 赤軍の勝ちです' : '敗北… 青軍が勝利しました';
+}
+
+function renderActionPanel(){
+  const panel = document.getElementById('actionPanel');
+  panel.innerHTML='';
+  if(turn==='red' && !gameOver){
+    const btn = document.createElement('button');
+    btn.textContent='ターン終了';
+    btn.onclick=endTurn;
+    panel.appendChild(btn);
+  }
+}
+
+function endTurn(){
+  selected=null; movableTiles=[]; attackableTargets=[];
+  if(turn==='red'){
+    turn='blue';
+    render();
+    setTimeout(cpuTurn, 500);
+  } else {
+    turn='red';
+    turnNum++;
+    collectIncome();
+    for(const u of units){u.moved=false;u.attacked=false;}
+    render();
+  }
+}
+
+function collectIncome(){
+  for(const k in cityOwner){
+    const owner = cityOwner[k];
+    if(owner) funds[owner]+=100;
+  }
+  log(`収入を得た。赤軍:${funds.red}G 青軍:${funds.blue}G`);
+}
+
+// ---------- Shop ----------
+function showShopIfApplicable(x,y){
+  const t = terrain[y][x];
+  const isBase = (t==='city'||t==='hq-red'||t==='hq-blue');
+  const shop = document.getElementById('shopList');
+  if(!isBase || cityOwner[key(x,y)]!=='red' || unitAt(x,y) || turn!=='red'){
+    return;
+  }
+  shop.innerHTML='';
+  for(const type in UNIT_TYPES){
+    const ut = UNIT_TYPES[type];
+    const row = document.createElement('div');
+    row.className='shopItem';
+    row.innerHTML = `<span>${ut.icon} ${ut.name} (${ut.cost}G)</span>`;
+    const b = document.createElement('button');
+    b.textContent='生産';
+    b.disabled = funds.red < ut.cost;
+    b.onclick = ()=>{
+      if(funds.red>=ut.cost){
+        funds.red -= ut.cost;
+        addUnit('red', type, x, y);
+        const nu = units[units.length-1];
+        nu.moved=true; nu.attacked=true; // can't act same turn
+        log(`赤軍が${ut.name}を生産した (${x},${y})`);
+        shop.innerHTML='都市か本拠地(自軍・ユニット無し)をクリックすると生産できます';
+        render();
+      }
+    };
+    row.appendChild(b);
+    shop.appendChild(row);
+  }
+}
+
+// ---------- Simple CPU AI ----------
+function cpuTurn(){
+  if(gameOver) return;
+  const cpuUnits = units.filter(u=>u.side==='blue');
+  for(const u of cpuUnits){
+    if(u.hp<=0) continue;
+    u.moved=false; u.attacked=false;
+    // find best move: try to get in range of an enemy, or move toward nearest enemy/city
+    const enemies = units.filter(e=>e.side==='red'&&e.hp>0);
+    let targetPos = null;
+    // check if already can attack without moving
+    let targets = getAttackTargets(u, u.x, u.y);
+    if(targets.length===0){
+      const movable = bfsMove(u);
+      // try each movable tile, see if it opens an attack, prefer highest damage potential
+      let best=null, bestScore=-1;
+      for(const m of movable){
+        const t2 = getAttackTargets(u, m.x, m.y);
+        if(t2.length>0){
+          const score = t2.length + (10-Math.min(...t2.map(t=>t.enemy.hp)));
+          if(score>bestScore){bestScore=score; best={pos:m, targets:t2};}
+        }
+      }
+      if(best){
+        u.x=best.pos.x; u.y=best.pos.y; u.moved=true;
+        targets = best.targets;
+      } else {
+        // move toward nearest enemy or uncaptured city
+        let goal=null, bestD=Infinity;
+        for(const e of enemies){
+          const d = distance(u.x,u.y,e.x,e.y);
+          if(d<bestD){bestD=d; goal=e;}
+        }
+        for(const k in cityOwner){
+          if(cityOwner[k]!=='blue' && UNIT_TYPES[u.type].canCapture){
+            const [cx,cy]=k.split(',').map(Number);
+            const d = distance(u.x,u.y,cx,cy);
+            if(d<bestD){bestD=d; goal={x:cx,y:cy};}
+          }
+        }
+        if(goal && movable.length){
+          let bestTile=null, bestTd=Infinity;
+          for(const m of movable){
+            const d = distance(m.x,m.y,goal.x,goal.y);
+            if(d<bestTd){bestTd=d; bestTile=m;}
+          }
+          if(bestTile){ u.x=bestTile.x; u.y=bestTile.y; }
+        }
+        u.moved=true;
+        const t = terrain[u.y][u.x];
+        if((t==='city'||t==='hq-red'||t==='hq-blue') && UNIT_TYPES[u.type].canCapture && cityOwner[key(u.x,u.y)]!=='blue'){
+          cityOwner[key(u.x,u.y)]='blue';
+          log(`青軍が拠点(${u.x},${u.y})を占領した！`);
+        }
+      }
+    }
+    if(targets.length>0){
+      // pick weakest hp target for kill priority
+      targets.sort((a,b)=>a.enemy.hp-b.enemy.hp);
+      doAttack(u, targets[0].enemy);
+    }
+    u.attacked=true;
+    render();
+    if(gameOver) return;
+  }
+  // CPU shopping
+  const blueBases = Object.keys(cityOwner).filter(k=>cityOwner[k]==='blue');
+  for(const k of blueBases){
+    const [x,y]=k.split(',').map(Number);
+    if(unitAt(x,y)) continue;
+    const affordable = Object.keys(UNIT_TYPES).filter(t=>UNIT_TYPES[t].cost<=funds.blue);
+    if(affordable.length===0) continue;
+    // prefer tank/artillery if rich, else infantry
+    let pick = affordable.includes('tank') && funds.blue>=700 ? 'tank' :
+               affordable.includes('artillery') && funds.blue>=500 ? 'artillery' :
+               affordable.includes('antitank') && funds.blue>=350 ? 'antitank' :
+               affordable.includes('infantry') ? 'infantry' : affordable[0];
+    funds.blue -= UNIT_TYPES[pick].cost;
+    addUnit('blue', pick, x, y);
+    const nu = units[units.length-1];
+    nu.moved=true; nu.attacked=true;
+    log(`青軍が${UNIT_TYPES[pick].name}を生産した`);
+  }
+  render();
+  turn='red';
+  turnNum++;
+  collectIncome();
+  for(const u of units){u.moved=false;u.attacked=false;}
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>戦国天下統一記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171f;
+    --panel:#1e2330;
+    --panel2:#262c3d;
+    --line:#3a4258;
+    --gold:#c9a24a;
+    --gold-dim:#8a7238;
+    --text:#e9e6dc;
+    --text-dim:#9aa0b0;
+    --danger:#c0504d;
+    --ok:#5a9e6f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:"Noto Sans JP",sans-serif;height:100%;overflow:hidden;}
+  #app{width:100%;height:100vh;display:flex;flex-direction:column;}
+
+  /* ---------- Title / Faction Select screen ---------- */
+  #titleScreen{
+    position:fixed;inset:0;z-index:50;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(201,162,74,0.10), transparent 60%),
+      var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;overflow:auto;
+  }
+  #titleScreen h1{
+    font-family:"Shippori Mincho",serif;font-weight:700;
+    font-size:clamp(28px,5vw,52px);letter-spacing:0.08em;color:var(--gold);
+    margin:0 0 6px 0;text-shadow:0 0 24px rgba(201,162,74,0.35);
+  }
+  #titleScreen .sub{color:var(--text-dim);font-size:13px;margin-bottom:28px;letter-spacing:0.05em;}
+  .factionGrid{
+    display:grid;grid-template-columns:repeat(4,minmax(150px,180px));gap:14px;
+    max-width:820px;
+  }
+  @media (max-width:700px){.factionGrid{grid-template-columns:repeat(2,minmax(140px,1fr));}}
+  .factionCard{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:14px 10px;text-align:center;cursor:pointer;transition:transform .12s, border-color .12s;
+  }
+  .factionCard:hover{transform:translateY(-3px);border-color:var(--gold-dim);}
+  .factionCard .icon{font-size:34px;line-height:1;margin-bottom:8px;}
+  .factionCard .name{font-family:"Shippori Mincho",serif;font-size:15px;font-weight:700;}
+  .factionCard .lord{font-size:11px;color:var(--text-dim);margin-top:2px;}
+  .factionCard .stat{font-size:10px;color:var(--text-dim);margin-top:6px;display:flex;justify-content:space-around;}
+  #startHint{margin-top:22px;font-size:11px;color:var(--text-dim);}
+
+  /* ---------- Header ---------- */
+  header{
+    flex:0 0 auto;display:flex;align-items:center;gap:18px;
+    padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);
+    font-size:13px;
+  }
+  header .title{font-family:"Shippori Mincho",serif;font-weight:700;color:var(--gold);font-size:16px;letter-spacing:0.05em;}
+  header .sep{width:1px;height:18px;background:var(--line);}
+  header .badge{display:flex;align-items:center;gap:6px;}
+  header .badge .ico{font-size:16px;}
+  #endTurnBtn{
+    margin-left:auto;background:var(--gold-dim);color:#1a1a12;border:none;border-radius:4px;
+    padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;letter-spacing:0.05em;
+  }
+  #endTurnBtn:hover{background:var(--gold);}
+  #actionPointsBadge{font-size:12px;color:var(--text-dim);}
+  #actionPointsBadge b{color:var(--gold);}
+
+  /* ---------- Main layout ---------- */
+  #main{flex:1 1 auto;display:flex;min-height:0;overflow:hidden;}
+  #mapWrap{flex:1 1 auto;position:relative;overflow:hidden;background:
+      radial-gradient(ellipse at 30% 20%, rgba(60,70,100,0.25), transparent 55%),
+      var(--bg);
+  }
+  #mapSvgLines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+  #mapNodes{position:absolute;inset:0;width:100%;height:100%;}
+  .node{
+    position:absolute;transform:translate(-50%,-50%);
+    width:56px;height:56px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    border:2px solid var(--line);cursor:pointer;user-select:none;
+    transition:box-shadow .15s, border-color .15s, transform .1s;
+    font-size:20px;
+  }
+  .node:hover{transform:translate(-50%,-50%) scale(1.08);}
+  .node.selected{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,0.25);}
+  .node.mine{box-shadow:0 0 0 2px rgba(255,255,255,0.55);}
+  .node .pname{
+    position:absolute;top:100%;margin-top:2px;font-size:9px;color:var(--text-dim);
+    white-space:nowrap;left:50%;transform:translateX(-50%);
+    background:rgba(20,23,31,0.7);padding:1px 4px;border-radius:3px;
+  }
+  .node.targetable{border-color:var(--danger);animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(192,80,77,0.55);}100%{box-shadow:0 0 0 8px rgba(192,80,77,0);}}
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{
+    flex:0 0 300px;background:var(--panel);border-left:1px solid var(--line);
+    display:flex;flex-direction:column;min-height:0;overflow-y:auto;
+    scrollbar-gutter:stable;
+  }
+  #provPanel{
+    flex:0 0 auto;background:var(--panel);
+    padding:14px;border-bottom:1px solid var(--line);
+  }
+  #provPanel h2{font-family:"Shippori Mincho",serif;margin:0 0 2px 0;font-size:18px;color:var(--gold);}
+  #provPanel .ownerLine{font-size:12px;color:var(--text-dim);margin-bottom:10px;}
+  .statRow{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed rgba(255,255,255,0.06);}
+  .statRow b{color:var(--text);}
+  .barOuter{background:#0e1017;border-radius:3px;height:6px;overflow:hidden;margin-top:3px;}
+  .barInner{height:100%;background:var(--gold-dim);}
+  .actionBtns{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+  .actionBtns button{
+    background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:4px;
+    padding:8px;font-size:12px;cursor:pointer;text-align:left;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .actionBtns button .label{white-space:normal;}
+  .actionBtns button .cost{color:var(--text-dim);font-size:11px;align-self:flex-end;}
+  .actionBtns button:hover:not(:disabled){border-color:var(--gold-dim);}
+  .actionBtns button:disabled{opacity:0.35;cursor:not-allowed;}
+  .actionBtns .cost{color:var(--text-dim);}
+  #attackList{display:flex;flex-direction:column;gap:6px;margin-top:6px;}
+  #attackList button{background:rgba(192,80,77,0.12);border:1px solid rgba(192,80,77,0.4);}
+  #attackList button:hover:not(:disabled){background:rgba(192,80,77,0.25);}
+
+  #logPanel{flex:0 0 auto;}
+  #logPanel h3{margin:0;padding:10px 14px 4px 14px;font-size:12px;color:var(--text-dim);letter-spacing:0.05em;}
+  #logList{max-height:150px;overflow-y:auto;padding:0 14px 12px 14px;font-size:11.5px;line-height:1.5;}
+  #logList div{padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  #logList .t{color:var(--gold-dim);margin-right:4px;}
+
+  /* ---------- Game over overlay ---------- */
+  #overOverlay{
+    position:fixed;inset:0;background:rgba(10,11,15,0.88);z-index:60;
+    display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;
+  }
+  #overOverlay h1{font-family:"Shippori Mincho",serif;font-size:40px;color:var(--gold);margin-bottom:10px;}
+  #overOverlay p{color:var(--text-dim);margin-bottom:18px;}
+  #overOverlay button{background:var(--gold-dim);border:none;color:#1a1a12;padding:10px 24px;border-radius:4px;font-weight:700;cursor:pointer;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div id="titleScreen">
+  <h1>戦国天下統一記</h1>
+  <div class="sub">大名家を選び、二十五ヶ国の乱世を統べよ</div>
+  <div class="factionGrid" id="factionGrid"></div>
+  <div id="startHint">大名家をクリックして開始</div>
+</div>
+
+<div id="overOverlay">
+  <h1 id="overTitle"></h1>
+  <p id="overText"></p>
+  <button onclick="location.reload()">もう一度プレイする</button>
+</div>
+
+<div id="app">
+  <header>
+    <div class="title">戦国天下統一記</div>
+    <div class="sep"></div>
+    <div class="badge"><span class="ico" id="hFactionIcon"></span><span id="hFactionName"></span></div>
+    <div class="sep"></div>
+    <div class="badge">📅 <span id="hTurn">1</span>ターン目</div>
+    <div class="sep"></div>
+    <div class="badge">💰 <span id="hGold">0</span> 貫</div>
+    <div class="sep"></div>
+    <div class="badge">🗾 <span id="hProvCount">0</span>/25 ヶ国</div>
+    <div id="actionPointsBadge">行動力 <b id="hAP">0</b>/<span id="hAPMax">0</span></div>
+    <button id="endTurnBtn">ターン終了 ▶</button>
+  </header>
+
+  <div id="main">
+    <div id="mapWrap">
+      <svg id="mapSvgLines"></svg>
+      <div id="mapNodes"></div>
+    </div>
+    <div id="sidebar">
+      <div id="provPanel"><div style="color:var(--text-dim);font-size:12px;">国を選択してください</div></div>
+      <div id="logPanel">
+        <h3>戦況記録</h3>
+        <div id="logList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   データ定義
+   ============================================================ */
+
+// 国データ: id, 表示名, 座標(%), 隣接国は後で ADJ にまとめて定義
+const PROV_DEFS = [
+  {id:"mutsu",     name:"陸奥", x:87, y:8},
+  {id:"dewa",      name:"出羽", x:75, y:14},
+  {id:"echigo",    name:"越後", x:62, y:26},
+  {id:"kozuke",    name:"上野", x:69, y:35},
+  {id:"shimotsuke",name:"下野", x:80, y:29},
+  {id:"hitachi",   name:"常陸", x:90, y:34},
+  {id:"musashi",   name:"武蔵", x:78, y:44},
+  {id:"sagami",    name:"相模", x:86, y:56},
+  {id:"kai",       name:"甲斐", x:64, y:46},
+  {id:"shinano",   name:"信濃", x:53, y:33},
+  {id:"suruga",    name:"駿河", x:75, y:56},
+  {id:"totomi",    name:"遠江", x:66, y:63},
+  {id:"mikawa",    name:"三河", x:55, y:61},
+  {id:"owari",     name:"尾張", x:44, y:56},
+  {id:"mino",      name:"美濃", x:49, y:45},
+  {id:"oumi",      name:"近江", x:41, y:36},
+  {id:"yamashiro", name:"山城", x:32, y:44},
+  {id:"yamato",    name:"大和", x:32, y:57},
+  {id:"settsu",    name:"摂津", x:22, y:49},
+  {id:"izumo",     name:"出雲", x:17, y:34},
+  {id:"aki",       name:"安芸", x:12, y:56},
+  {id:"sanuki",    name:"讃岐", x:32, y:70},
+  {id:"tosa",      name:"土佐", x:26, y:80},
+  {id:"chikuzen",  name:"筑前", x:12, y:68},
+  {id:"satsuma",   name:"薩摩", x:12, y:88},
+];
+
+// 隣接関係: 全ての国が最低3か国以上と接続し、地図全体が1つに連結していることを検証済み
+const ADJ_LIST = [
+  ["aki","chikuzen"],
+  ["aki","izumo"],
+  ["aki","settsu"],
+  ["aki","yamato"],
+  ["chikuzen","satsuma"],
+  ["chikuzen","tosa"],
+  ["dewa","echigo"],
+  ["dewa","mutsu"],
+  ["dewa","shimotsuke"],
+  ["echigo","kozuke"],
+  ["echigo","shinano"],
+  ["hitachi","kozuke"],
+  ["hitachi","musashi"],
+  ["hitachi","mutsu"],
+  ["hitachi","shimotsuke"],
+  ["izumo","settsu"],
+  ["izumo","yamashiro"],
+  ["kai","kozuke"],
+  ["kai","musashi"],
+  ["kai","suruga"],
+  ["kai","totomi"],
+  ["kozuke","musashi"],
+  ["kozuke","shimotsuke"],
+  ["mikawa","mino"],
+  ["mikawa","owari"],
+  ["mikawa","totomi"],
+  ["mino","oumi"],
+  ["mino","owari"],
+  ["mino","shinano"],
+  ["musashi","sagami"],
+  ["musashi","shimotsuke"],
+  ["musashi","suruga"],
+  ["mutsu","shimotsuke"],
+  ["oumi","shinano"],
+  ["oumi","yamashiro"],
+  ["owari","sanuki"],
+  ["owari","yamato"],
+  ["sagami","suruga"],
+  ["sagami","totomi"],
+  ["sanuki","satsuma"],
+  ["sanuki","tosa"],
+  ["sanuki","yamato"],
+  ["satsuma","tosa"],
+  ["settsu","yamashiro"],
+  ["settsu","yamato"],
+  ["suruga","totomi"],
+  ["yamashiro","yamato"],
+];
+
+// 大名家データ
+const FACTIONS = [
+  {id:"date",    name:"伊達家",     lord:"伊達政宗", icon:"🦅", color:"#c0504d",
+   stats:{war:8,gov:7,cha:8}, home:["mutsu","dewa","echigo"]},
+  {id:"hojo",    name:"北条家",     lord:"北条氏康", icon:"🐉", color:"#3d5aa0",
+   stats:{war:7,gov:9,cha:7}, home:["kozuke","shimotsuke","hitachi","musashi","sagami"]},
+  {id:"takeda",  name:"武田家",     lord:"武田信玄", icon:"🐯", color:"#7b4a97",
+   stats:{war:10,gov:8,cha:8}, home:["kai","shinano","suruga"]},
+  {id:"oda",     name:"織田家",     lord:"織田信長", icon:"🔥", color:"#d98530",
+   stats:{war:9,gov:9,cha:9}, home:["totomi","mikawa","owari","mino","oumi"]},
+  {id:"miyoshi", name:"三好家",     lord:"三好長慶", icon:"⚜️", color:"#3a9e91",
+   stats:{war:6,gov:7,cha:6}, home:["yamashiro","yamato","settsu"]},
+  {id:"mouri",   name:"毛利家",     lord:"毛利元就", icon:"🌊", color:"#4a8a4f",
+   stats:{war:8,gov:9,cha:7}, home:["izumo","aki"]},
+  {id:"chosokabe",name:"長宗我部家", lord:"長宗我部元親", icon:"🍃", color:"#8a5a3b",
+   stats:{war:7,gov:6,cha:6}, home:["sanuki","tosa"]},
+  {id:"shimazu", name:"島津家",     lord:"島津貴久", icon:"⚔️", color:"#7a1f2b",
+   stats:{war:8,gov:6,cha:7}, home:["chikuzen","satsuma"]},
+];
+
+/* ============================================================
+   状態管理
+   ============================================================ */
+let state = null; // ゲーム開始時に initState() で構築
+
+function initState(playerFactionId){
+  const provinces = {};
+  PROV_DEFS.forEach(function(p){
+    let owner = null;
+    FACTIONS.forEach(function(f){ if(f.home.indexOf(p.id) !== -1) owner = f.id; });
+    provinces[p.id] = {
+      id:p.id, name:p.name, x:p.x, y:p.y,
+      owner:owner,
+      kokudaka: 800 + Math.floor(Math.random()*400),   // 石高(収入源)
+      dev: 1 + Math.floor(Math.random()*2),              // 内政レベル 1-2
+      troops: 400 + Math.floor(Math.random()*300),
+      maxTroops: 2000,
+    };
+  });
+
+  const adj = {};
+  PROV_DEFS.forEach(function(p){ adj[p.id] = []; });
+  ADJ_LIST.forEach(function(pair){
+    adj[pair[0]].push(pair[1]);
+    adj[pair[1]].push(pair[0]);
+  });
+
+  const factionGold = {};
+  FACTIONS.forEach(function(f){ factionGold[f.id] = 3000; });
+
+  return {
+    playerFaction: playerFactionId,
+    provinces: provinces,
+    adj: adj,
+    gold: factionGold,
+    turn: 1,
+    apMax: 3,
+    ap: 3,
+    selected: null,
+    attackMode: false,
+    log: [],
+    over: false,
+  };
+}
+
+function factionOf(id){ return FACTIONS.filter(function(f){return f.id===id;})[0]; }
+
+function addLog(msg){
+  state.log.unshift({t:state.turn, msg:msg});
+  if(state.log.length > 80) state.log.pop();
+}
+
+function provincesOfFaction(fid){
+  return Object.keys(state.provinces).filter(function(pid){ return state.provinces[pid].owner === fid; })
+    .map(function(pid){ return state.provinces[pid]; });
+}
+
+/* ============================================================
+   描画: タイトル画面
+   ============================================================ */
+function renderTitle(){
+  const grid = document.getElementById("factionGrid");
+  grid.innerHTML = "";
+  FACTIONS.forEach(function(f){
+    const card = document.createElement("div");
+    card.className = "factionCard";
+    card.style.borderTop = "3px solid " + f.color;
+    card.innerHTML =
+      '<div class="icon">'+f.icon+'</div>' +
+      '<div class="name">'+f.name+'</div>' +
+      '<div class="lord">当主: '+f.lord+'</div>' +
+      '<div class="stat"><span>采配'+f.stats.war+'</span><span>内政'+f.stats.gov+'</span><span>魅力'+f.stats.cha+'</span></div>' +
+      '<div class="lord" style="margin-top:4px;">'+f.home.length+'ヶ国からスタート</div>';
+    card.addEventListener("click", function(){ startGame(f.id); });
+    grid.appendChild(card);
+  });
+}
+
+function startGame(factionId){
+  state = initState(factionId);
+  addLog(factionOf(factionId).name + "「" + factionOf(factionId).lord + "」が天下統一を目指し挙兵した。");
+  document.getElementById("titleScreen").style.display = "none";
+  renderAll();
+}
+
+/* ============================================================
+   描画: メイン画面
+   ============================================================ */
+function renderAll(){
+  renderHeader();
+  renderMap();
+  renderSidebar();
+  renderLog();
+  checkGameOver();
+}
+
+function renderHeader(){
+  const pf = factionOf(state.playerFaction);
+  document.getElementById("hFactionIcon").textContent = pf.icon;
+  document.getElementById("hFactionName").textContent = pf.name + "(" + pf.lord + ")";
+  document.getElementById("hTurn").textContent = state.turn;
+  document.getElementById("hGold").textContent = state.gold[state.playerFaction];
+  document.getElementById("hProvCount").textContent = provincesOfFaction(state.playerFaction).length;
+  document.getElementById("hAP").textContent = state.ap;
+  document.getElementById("hAPMax").textContent = state.apMax;
+}
+
+function renderMap(){
+  const nodesWrap = document.getElementById("mapNodes");
+  const svg = document.getElementById("mapSvgLines");
+  nodesWrap.innerHTML = "";
+  svg.innerHTML = "";
+
+  // 隣接線
+  const drawn = {};
+  Object.keys(state.adj).forEach(function(pid){
+    state.adj[pid].forEach(function(nid){
+      const key = [pid,nid].sort().join("-");
+      if(drawn[key]) return;
+      drawn[key] = true;
+      const a = state.provinces[pid], b = state.provinces[nid];
+      const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+      line.setAttribute("x1", a.x+"%"); line.setAttribute("y1", a.y+"%");
+      line.setAttribute("x2", b.x+"%"); line.setAttribute("y2", b.y+"%");
+      line.setAttribute("stroke", "#3a4258");
+      line.setAttribute("stroke-width", "1.5");
+      svg.appendChild(line);
+    });
+  });
+
+  Object.keys(state.provinces).forEach(function(pid){
+    const p = state.provinces[pid];
+    const f = p.owner ? factionOf(p.owner) : null;
+    const node = document.createElement("div");
+    node.className = "node";
+    if(state.selected === pid) node.classList.add("selected");
+    if(p.owner === state.playerFaction) node.classList.add("mine");
+    if(state.attackMode && isTargetable(pid)) node.classList.add("targetable");
+    node.style.left = p.x + "%";
+    node.style.top = p.y + "%";
+    node.style.background = f ? f.color : "#2a2f3d";
+    node.style.borderColor = f ? f.color : "var(--line)";
+    node.innerHTML = (f ? f.icon : "🏳️") + '<span class="pname">'+p.name+'</span>';
+    node.addEventListener("click", function(){ onNodeClick(pid); });
+    nodesWrap.appendChild(node);
+  });
+}
+
+function isTargetable(pid){
+  if(!state.selected) return false;
+  const sel = state.provinces[state.selected];
+  const p = state.provinces[pid];
+  if(p.owner === state.playerFaction) return false;
+  return state.adj[state.selected].indexOf(pid) !== -1;
+}
+
+function onNodeClick(pid){
+  if(state.attackMode){
+    if(isTargetable(pid)){
+      doAttack(state.selected, pid);
+    }
+    state.attackMode = false;
+    renderAll();
+    return;
+  }
+  state.selected = pid;
+  renderAll();
+}
+
+function renderSidebar(){
+  const panel = document.getElementById("provPanel");
+  if(!state.selected){
+    panel.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">国を選択してください</div>';
+    return;
+  }
+  const p = state.provinces[state.selected];
+  const f = p.owner ? factionOf(p.owner) : null;
+  const mine = p.owner === state.playerFaction;
+
+  let html = "";
+  html += '<h2>'+p.name+'</h2>';
+  html += '<div class="ownerLine">'+(f ? (f.icon+" "+f.name+"（"+f.lord+"）") : "無主の地")+'</div>';
+
+  html += statRow("石高", p.kokudaka + " 石");
+  html += statRow("内政レベル", "Lv."+p.dev);
+  html += barRow(p.dev, 10);
+  html += statRow("兵力", p.troops + " / " + p.maxTroops);
+  html += barRow(p.troops, p.maxTroops);
+
+  if(mine){
+    const devCost = 300 + p.dev*150;
+    const trainCost = 250;
+    const gold = state.gold[state.playerFaction];
+    html += '<div class="actionBtns">';
+    html += actionBtn("devBtn", "🏯 内政を発展させる (内政+1)", devCost+" 貫・行動1", state.ap<1 || gold<devCost);
+    html += actionBtn("trainBtn", "⚔️ 兵を訓練する (兵+"+Math.round(150+p.dev*20)+")", trainCost+" 貫・行動1", state.ap<1 || gold<trainCost || p.troops>=p.maxTroops);
+    html += actionBtn("attackBtn", "🚩 隣国へ出兵する", "行動1", state.ap<1 || !hasAttackableNeighbor(p.id));
+    html += '</div>';
+  } else {
+    html += '<div style="margin-top:10px;font-size:11px;color:var(--text-dim);">自国の隣接領地からのみ出兵できます。</div>';
+  }
+
+  panel.innerHTML = html;
+
+  if(mine){
+    const devBtn = document.getElementById("devBtn");
+    const trainBtn = document.getElementById("trainBtn");
+    const attackBtn = document.getElementById("attackBtn");
+    if(devBtn) devBtn.addEventListener("click", function(){ doDevelop(p.id); });
+    if(trainBtn) trainBtn.addEventListener("click", function(){ doTrain(p.id); });
+    if(attackBtn) attackBtn.addEventListener("click", function(){
+      state.attackMode = !state.attackMode;
+      renderAll();
+    });
+  }
+}
+
+function hasAttackableNeighbor(pid){
+  return state.adj[pid].some(function(nid){ return state.provinces[nid].owner !== state.playerFaction; });
+}
+
+function statRow(label, value){
+  return '<div class="statRow"><span>'+label+'</span><b>'+value+'</b></div>';
+}
+function barRow(val, max){
+  const pct = Math.max(0, Math.min(100, Math.round(val/max*100)));
+  return '<div class="barOuter"><div class="barInner" style="width:'+pct+'%;"></div></div>';
+}
+function actionBtn(id, label, cost, disabled){
+  return '<button id="'+id+'" '+(disabled?"disabled":"")+'><span class="label">'+label+'</span><span class="cost">'+cost+'</span></button>';
+}
+
+function renderLog(){
+  const list = document.getElementById("logList");
+  list.innerHTML = "";
+  state.log.forEach(function(entry){
+    const div = document.createElement("div");
+    div.innerHTML = '<span class="t">T'+entry.t+'</span>'+entry.msg;
+    list.appendChild(div);
+  });
+}
+
+/* ============================================================
+   プレイヤー行動
+   ============================================================ */
+function doDevelop(pid){
+  const p = state.provinces[pid];
+  const cost = 300 + p.dev*150;
+  if(state.ap<1 || state.gold[state.playerFaction]<cost) return;
+  state.gold[state.playerFaction] -= cost;
+  p.dev += 1;
+  p.kokudaka += 60;
+  state.ap -= 1;
+  addLog(p.name+"の内政を発展させた。(内政Lv."+p.dev+")");
+  renderAll();
+}
+
+function doTrain(pid){
+  const p = state.provinces[pid];
+  const cost = 250;
+  if(state.ap<1 || state.gold[state.playerFaction]<cost || p.troops>=p.maxTroops) return;
+  state.gold[state.playerFaction] -= cost;
+  const gain = Math.round(150 + p.dev*20);
+  p.troops = Math.min(p.maxTroops, p.troops + gain);
+  state.ap -= 1;
+  addLog(p.name+"で兵を訓練した。(兵力+"+gain+")");
+  renderAll();
+}
+
+function doAttack(fromId, toId){
+  if(state.ap<1) return;
+  const attacker = state.provinces[fromId];
+  const defender = state.provinces[toId];
+  const attFaction = factionOf(state.playerFaction);
+  const defFaction = defender.owner ? factionOf(defender.owner) : null;
+
+  const result = resolveCombat(attacker, defender, attFaction, defFaction);
+  applyCombatResult(attacker, defender, result, attFaction, defFaction);
+  state.ap -= 1;
+  renderAll();
+}
+
+function resolveCombat(attacker, defender, attFaction, defFaction){
+  const attPower = attacker.troops * (1 + attFaction.stats.war/20) * (0.85 + Math.random()*0.3);
+  const defBonus = defFaction ? (1 + defFaction.stats.war/20) : 1.0;
+  const defPower = defender.troops * defBonus * 1.15 * (0.85 + Math.random()*0.3); // 1.15=防衛地の利
+  return {attPower:attPower, defPower:defPower, win: attPower > defPower};
+}
+
+function applyCombatResult(attacker, defender, result, attFaction, defFaction){
+  const defName = defFaction ? (defFaction.icon+defFaction.name) : "無主の勢力";
+  if(result.win){
+    const survivors = Math.max(30, Math.round(attacker.troops * Math.min(0.9, result.attPower>0 ? (result.attPower-result.defPower)/result.attPower : 0.3)));
+    defender.owner = attacker.owner;
+    defender.troops = Math.max(30, Math.round(survivors*0.6));
+    attacker.troops = Math.max(20, attacker.troops - Math.round(result.defPower*0.4/ (1+attFaction.stats.war/20)));
+    addLog("⚔️ "+attacker.name+"より出兵した"+attFaction.icon+attFaction.name+"軍が"+defender.name+"を攻略！"+defName+"より奪取した。");
+  } else {
+    const loss = Math.round(attacker.troops * (0.3 + Math.random()*0.25));
+    attacker.troops = Math.max(20, attacker.troops - loss);
+    defender.troops = Math.max(30, defender.troops - Math.round(defender.troops*0.1));
+    addLog("💢 "+attacker.name+"より出兵した"+attFaction.icon+attFaction.name+"軍は"+defender.name+"の"+defName+"軍に撃退された。(損害"+loss+")");
+  }
+}
+
+/* ============================================================
+   ターン終了 & AI処理
+   ============================================================ */
+document.getElementById("endTurnBtn").addEventListener("click", function(){
+  if(state.over) return;
+  runIncome();
+  runAITurns();
+  state.turn += 1;
+  state.ap = state.apMax;
+  state.attackMode = false;
+  renderAll();
+});
+
+function runIncome(){
+  FACTIONS.forEach(function(f){
+    const owned = provincesOfFaction(f.id);
+    let income = 0;
+    owned.forEach(function(p){ income += Math.round(p.kokudaka * 0.4 * (1 + p.dev*0.08)); });
+    state.gold[f.id] = (state.gold[f.id]||0) + income;
+  });
+}
+
+function runAITurns(){
+  FACTIONS.forEach(function(f){
+    if(f.id === state.playerFaction) return;
+    const owned = provincesOfFaction(f.id);
+    if(owned.length === 0) return; // 滅亡済み
+
+    let apLeft = 3;
+    // 1) 内政が低い国を発展させる
+    owned.sort(function(a,b){ return a.dev - b.dev; });
+    for(let i=0;i<owned.length && apLeft>0;i++){
+      const p = owned[i];
+      const cost = 300 + p.dev*150;
+      if(p.dev < 4 && state.gold[f.id] >= cost && Math.random()<0.6){
+        state.gold[f.id] -= cost; p.dev += 1; p.kokudaka += 60; apLeft--;
+      }
+    }
+    // 2) 兵力が少ない国を訓練
+    owned.sort(function(a,b){ return a.troops - b.troops; });
+    for(let i=0;i<owned.length && apLeft>0;i++){
+      const p = owned[i];
+      if(p.troops < p.maxTroops*0.8 && state.gold[f.id] >= 250 && Math.random()<0.5){
+        state.gold[f.id] -= 250; p.troops = Math.min(p.maxTroops, p.troops + Math.round(150+p.dev*20)); apLeft--;
+      }
+    }
+    // 3) 隙のある隣国へ出兵
+    for(let i=0;i<owned.length && apLeft>0;i++){
+      const p = owned[i];
+      const neighbors = state.adj[p.id].filter(function(nid){ return state.provinces[nid].owner !== f.id; });
+      if(neighbors.length === 0) continue;
+      // 最も弱い隣国を狙う
+      let weakest = null;
+      neighbors.forEach(function(nid){
+        const np = state.provinces[nid];
+        if(!weakest || np.troops < weakest.troops) weakest = np;
+      });
+      if(weakest && p.troops > weakest.troops*1.25 && Math.random()<0.45){
+        const defFaction = weakest.owner ? factionOf(weakest.owner) : null;
+        const result = resolveCombat(p, weakest, f, defFaction);
+        applyCombatResult(p, weakest, result, f, defFaction);
+        apLeft--;
+      }
+    }
+  });
+}
+
+/* ============================================================
+   勝敗判定
+   ============================================================ */
+function checkGameOver(){
+  const mine = provincesOfFaction(state.playerFaction).length;
+  const total = Object.keys(state.provinces).length;
+  if(mine === 0){
+    showOver(false, "自国の全ての領地を失い、"+factionOf(state.playerFaction).name+"は歴史の舞台から姿を消した。");
+  } else if(mine === total){
+    showOver(true, factionOf(state.playerFaction).lord+"率いる"+factionOf(state.playerFaction).name+"は、"+state.turn+"ターン目にして天下統一を成し遂げた！");
+  }
+}
+
+function showOver(win, text){
+  if(state.over) return;
+  state.over = true;
+  document.getElementById("overTitle").textContent = win ? "天下統一！" : "御家断絶";
+  document.getElementById("overText").textContent = text;
+  document.getElementById("overOverlay").style.display = "flex";
+}
+
+/* ============================================================
+   起動
+   ============================================================ */
+renderTitle();
+
+})();
+</script>
+</body>
+</html>

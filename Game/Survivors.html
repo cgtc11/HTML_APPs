@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>HTML Survivors v01</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#0d0d16;font-family:'Segoe UI',Meiryo,sans-serif;}
+  canvas{display:block;cursor:none;}
+  #ui{position:fixed;top:8px;left:8px;color:#fff;font-size:12px;user-select:none;pointer-events:none;text-shadow:0 0 3px #000;z-index:5;}
+  .barWrap{width:220px;height:10px;background:#222;border:1px solid #000;border-radius:4px;overflow:hidden;margin-bottom:4px;}
+  #hpBar{height:100%;background:linear-gradient(#ff6b6b,#e63946);width:100%;}
+  #xpBar{height:100%;background:linear-gradient(#5bc0f8,#3498db);width:0%;}
+  #stats{margin-top:2px;font-size:12px;line-height:1.5;}
+  #weaponsRow{position:fixed;top:8px;right:8px;display:flex;gap:4px;z-index:5;}
+  .wIcon{width:26px;height:26px;border-radius:5px;background:#222;border:1px solid #555;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;text-align:center;}
+  #overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;z-index:10;}
+  .card{background:#1c1c2a;border:2px solid #555;border-radius:8px;padding:12px 16px;margin:6px;width:230px;cursor:pointer;transition:.15s;}
+  .card:hover{border-color:#3498db;background:#242438;transform:translateY(-2px);}
+  .card h3{margin:0 0 6px;font-size:14px;color:#f1c40f;}
+  .card p{margin:0;font-size:11px;color:#bbb;line-height:1.4;}
+  .cardsRow{display:flex;flex-wrap:wrap;justify-content:center;max-width:800px;}
+  button.restartBtn{margin-top:14px;padding:10px 26px;font-size:14px;background:#3498db;border:none;border-radius:6px;color:#fff;cursor:pointer;}
+  button.restartBtn:hover{background:#2980b9;}
+  #hint{position:fixed;bottom:8px;left:8px;color:#777;font-size:11px;z-index:5;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="barWrap"><div id="hpBar"></div></div>
+  <div class="barWrap"><div id="xpBar"></div></div>
+  <div id="stats">Lv.<span id="lvl">1</span>&nbsp;|&nbsp;<span id="time">00:00</span>&nbsp;|&nbsp;Kill:<span id="kills">0</span></div>
+</div>
+<div id="weaponsRow"></div>
+<div id="overlay">
+  <h2 id="overlayTitle">レベルアップ！</h2>
+  <div id="overlayBody" class="cardsRow"></div>
+</div>
+<div id="hint">マウスを動かした方向へ移動 (中心から離すほど速い)　目標: 10分間生存</div>
+<script>
+(function(){
+"use strict";
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+resize();
+window.addEventListener('resize',resize);
+
+// ---------- utility ----------
+function dist(x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1;return Math.sqrt(dx*dx+dy*dy);}
+function rand(a,b){return a+Math.random()*(b-a);}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+// ---------- config ----------
+const WEAPON_INFO={
+  whip:{name:'ウィップ',desc:'周囲を薙ぎ払う近接攻撃'},
+  homing:{name:'ホーミングガン',desc:'弾が敵を追尾しながら飛ぶ'},
+  bolt:{name:'マジックボルト',desc:'最も近い敵に自動照準'},
+  knife:{name:'ナイフ',desc:'進行方向へ高速連射'},
+  axe:{name:'アックス',desc:'放物線で飛び着弾時に爆発'},
+  garlic:{name:'ガーリック',desc:'周囲に継続ダメージのオーラ'}
+};
+const PASSIVE_INFO={
+  maxhp:{name:'最大HP増加',desc:'最大HP+20 (即回復)'},
+  speedp:{name:'俊足',desc:'移動速度+10%'},
+  armor:{name:'ガード',desc:'被ダメージ-1 (最低1)'},
+  magnet:{name:'マグネット',desc:'アイテム収集範囲+60'},
+  regen:{name:'再生',desc:'HP自然回復+0.3/秒'},
+  growth:{name:'成長',desc:'獲得XP+15%'}
+};
+const MAX_WEAPONS=6;
+const MAX_PASSIVE_LV=5;
+const MAX_WEAPON_LV=8;
+const WIN_TIME=600; // 10分
+
+// ---------- state ----------
+let player,enemies,projectiles,gems,particles,camera,mouse,elapsed,killCount,spawnTimer,bossSpawnedStep,
+    gameOver,win,paused,lastTime,pendingLevelUps,facing;
+
+function initGame(){
+  player={x:0,y:0,hp:100,maxhp:100,radius:14,speedBase:210,speedMult:1,armor:0,magnetRadius:90,regen:0,xpMult:1,
+          level:1,xp:0,invuln:0,weapons:[{type:'bolt',level:1,timer:0}],passives:{}};
+  enemies=[]; projectiles=[]; gems=[]; particles=[];
+  camera={x:0,y:0};
+  mouse={x:innerWidth/2,y:innerHeight/2};
+  elapsed=0; killCount=0; spawnTimer=2.5; bossSpawnedStep=0;
+  gameOver=false; win=false; paused=false; lastTime=null; pendingLevelUps=0;
+  facing={x:1,y:0};
+  document.getElementById('overlay').style.display='none';
+  updateWeaponIcons();
+}
+
+window.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+window.addEventListener('mouseleave',()=>{mouse.x=innerWidth/2;mouse.y=innerHeight/2;});
+
+// ---------- xp / level ----------
+function xpNeeded(level){return 5+level*5;}
+function addXp(amount){
+  player.xp+=amount*player.xpMult;
+  while(player.xp>=xpNeeded(player.level)){
+    player.xp-=xpNeeded(player.level);
+    player.level++;
+    pendingLevelUps++;
+  }
+}
+
+// ---------- weapon stats ----------
+function whipStats(lv){return{damage:10+lv*4,radius:70+lv*10,cooldown:Math.max(0.35,1.1-lv*0.08),arc:lv>=6?360:190};}
+function homingStats(lv){return{damage:7+lv*3,cooldown:Math.max(0.35,0.9-lv*0.055),speed:360+lv*14,turnRate:3.5+lv*0.5,pierce:Math.floor(lv/3)};}
+function boltStats(lv){return{damage:8+lv*3,cooldown:Math.max(0.3,1.0-lv*0.07),speed:430,pierce:1+Math.floor(lv/2),count:1+Math.floor(lv/4)};}
+function knifeStats(lv){return{damage:6+lv*2,cooldown:Math.max(0.22,0.6-lv*0.045),speed:520,count:1+Math.floor((lv-1)/2)};}
+function axeStats(lv){return{damage:14+lv*5,cooldown:Math.max(0.8,1.8-lv*0.12),explosionRadius:60+lv*8,count:1+Math.floor(lv/4)};}
+function garlicStats(lv){return{damage:3+lv*1.6,cooldown:0.4,radius:60+lv*12};}
+function getStats(type,lv){
+  switch(type){
+    case 'whip':return whipStats(lv);
+    case 'homing':return homingStats(lv);
+    case 'bolt':return boltStats(lv);
+    case 'knife':return knifeStats(lv);
+    case 'axe':return axeStats(lv);
+    case 'garlic':return garlicStats(lv);
+  }
+}
+
+// ---------- enemy defs ----------
+const ENEMY_DEFS={
+  zombie:{hp:14,dmg:5,speed:65,radius:14,color:'#7ecb5a',xp:1,minTime:0},
+  bat:{hp:7,dmg:3,speed:140,radius:10,color:'#b060ff',xp:1,minTime:0,wave:true},
+  brute:{hp:65,dmg:15,speed:48,radius:20,color:'#e07b39',xp:3,minTime:55},
+  ghost:{hp:38,dmg:10,speed:95,radius:13,color:'#8ecae6',xp:2,minTime:110},
+  boss:{hp:900,dmg:26,speed:55,radius:36,color:'#ff4757',xp:35,minTime:0}
+};
+const ENEMY_EMOJI={zombie:'🧟',bat:'🦇',brute:'👹',ghost:'👻',boss:'🐉'};
+
+function spawnEnemy(type,forceBoss){
+  const def=ENEMY_DEFS[type];
+  const scale=1+Math.max(0,Math.floor((elapsed-20)/30))*0.15;
+  const ang=rand(0,Math.PI*2);
+  const dist0=Math.max(canvas.width,canvas.height)/2+120;
+  const x=player.x+Math.cos(ang)*dist0;
+  const y=player.y+Math.sin(ang)*dist0;
+  enemies.push({
+    x,y,type,
+    hp:forceBoss?def.hp*(1+elapsed/300):def.hp*scale,
+    maxhp:forceBoss?def.hp*(1+elapsed/300):def.hp*scale,
+    dmg:def.dmg*(forceBoss?1:Math.min(scale,2.2)),
+    speed:def.speed,
+    radius:def.radius,
+    color:def.color,
+    xpValue:def.xp,
+    wave:!!def.wave,
+    waveOff:rand(0,Math.PI*2),
+    hitFlash:0
+  });
+}
+
+function spawnWave(dt){
+  spawnTimer-=dt;
+  if(spawnTimer<=0 && enemies.length<160){
+    const count=Math.min(10,1+Math.floor(elapsed/25));
+    const pool=['zombie','bat'];
+    if(elapsed>=ENEMY_DEFS.brute.minTime)pool.push('brute');
+    if(elapsed>=ENEMY_DEFS.ghost.minTime)pool.push('ghost');
+    for(let i=0;i<count;i++)spawnEnemy(pick(pool),false);
+    spawnTimer=Math.max(0.5,2.2-elapsed/100);
+  }
+  const bossStep=Math.floor(elapsed/180);
+  if(bossStep>bossSpawnedStep && elapsed>5){
+    bossSpawnedStep=bossStep;
+    spawnEnemy('boss',true);
+  }
+}
+
+// ---------- particles ----------
+function addParticle(p){particles.push(p);}
+function spawnSlash(x,y,radius,arcDeg,dirAng){
+  addParticle({type:'slash',x,y,radius,arcDeg,dirAng,life:0.18,maxLife:0.18});
+}
+function spawnExplosion(x,y,radius){
+  addParticle({type:'explosion',x,y,radius,life:0.28,maxLife:0.28});
+}
+function spawnSpark(x,y){
+  addParticle({type:'spark',x,y,vx:rand(-60,60),vy:rand(-60,60),life:0.35,maxLife:0.35});
+}
+function spawnText(x,y,text,color){
+  addParticle({type:'text',x,y,text,color:color||'#fff',life:0.6,maxLife:0.6,vy:-40});
+}
+
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.life-=dt;
+    if(p.type==='spark'){p.x+=p.vx*dt;p.y+=p.vy*dt;}
+    if(p.type==='text'){p.y+=p.vy*dt;}
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+
+// ---------- enemy damage / death ----------
+function damageEnemy(e,dmg){
+  e.hp-=dmg;
+  e.hitFlash=0.08;
+  if(e.hp<=0){
+    killEnemy(e);
+  }
+}
+function killEnemy(e){
+  const idx=enemies.indexOf(e);
+  if(idx>=0)enemies.splice(idx,1);
+  killCount++;
+  gems.push({x:e.x,y:e.y,value:e.xpValue,radius:5});
+  for(let i=0;i<4;i++)spawnSpark(e.x,e.y);
+}
+
+// ---------- weapons ----------
+function findNearestEnemy(x,y){
+  let best=null,bd=Infinity;
+  for(const e of enemies){
+    const d=dist(x,y,e.x,e.y);
+    if(d<bd){bd=d;best=e;}
+  }
+  return best;
+}
+function findNearestEnemies(x,y,count){
+  return enemies.slice().sort((a,b)=>dist(x,y,a.x,a.y)-dist(x,y,b.x,b.y)).slice(0,count);
+}
+
+function fireWeapon(w){
+  const st=getStats(w.type,w.level);
+  switch(w.type){
+    case 'whip':{
+      const dirAng=Math.atan2(facing.y,facing.x);
+      for(const e of enemies){
+        const d=dist(player.x,player.y,e.x,e.y);
+        if(d>st.radius)continue;
+        if(st.arc<360){
+          const ang=Math.atan2(e.y-player.y,e.x-player.x);
+          let diff=Math.abs(ang-dirAng);
+          if(diff>Math.PI)diff=Math.PI*2-diff;
+          if(diff>(st.arc/2)*(Math.PI/180))continue;
+        }
+        damageEnemy(e,st.damage);
+      }
+      spawnSlash(player.x,player.y,st.radius,st.arc,dirAng);
+      break;
+    }
+    case 'homing':{
+      const target=findNearestEnemy(player.x,player.y);
+      const ang=target?Math.atan2(target.y-player.y,target.x-player.x):Math.atan2(facing.y,facing.x);
+      projectiles.push({x:player.x,y:player.y,angle:ang,vx:Math.cos(ang)*st.speed,vy:Math.sin(ang)*st.speed,
+        speed:st.speed,damage:st.damage,pierce:st.pierce,radius:5,life:2.5,type:'homing',turnRate:st.turnRate,target:target||null});
+      break;
+    }
+    case 'bolt':{
+      const targets=findNearestEnemies(player.x,player.y,st.count);
+      for(const t of targets){
+        const ang=Math.atan2(t.y-player.y,t.x-player.x);
+        projectiles.push({x:player.x,y:player.y,vx:Math.cos(ang)*st.speed,vy:Math.sin(ang)*st.speed,
+          damage:st.damage,pierce:st.pierce,radius:6,life:2.2,type:'bolt'});
+      }
+      break;
+    }
+    case 'knife':{
+      const baseAng=Math.atan2(facing.y,facing.x);
+      const spread=0.28;
+      const n=st.count;
+      for(let i=0;i<n;i++){
+        const ang=baseAng+(i-(n-1)/2)*spread;
+        projectiles.push({x:player.x,y:player.y,vx:Math.cos(ang)*st.speed,vy:Math.sin(ang)*st.speed,
+          damage:st.damage,pierce:0,radius:4,life:1.0,type:'knife'});
+      }
+      break;
+    }
+    case 'axe':{
+      for(let i=0;i<st.count;i++){
+        const nearest=findNearestEnemy(player.x,player.y);
+        let tx,ty;
+        if(nearest && Math.random()<0.7){tx=nearest.x+rand(-40,40);ty=nearest.y+rand(-40,40);}
+        else{const ang=rand(0,Math.PI*2);tx=player.x+Math.cos(ang)*rand(120,260);ty=player.y+Math.sin(ang)*rand(120,260);}
+        projectiles.push({x:player.x,y:player.y,startX:player.x,startY:player.y,targetX:tx,targetY:ty,
+          duration:0.7,elapsed:0,type:'axe',damage:st.damage,explosionRadius:st.explosionRadius});
+      }
+      break;
+    }
+    case 'garlic':{
+      for(const e of enemies){
+        if(dist(player.x,player.y,e.x,e.y)<=st.radius)damageEnemy(e,st.damage);
+      }
+      break;
+    }
+  }
+}
+
+function updateWeapons(dt){
+  for(const w of player.weapons){
+    w.timer-=dt;
+    if(w.timer<=0){
+      fireWeapon(w);
+      w.timer=getStats(w.type,w.level).cooldown;
+    }
+  }
+}
+
+function updateProjectiles(dt){
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    if(p.type==='axe'){
+      p.elapsed+=dt;
+      const t=clamp(p.elapsed/p.duration,0,1);
+      p.x=p.startX+(p.targetX-p.startX)*t;
+      p.y=p.startY+(p.targetY-p.startY)*t;
+      if(t>=1){
+        spawnExplosion(p.targetX,p.targetY,p.explosionRadius);
+        for(const e of enemies.slice()){
+          if(dist(p.targetX,p.targetY,e.x,e.y)<=p.explosionRadius)damageEnemy(e,p.damage);
+        }
+        projectiles.splice(i,1);
+      }
+      continue;
+    }
+    if(p.type==='homing'){
+      if(!p.target || !enemies.includes(p.target))p.target=findNearestEnemy(p.x,p.y);
+      if(p.target){
+        const desiredAng=Math.atan2(p.target.y-p.y,p.target.x-p.x);
+        let diff=desiredAng-p.angle;
+        while(diff>Math.PI)diff-=Math.PI*2;
+        while(diff<-Math.PI)diff+=Math.PI*2;
+        const maxTurn=p.turnRate*dt;
+        p.angle+=clamp(diff,-maxTurn,maxTurn);
+      }
+      p.vx=Math.cos(p.angle)*p.speed;
+      p.vy=Math.sin(p.angle)*p.speed;
+    }
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
+    let removed=false;
+    for(const e of enemies.slice()){
+      if(dist(p.x,p.y,e.x,e.y)<e.radius+p.radius){
+        damageEnemy(e,p.damage);
+        if(p.pierce>0){p.pierce--;}
+        else{removed=true;}
+        break;
+      }
+    }
+    if(removed || p.life<=0)projectiles.splice(i,1);
+  }
+}
+
+// ---------- enemies ----------
+function updateEnemies(dt){
+  for(const e of enemies){
+    let dx=player.x-e.x, dy=player.y-e.y;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+    dx/=d; dy/=d;
+    let mx=dx, my=dy;
+    if(e.wave){
+      e.waveOff+=dt*6;
+      mx+=Math.cos(e.waveOff)*0.4*(-dy);
+      my+=Math.cos(e.waveOff)*0.4*(dx);
+    }
+    e.x+=mx*e.speed*dt;
+    e.y+=my*e.speed*dt;
+    if(e.hitFlash>0)e.hitFlash-=dt;
+    if(d<player.radius+e.radius && player.invuln<=0){
+      const dmg=Math.max(1,e.dmg-player.armor);
+      player.hp-=dmg;
+      player.invuln=0.6;
+      spawnText(player.x,player.y-20,'-'+Math.round(dmg),'#ff6b6b');
+    }
+  }
+}
+
+// ---------- gems ----------
+function updateGems(dt){
+  for(let i=gems.length-1;i>=0;i--){
+    const g=gems[i];
+    const d=dist(player.x,player.y,g.x,g.y);
+    if(d<player.magnetRadius){
+      const ang=Math.atan2(player.y-g.y,player.x-g.x);
+      g.x+=Math.cos(ang)*260*dt;
+      g.y+=Math.sin(ang)*260*dt;
+    }
+    if(d<player.radius+8){
+      addXp(g.value);
+      gems.splice(i,1);
+    }
+  }
+}
+
+// ---------- input / player ----------
+const MOUSE_DEADZONE=15;
+const MOUSE_FULLSPEED_DIST=160;
+function handleInput(dt){
+  const cx=canvas.width/2, cy=canvas.height/2;
+  let dx=mouse.x-cx, dy=mouse.y-cy;
+  const d=Math.sqrt(dx*dx+dy*dy);
+  if(d>MOUSE_DEADZONE){
+    dx/=d; dy/=d;
+    facing.x=dx; facing.y=dy;
+    const factor=clamp((d-MOUSE_DEADZONE)/(MOUSE_FULLSPEED_DIST-MOUSE_DEADZONE),0,1);
+    const spd=player.speedBase*player.speedMult*factor;
+    player.x+=dx*spd*dt;
+    player.y+=dy*spd*dt;
+  }
+  if(player.invuln>0)player.invuln-=dt;
+  if(player.regen>0)player.hp=Math.min(player.maxhp,player.hp+player.regen*dt);
+}
+
+// ---------- level up UI ----------
+function buildChoicePool(){
+  const pool=[];
+  for(const type in WEAPON_INFO){
+    const owned=player.weapons.find(w=>w.type===type);
+    if(owned){ if(owned.level<MAX_WEAPON_LV)pool.push({kind:'weaponUp',type,level:owned.level+1}); }
+    else if(player.weapons.length<MAX_WEAPONS)pool.push({kind:'weaponNew',type,level:1});
+  }
+  for(const type in PASSIVE_INFO){
+    const lv=player.passives[type]||0;
+    if(lv<MAX_PASSIVE_LV)pool.push({kind:'passive',type,level:lv+1});
+  }
+  if(pool.length===0)pool.push({kind:'heal'});
+  return pool;
+}
+function applyChoice(choice){
+  if(choice.kind==='weaponNew')player.weapons.push({type:choice.type,level:1,timer:0.2});
+  else if(choice.kind==='weaponUp'){
+    const w=player.weapons.find(w=>w.type===choice.type);
+    w.level=choice.level;
+  } else if(choice.kind==='passive'){
+    player.passives[choice.type]=choice.level;
+    switch(choice.type){
+      case 'maxhp': player.maxhp+=20; player.hp+=20; break;
+      case 'speedp': player.speedMult+=0.1; break;
+      case 'armor': player.armor+=1; break;
+      case 'magnet': player.magnetRadius+=60; break;
+      case 'regen': player.regen+=0.3; break;
+      case 'growth': player.xpMult+=0.15; break;
+    }
+  } else if(choice.kind==='heal'){
+    player.hp=player.maxhp;
+  }
+  updateWeaponIcons();
+}
+function cardLabel(choice){
+  if(choice.kind==='heal')return{title:'回復',desc:'HPを全回復する'};
+  const info=choice.kind==='passive'?PASSIVE_INFO[choice.type]:WEAPON_INFO[choice.type];
+  const prefix=choice.kind==='weaponNew'?'NEW: ':'';
+  const lvTxt=choice.kind==='weaponNew'?'':' Lv.'+choice.level;
+  return{title:prefix+info.name+lvTxt,desc:info.desc};
+}
+function showLevelUp(){
+  paused=true;
+  const pool=shuffle(buildChoicePool());
+  const picks=pool.slice(0,Math.min(3,pool.length));
+  const overlay=document.getElementById('overlay');
+  const title=document.getElementById('overlayTitle');
+  const body=document.getElementById('overlayBody');
+  title.textContent='レベルアップ！ Lv.'+player.level;
+  body.innerHTML='';
+  for(const choice of picks){
+    const lbl=cardLabel(choice);
+    const div=document.createElement('div');
+    div.className='card';
+    div.innerHTML='<h3>'+lbl.title+'</h3><p>'+lbl.desc+'</p>';
+    div.onclick=()=>{
+      applyChoice(choice);
+      pendingLevelUps--;
+      if(pendingLevelUps>0)showLevelUp();
+      else{paused=false; overlay.style.display='none';}
+    };
+    body.appendChild(div);
+  }
+  overlay.style.display='flex';
+}
+
+function updateWeaponIcons(){
+  const row=document.getElementById('weaponsRow');
+  row.innerHTML='';
+  for(const w of player.weapons){
+    const d=document.createElement('div');
+    d.className='wIcon';
+    d.textContent=WEAPON_INFO[w.type].name.slice(0,2)+w.level;
+    row.appendChild(d);
+  }
+}
+
+// ---------- game over / win ----------
+function endGame(didWin){
+  gameOver=true; win=didWin;
+  const overlay=document.getElementById('overlay');
+  const title=document.getElementById('overlayTitle');
+  const body=document.getElementById('overlayBody');
+  title.textContent=didWin?'STAGE CLEAR!':'GAME OVER';
+  title.style.color=didWin?'#2ecc71':'#e74c3c';
+  const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
+  const ss=String(Math.floor(elapsed%60)).padStart(2,'0');
+  body.innerHTML='<div style="text-align:center;"><p>生存時間: '+mm+':'+ss+'</p><p>到達レベル: '+player.level+'</p><p>撃破数: '+killCount+'</p>'+
+    '<button class="restartBtn" id="restartBtn">リスタート</button></div>';
+  document.getElementById('restartBtn').onclick=()=>{initGame();};
+  overlay.style.display='flex';
+}
+
+// ---------- update ----------
+function update(dt){
+  elapsed+=dt;
+  handleInput(dt);
+  spawnWave(dt);
+  updateEnemies(dt);
+  updateWeapons(dt);
+  updateProjectiles(dt);
+  updateGems(dt);
+  updateParticles(dt);
+  if(pendingLevelUps>0 && !paused)showLevelUp();
+  if(player.hp<=0){player.hp=0; endGame(false); return;}
+  if(elapsed>=WIN_TIME){endGame(true); return;}
+
+  document.getElementById('hpBar').style.width=Math.max(0,player.hp/player.maxhp*100)+'%';
+  document.getElementById('xpBar').style.width=(player.xp/xpNeeded(player.level)*100)+'%';
+  document.getElementById('lvl').textContent=player.level;
+  document.getElementById('kills').textContent=killCount;
+  const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
+  const ss=String(Math.floor(elapsed%60)).padStart(2,'0');
+  document.getElementById('time').textContent=mm+':'+ss;
+}
+
+// ---------- render ----------
+function render(){
+  camera.x=player.x-canvas.width/2;
+  camera.y=player.y-canvas.height/2;
+  ctx.fillStyle='#12121e';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)';
+  ctx.lineWidth=1;
+  const grid=80;
+  const offX=-camera.x%grid, offY=-camera.y%grid;
+  for(let x=offX;x<canvas.width;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+  for(let y=offY;y<canvas.height;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+
+  // garlic aura
+  const garlic=player.weapons.find(w=>w.type==='garlic');
+  if(garlic){
+    const st=garlicStats(garlic.level);
+    ctx.beginPath();
+    ctx.arc(player.x-camera.x,player.y-camera.y,st.radius,0,Math.PI*2);
+    ctx.fillStyle='rgba(150,255,150,0.08)';
+    ctx.fill();
+    ctx.strokeStyle='rgba(150,255,150,0.25)';
+    ctx.stroke();
+  }
+
+  // gems
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.font='16px sans-serif';
+  for(const g of gems){
+    const sx=g.x-camera.x, sy=g.y-camera.y;
+    ctx.beginPath();
+    ctx.arc(sx,sy,6,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    ctx.fill();
+    ctx.fillText('🔷',sx,sy);
+  }
+  ctx.textAlign='left';
+  ctx.textBaseline='alphabetic';
+
+  // enemies
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  for(const e of enemies){
+    const sx=e.x-camera.x, sy=e.y-camera.y;
+    if(sx<-60||sx>canvas.width+60||sy<-60||sy>canvas.height+60)continue;
+    if(e.hitFlash>0){
+      ctx.beginPath();
+      ctx.arc(sx,sy,e.radius+5,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.55)';
+      ctx.fill();
+    }
+    ctx.font=Math.round(e.radius*1.9)+'px sans-serif';
+    ctx.fillText(ENEMY_EMOJI[e.type]||'👾',sx,sy);
+    if(e.hp<e.maxhp){
+      ctx.fillStyle='#000';
+      ctx.fillRect(sx-e.radius,sy-e.radius-8,e.radius*2,4);
+      ctx.fillStyle='#e74c3c';
+      ctx.fillRect(sx-e.radius,sy-e.radius-8,e.radius*2*(e.hp/e.maxhp),4);
+    }
+  }
+  ctx.textAlign='left';
+  ctx.textBaseline='alphabetic';
+
+  // projectiles
+  for(const p of projectiles){
+    const sx=p.x-camera.x, sy=p.y-camera.y;
+    if(p.type==='bolt'){
+      ctx.beginPath(); ctx.arc(sx,sy,p.radius,0,Math.PI*2); ctx.fillStyle='#00e5ff'; ctx.fill();
+    } else if(p.type==='homing'){
+      ctx.save();
+      ctx.translate(sx,sy);
+      ctx.rotate(p.angle);
+      ctx.beginPath();
+      ctx.moveTo(9,0); ctx.lineTo(-6,5); ctx.lineTo(-6,-5); ctx.closePath();
+      ctx.fillStyle='#ff9ff3';
+      ctx.fill();
+      ctx.restore();
+    } else if(p.type==='knife'){
+      ctx.beginPath(); ctx.arc(sx,sy,p.radius,0,Math.PI*2); ctx.fillStyle='#f9ca24'; ctx.fill();
+    } else if(p.type==='axe'){
+      const arcHeight=-Math.sin(clamp(p.elapsed/p.duration,0,1)*Math.PI)*80;
+      ctx.beginPath(); ctx.arc(sx,sy+arcHeight,9,0,Math.PI*2); ctx.fillStyle='#e67e22'; ctx.fill();
+    }
+  }
+
+  // particles
+  for(const pt of particles){
+    const alpha=clamp(pt.life/pt.maxLife,0,1);
+    if(pt.type==='slash'){
+      const sx=pt.x-camera.x, sy=pt.y-camera.y;
+      ctx.strokeStyle='rgba(255,255,255,'+(alpha*0.8)+')';
+      ctx.lineWidth=4;
+      ctx.beginPath();
+      const arcRad=(pt.arcDeg/2)*(Math.PI/180);
+      ctx.arc(sx,sy,pt.radius,pt.dirAng-arcRad,pt.dirAng+arcRad);
+      ctx.stroke();
+    } else if(pt.type==='explosion'){
+      const sx=pt.x-camera.x, sy=pt.y-camera.y;
+      ctx.beginPath();
+      ctx.arc(sx,sy,pt.radius*(1-alpha)+pt.radius*0.3,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,150,50,'+(alpha*0.5)+')';
+      ctx.fill();
+    } else if(pt.type==='spark'){
+      const sx=pt.x-camera.x, sy=pt.y-camera.y;
+      ctx.fillStyle='rgba(255,255,255,'+alpha+')';
+      ctx.fillRect(sx-2,sy-2,4,4);
+    } else if(pt.type==='text'){
+      const sx=pt.x-camera.x, sy=pt.y-camera.y;
+      ctx.fillStyle=pt.color;
+      ctx.globalAlpha=alpha;
+      ctx.font='bold 13px sans-serif';
+      ctx.fillText(pt.text,sx,sy);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // player
+  {
+    const sx=player.x-camera.x, sy=player.y-camera.y;
+    const blink=player.invuln>0 && Math.floor(elapsed*20)%2===0;
+    ctx.beginPath();
+    ctx.arc(sx,sy,player.radius,0,Math.PI*2);
+    ctx.fillStyle=blink?'rgba(80,150,255,0.4)':'#5a9bff';
+    ctx.fill();
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx,sy);
+    ctx.lineTo(sx+facing.x*player.radius*1.6,sy+facing.y*player.radius*1.6);
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=2;
+    ctx.stroke();
+  }
+
+  // mouse cursor marker
+  {
+    const cx=canvas.width/2, cy=canvas.height/2;
+    const dx=mouse.x-cx, dy=mouse.y-cy;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    const active=d>MOUSE_DEADZONE;
+    ctx.beginPath();
+    ctx.arc(mouse.x,mouse.y,8,0,Math.PI*2);
+    ctx.strokeStyle=active?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.35)';
+    ctx.lineWidth=2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(mouse.x-12,mouse.y);
+    ctx.lineTo(mouse.x+12,mouse.y);
+    ctx.moveTo(mouse.x,mouse.y-12);
+    ctx.lineTo(mouse.x,mouse.y+12);
+    ctx.stroke();
+  }
+}
+
+// ---------- main loop ----------
+function gameLoop(ts){
+  if(lastTime===null)lastTime=ts;
+  let dt=(ts-lastTime)/1000;
+  lastTime=ts;
+  if(dt>0.05)dt=0.05;
+  if(!paused && !gameOver)update(dt);
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+initGame();
+requestAnimationFrame(gameLoop);
+})();
+</script>
+</body>
+</html>
