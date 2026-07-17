@@ -293,21 +293,13 @@ F1Face
 
 <tr>
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html">
-<img src="https://github.com/cgtc11/image/blob/main/23_ico.png" width="120"><br>
-<b>戦国武将</b>
-</a>
-<br>
-戦国武将
+<a href="https://cgtc11.github.io/HTML_APPs/Game/Famistad.html">
+<img src="https://github.com/cgtc11/image/blob/main/22_ico.png" width="120"><br>
+<b>草野球</b></a><br>
+草野球
 </td>
   
 <td align="center">
-<a href="https://cgtc11.github.io/HTML_APPs/Game/Famistad.html">
-<img src="https://github.com/cgtc11/image/blob/main/22_ico.png" width="120"><br>
-<b>草野球</b>
-</a>
-<br>
-草野球
 </td>
 
 <td align="center">
