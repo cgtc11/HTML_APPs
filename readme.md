@@ -242,8 +242,9 @@ F1Face
 <br>
 勇者派遣所
 </td>
-<tr>
+</tr>
 
+<tr>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html">
 <img src="https://github.com/cgtc11/image/blob/main/23_ico.png" width="120"><br>
@@ -281,9 +282,62 @@ F1Face
 </td>
 
 <td align="center">
-
+<a href="https://cgtc11.github.io/HTML_APPs/Game/DanmakuDodge.html">
+<img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
+<b>DanmakuDodge</b>
+</a>
+<br>
+弾幕練習
 </td>
 </tr>
+
+<tr>
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html">
+<img src="https://github.com/cgtc11/image/blob/main/23_ico.png" width="120"><br>
+<b>戦国武将</b>
+</a>
+<br>
+戦国武将
+</td>
+  
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/wars.html">
+<img src="https://github.com/cgtc11/image/blob/main/22_ico.png" width="120"><br>
+<b>うぉーず</b>
+</a>
+<br>
+うぉーず
+</td>
+
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/street_brawler.html">
+<img src="https://github.com/cgtc11/image/blob/main/24_ico.png" width="120"><br>
+<b>パルタンX</b>
+</a>
+<br>
+パルタンX
+</td>
+
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/Survivors.html">
+<img src="https://github.com/cgtc11/image/blob/main/25_ico.png" width="120"><br>
+<b>Survivors</b>
+</a>
+<br>
+サバイバー
+</td>
+
+<td align="center">
+<a href="https://cgtc11.github.io/HTML_APPs/Game/DanmakuDodge.html">
+<img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
+<b>DanmakuDodge</b>
+</a>
+<br>
+弾幕練習
+</td>
+</tr>
+
 </table>
 
 <br>
