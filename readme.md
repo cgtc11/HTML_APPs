@@ -198,7 +198,7 @@ F1Face
 <tr>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/SengokuAmbition.html">
-<img src="https://github.com/cgtc11/image/blob/main/23_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/29_ico.png" width="120"><br>
 <b>戦国武将</b></a><br>
 戦国武将
 </td>
@@ -212,7 +212,7 @@ F1Face
 
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/street_brawler.html">
-<img src="https://github.com/cgtc11/image/blob/main/24_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/30_ico.png" width="120"><br>
 <b>パルタンX</b></a><br>
 パルタンX
 </td>
@@ -226,7 +226,7 @@ F1Face
 
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/DanmakuDodge.html">
-<img src="https://github.com/cgtc11/image/blob/main/15_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/27_ico.png" width="120"><br>
 <b>DanmakuDodge</b></a><br>
 弾幕練習
 </td>
@@ -235,7 +235,7 @@ F1Face
 <tr>
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/Game/Famistad.html">
-<img src="https://github.com/cgtc11/image/blob/main/22_ico.png" width="120"><br>
+<img src="https://github.com/cgtc11/image/blob/main/26_ico.png" width="120"><br>
 <b>草野球</b></a><br>
 草野球
 </td>
