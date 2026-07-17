@@ -69,6 +69,8 @@
     padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;letter-spacing:0.05em;
   }
   #endTurnBtn:hover{background:var(--gold);}
+  #nodeSizeBadge{display:flex;align-items:center;gap:6px;}
+  #nodeSizeSlider{width:90px;accent-color:var(--gold-dim);cursor:pointer;}
   #actionPointsBadge{font-size:12px;color:var(--text-dim);}
   #actionPointsBadge b{color:var(--gold);}
 
@@ -80,22 +82,23 @@
       cursor:grab;
   }
   #mapWrap.grabbing{cursor:grabbing;}
+  #mapStage{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
   #mapInner{position:absolute;inset:0;transform-origin:0 0;will-change:transform;}
   #mapSvgLines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
   #mapNodes{position:absolute;inset:0;width:100%;height:100%;}
   .node{
     position:absolute;transform:translate(-50%,-50%);
-    width:34px;height:34px;border-radius:50%;
+    width:calc(34px * var(--node-scale, 1));height:calc(34px * var(--node-scale, 1));border-radius:50%;
     display:flex;align-items:center;justify-content:center;flex-direction:column;
     border:1.5px solid var(--line);cursor:pointer;user-select:none;
     transition:box-shadow .15s, border-color .15s;
-    font-size:14px;
+    font-size:calc(14px * var(--node-scale, 1));
   }
   .node:hover{filter:brightness(1.15);}
   .node.selected{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,0.3);z-index:3;}
   .node.mine{box-shadow:0 0 0 2px rgba(255,255,255,0.6);}
   .node .pname{
-    position:absolute;top:100%;margin-top:1px;font-size:7px;color:var(--text-dim);
+    position:absolute;top:100%;margin-top:1px;font-size:calc(7px * var(--node-scale, 1));color:var(--text-dim);
     white-space:nowrap;left:50%;transform:translateX(-50%);
     background:rgba(20,23,31,0.75);padding:0px 3px;border-radius:2px;
     pointer-events:none;
@@ -192,16 +195,22 @@
     <div class="sep"></div>
     <div class="badge">💰 <span id="hGold">0</span> 貫</div>
     <div class="sep"></div>
-    <div class="badge">🗾 <span id="hProvCount">0</span>/25 ヶ国</div>
+    <div class="badge">🗾 <span id="hProvCount">0</span>/<span id="hProvTotal">68</span> ヶ国</div>
+    <div class="sep"></div>
+    <div class="badge" id="nodeSizeBadge">
+      🐾 <input type="range" id="nodeSizeSlider" min="15" max="150" value="40" step="5">
+    </div>
     <div id="actionPointsBadge">行動力 <b id="hAP">0</b>/<span id="hAPMax">0</span></div>
     <button id="endTurnBtn">ターン終了 ▶</button>
   </header>
 
   <div id="main">
     <div id="mapWrap">
-      <div id="mapInner">
-        <svg id="mapSvgLines"></svg>
-        <div id="mapNodes"></div>
+      <div id="mapStage">
+        <div id="mapInner">
+          <svg id="mapSvgLines"></svg>
+          <div id="mapNodes"></div>
+        </div>
       </div>
       <div id="zoomHint">ホイールで拡大縮小・ドラッグで移動</div>
       <div id="zoomControls">
@@ -230,74 +239,74 @@
 
 // 国データ: id, 表示名, 座標(%), 隣接国は後で ADJ にまとめて定義
 const PROV_DEFS = [
-  {id:"yamashiro", name:"山城", x:51.1, y:42.5},
-  {id:"yamato", name:"大和", x:53.2, y:54.7},
-  {id:"settsu", name:"摂津", x:44.4, y:45.0},
-  {id:"kawachi", name:"河内", x:48.7, y:49.8},
-  {id:"izumi", name:"和泉", x:46.2, y:55.9},
-  {id:"oumi", name:"近江", x:59.8, y:43.3},
-  {id:"mino", name:"美濃", x:68.5, y:39.5},
-  {id:"hida", name:"飛騨", x:64.0, y:34.8},
-  {id:"shinano", name:"信濃", x:71.6, y:32},
-  {id:"kozuke", name:"上野", x:80.5, y:32},
-  {id:"shimotsuke", name:"下野", x:85.6, y:27},
-  {id:"dewa", name:"出羽", x:83.1, y:10},
-  {id:"mutsu", name:"陸奥", x:92.0, y:6},
-  {id:"wakasa", name:"若狭", x:55.9, y:38.1},
-  {id:"echizen", name:"越前", x:57.7, y:31.8},
-  {id:"kaga", name:"加賀", x:62.6, y:27.5},
-  {id:"noto", name:"能登", x:65.3, y:17},
-  {id:"etchu", name:"越中", x:68.9, y:25.6},
-  {id:"echigo", name:"越後", x:75.5, y:24},
-  {id:"sado", name:"佐渡", x:72.9, y:18},
-  {id:"iga", name:"伊賀", x:55.0, y:47.7},
-  {id:"ise", name:"伊勢", x:60.7, y:50.8},
-  {id:"shima", name:"志摩", x:61.6, y:57.3},
-  {id:"owari", name:"尾張", x:66.8, y:48.4},
-  {id:"mikawa", name:"三河", x:72.3, y:51.9},
-  {id:"totomi", name:"遠江", x:76.9, y:56.6},
-  {id:"suruga", name:"駿河", x:80.3, y:50.9},
-  {id:"izu", name:"伊豆", x:83.3, y:58.0},
-  {id:"kai", name:"甲斐", x:76.7, y:42},
-  {id:"sagami", name:"相模", x:86.8, y:50.3},
-  {id:"musashi", name:"武蔵", x:83.9, y:42.2},
-  {id:"awa_k", name:"安房", x:90.9, y:55.3},
-  {id:"kazusa", name:"上総", x:92.5, y:47.1},
-  {id:"shimosa", name:"下総", x:90.0, y:39.8},
-  {id:"hitachi", name:"常陸", x:92.0, y:32},
-  {id:"tanba", name:"丹波", x:45.8, y:38.7},
-  {id:"tango", name:"丹後", x:46.5, y:32.2},
-  {id:"tajima", name:"但馬", x:40.4, y:35.0},
-  {id:"inaba", name:"因幡", x:34.2, y:33.0},
-  {id:"hoki", name:"伯耆", x:33.3, y:41.2},
-  {id:"izumo", name:"出雲", x:28.5, y:36.2},
-  {id:"iwami", name:"石見", x:26.8, y:42.5},
-  {id:"oki", name:"隠岐", x:30.9, y:26},
-  {id:"harima", name:"播磨", x:41.8, y:51.0},
-  {id:"mimasaka", name:"美作", x:37.5, y:46.2},
-  {id:"bizen", name:"備前", x:39.8, y:57.3},
-  {id:"bicchu", name:"備中", x:35.3, y:52.4},
-  {id:"bingo", name:"備後", x:31.1, y:47.4},
-  {id:"aki", name:"安芸", x:26.6, y:52.1},
-  {id:"suo", name:"周防", x:20.2, y:53.1},
-  {id:"nagato", name:"長門", x:15.3, y:48.8},
-  {id:"kii", name:"紀伊", x:51.3, y:60.9},
-  {id:"awaji", name:"淡路", x:44.9, y:62.2},
-  {id:"awa_s", name:"阿波", x:45.7, y:68.7},
-  {id:"sanuki", name:"讃岐", x:39.6, y:66.0},
-  {id:"iyo", name:"伊予", x:33.6, y:63.5},
-  {id:"tosa", name:"土佐", x:37.3, y:76},
-  {id:"chikuzen", name:"筑前", x:19.8, y:61.9},
-  {id:"chikugo", name:"筑後", x:21.5, y:68.3},
-  {id:"buzen", name:"豊前", x:25.4, y:58.6},
-  {id:"bungo", name:"豊後", x:27.5, y:65.8},
-  {id:"hizen", name:"肥前", x:15.1, y:66.5},
-  {id:"higo", name:"肥後", x:19.3, y:74.4},
-  {id:"hyuga", name:"日向", x:25.9, y:74.0},
-  {id:"osumi", name:"大隅", x:22.5, y:82.2},
-  {id:"satsuma", name:"薩摩", x:16.2, y:80.2},
-  {id:"iki", name:"壱岐", x:11.8, y:58},
-  {id:"tsushima", name:"対馬", x:8.0, y:50},
+  {id:"yamashiro", name:"山城", x:52.3, y:42.9},
+  {id:"yamato", name:"大和", x:54.3, y:49.1},
+  {id:"settsu", name:"摂津", x:48.8, y:45.8},
+  {id:"kawachi", name:"河内", x:52.0, y:46.1},
+  {id:"izumi", name:"和泉", x:50.7, y:49.0},
+  {id:"oumi", name:"近江", x:57.0, y:39.9},
+  {id:"mino", name:"美濃", x:60.0, y:41.3},
+  {id:"hida", name:"飛騨", x:57.5, y:36.8},
+  {id:"shinano", name:"信濃", x:60.5, y:38.1},
+  {id:"kozuke", name:"上野", x:69.1, y:40.8},
+  {id:"shimotsuke", name:"下野", x:74.5, y:41.9},
+  {id:"dewa", name:"出羽", x:68.4, y:26.9},
+  {id:"mutsu", name:"陸奥", x:77.3, y:25.9},
+  {id:"wakasa", name:"若狭", x:53.9, y:39.0},
+  {id:"echizen", name:"越前", x:50.4, y:35.5},
+  {id:"kaga", name:"加賀", x:50.7, y:38.8},
+  {id:"noto", name:"能登", x:53.7, y:35.8},
+  {id:"etchu", name:"越中", x:56.6, y:43.1},
+  {id:"echigo", name:"越後", x:65.6, y:40.8},
+  {id:"sado", name:"佐渡", x:61.6, y:35.0},
+  {id:"iga", name:"伊賀", x:55.2, y:46.0},
+  {id:"ise", name:"伊勢", x:58.2, y:47.4},
+  {id:"shima", name:"志摩", x:59.7, y:50.2},
+  {id:"owari", name:"尾張", x:59.5, y:44.4},
+  {id:"mikawa", name:"三河", x:62.6, y:45.3},
+  {id:"totomi", name:"遠江", x:65.8, y:44.7},
+  {id:"suruga", name:"駿河", x:70.6, y:50.3},
+  {id:"izu", name:"伊豆", x:72.7, y:53.1},
+  {id:"kai", name:"甲斐", x:68.1, y:48.0},
+  {id:"sagami", name:"相模", x:74.0, y:50.2},
+  {id:"musashi", name:"武蔵", x:72.7, y:47.2},
+  {id:"awa_k", name:"安房", x:80.4, y:53.3},
+  {id:"kazusa", name:"上総", x:81.3, y:50.2},
+  {id:"shimosa", name:"下総", x:79.1, y:47.6},
+  {id:"hitachi", name:"常陸", x:81.6, y:44.4},
+  {id:"tanba", name:"丹波", x:49.3, y:41.7},
+  {id:"tango", name:"丹後", x:47.7, y:37.7},
+  {id:"tajima", name:"但馬", x:46.3, y:40.6},
+  {id:"inaba", name:"因幡", x:43.1, y:40.3},
+  {id:"hoki", name:"伯耆", x:39.9, y:40.5},
+  {id:"izumo", name:"出雲", x:36.3, y:42.0},
+  {id:"iwami", name:"石見", x:32.8, y:42.6},
+  {id:"oki", name:"隠岐", x:36.7, y:35.9},
+  {id:"harima", name:"播磨", x:44.5, y:43.3},
+  {id:"mimasaka", name:"美作", x:39.3, y:43.7},
+  {id:"bizen", name:"備前", x:42.0, y:45.3},
+  {id:"bicchu", name:"備中", x:36.6, y:45.4},
+  {id:"bingo", name:"備後", x:32.8, y:45.8},
+  {id:"aki", name:"安芸", x:29.2, y:45.8},
+  {id:"suo", name:"周防", x:24.6, y:46.5},
+  {id:"nagato", name:"長門", x:20.0, y:46.2},
+  {id:"kii", name:"紀伊", x:51.3, y:53.3},
+  {id:"awaji", name:"淡路", x:45.3, y:49.0},
+  {id:"awa_s", name:"阿波", x:42.2, y:51.7},
+  {id:"sanuki", name:"讃岐", x:39.7, y:49.6},
+  {id:"iyo", name:"伊予", x:33.9, y:51.5},
+  {id:"tosa", name:"土佐", x:37.8, y:53.3},
+  {id:"chikuzen", name:"筑前", x:21.3, y:58.7},
+  {id:"chikugo", name:"筑後", x:22.2, y:61.8},
+  {id:"buzen", name:"豊前", x:25.3, y:59.0},
+  {id:"bungo", name:"豊後", x:26.4, y:62.6},
+  {id:"hizen", name:"肥前", x:17.5, y:61.2},
+  {id:"higo", name:"肥後", x:22.1, y:65.1},
+  {id:"hyuga", name:"日向", x:26.0, y:66.5},
+  {id:"osumi", name:"大隅", x:22.5, y:70.8},
+  {id:"satsuma", name:"薩摩", x:18.5, y:69.7},
+  {id:"iki", name:"壱岐", x:14.3, y:57.6},
+  {id:"tsushima", name:"対馬", x:10.3, y:55.5},
 ];
 
 const ADJ_LIST = [
@@ -564,6 +573,21 @@ function startGame(factionId){
   addLog(factionOf(factionId).name + "「" + factionOf(factionId).lord + "」が天下統一を目指し挙兵した。");
   document.getElementById("titleScreen").style.display = "none";
   renderAll();
+  centerOnPlayerTerritory();
+}
+
+// 自国の領地の中心に、読みやすい倍率でズームインした状態から開始する
+function centerOnPlayerTerritory(){
+  const owned = provincesOfFaction(state.playerFaction);
+  if(owned.length === 0) return;
+  const cx = owned.reduce((s,p)=>s+p.x,0) / owned.length;
+  const cy = owned.reduce((s,p)=>s+p.y,0) / owned.length;
+  const rect = mapWrapEl.getBoundingClientRect();
+  const stageW = mapStageEl.clientWidth, stageH = mapStageEl.clientHeight;
+  mapView.scale = 2.4;
+  mapView.x = rect.width/2  - (cx/100)*stageW*mapView.scale;
+  mapView.y = rect.height/2 - (cy/100)*stageH*mapView.scale;
+  applyMapTransform();
 }
 
 /* ============================================================
@@ -584,6 +608,7 @@ function renderHeader(){
   document.getElementById("hTurn").textContent = state.turn;
   document.getElementById("hGold").textContent = state.gold[state.playerFaction];
   document.getElementById("hProvCount").textContent = provincesOfFaction(state.playerFaction).length;
+  document.getElementById("hProvTotal").textContent = Object.keys(state.provinces).length;
   document.getElementById("hAP").textContent = state.ap;
   document.getElementById("hAPMax").textContent = state.apMax;
 }
@@ -877,9 +902,32 @@ function showOver(win, text){
 /* ============================================================
    マップのパン・ズーム操作
    ============================================================ */
+const MAP_ASPECT = 1.1282; // 実際の地図画像から計測した陸地部分の横縦比
 const mapView = {scale:1, x:0, y:0, minScale:0.6, maxScale:4};
 const mapWrapEl = document.getElementById("mapWrap");
+const mapStageEl = document.getElementById("mapStage");
 const mapInnerEl = document.getElementById("mapInner");
+
+function fitMapStage(){
+  const w = mapWrapEl.clientWidth, h = mapWrapEl.clientHeight;
+  let stageW, stageH;
+  if(w / h > MAP_ASPECT){
+    stageH = h; stageW = h * MAP_ASPECT;
+  } else {
+    stageW = w; stageH = w / MAP_ASPECT;
+  }
+  mapStageEl.style.width = stageW + "px";
+  mapStageEl.style.height = stageH + "px";
+}
+fitMapStage();
+window.addEventListener("resize", fitMapStage);
+
+// キャラ(ノード)サイズをズームとは独立に調整するスライダー
+const nodeSizeSlider = document.getElementById("nodeSizeSlider");
+document.documentElement.style.setProperty("--node-scale", (nodeSizeSlider.value/100));
+nodeSizeSlider.addEventListener("input", function(){
+  document.documentElement.style.setProperty("--node-scale", (nodeSizeSlider.value/100));
+});
 
 function applyMapTransform(){
   mapInnerEl.style.transform = "translate("+mapView.x+"px,"+mapView.y+"px) scale("+mapView.scale+")";

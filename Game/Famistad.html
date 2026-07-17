@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロ野球ファミリースタジアム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#04081a;
+    --sky-mid:#0b1e3d;
+    --grass:#1f6b46;
+    --grass-dark:#164f34;
+    --dirt:#a8703f;
+    --dirt-dark:#8a5a30;
+    --line:#f2efe4;
+    --amber:#ffb703;
+    --amber-dim:#7a5a13;
+    --red:#e8452c;
+    --panel:#0e1730;
+    --panel-line:#25335c;
+    --ink:#eef1f7;
+    --sub:#93a0c4;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 50% -10%, #163161 0%, var(--sky-top) 55%),
+      var(--sky-top);
+    color:var(--ink);
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:18px 12px 40px;
+  }
+  .pixel{font-family:'Press Start 2P', monospace;}
+  #app{
+    width:100%;
+    max-width:560px;
+  }
+  h1.title{
+    font-size:15px;
+    line-height:1.9;
+    text-align:center;
+    color:var(--amber);
+    text-shadow:0 0 10px rgba(255,183,3,.45), 2px 2px 0 #402400;
+    margin:4px 0 14px;
+    letter-spacing:1px;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--sub);
+    font-size:12px;
+    margin:-8px 0 18px;
+  }
+
+  /* ---- Scoreboard ---- */
+  .scoreboard{
+    background:linear-gradient(#0c1226,#080c1a);
+    border:3px solid #000;
+    outline:2px solid #384a7d;
+    border-radius:6px;
+    padding:10px 10px 12px;
+    margin-bottom:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,.5), inset 0 0 20px rgba(0,0,0,.6);
+  }
+  table.linescore{
+    width:100%;
+    border-collapse:collapse;
+    font-size:11px;
+  }
+  table.linescore th, table.linescore td{
+    text-align:center;
+    padding:3px 2px;
+    color:var(--amber);
+    min-width:16px;
+  }
+  table.linescore th{
+    color:var(--sub);
+    font-size:10px;
+    font-weight:normal;
+    border-bottom:1px solid var(--panel-line);
+  }
+  table.linescore td.teamname{
+    text-align:left;
+    color:var(--ink);
+    font-size:11px;
+    padding-right:8px;
+    white-space:nowrap;
+  }
+  table.linescore td.hi{ color:#fff; font-weight:bold; text-shadow:0 0 6px var(--amber);}
+  table.linescore td.tot{ color:var(--amber); border-left:1px solid var(--panel-line); font-weight:bold;}
+  .board-lower{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:10px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .bso{
+    display:flex;
+    gap:12px;
+  }
+  .bso .grp{ display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .bso .lbl{ font-size:9px; color:var(--sub);}
+  .lights{ display:flex; gap:3px;}
+  .lights .dot{
+    width:9px;height:9px;border-radius:50%;
+    background:#222b45; border:1px solid #000;
+  }
+  .lights .dot.on{ background:var(--amber); box-shadow:0 0 6px var(--amber);}
+  .lights .dot.out-on{ background:var(--red); box-shadow:0 0 6px var(--red);}
+
+  .diamond-wrap{ width:66px; height:60px; position:relative;}
+  .diamond-wrap svg{ width:100%; height:100%; display:block;}
+  .base{ fill:#222b45; stroke:#000; stroke-width:1.5;}
+  .base.on{ filter:drop-shadow(0 0 4px rgba(255,255,255,.65));}
+
+  .inning-tag{
+    font-size:11px; color:var(--ink); text-align:center;
+  }
+  .inning-tag b{ color:var(--amber);}
+
+  /* ---- field canvas ---- */
+  .field-frame{
+    position:relative;
+    border:3px solid #000;
+    outline:2px solid #2d4a33;
+    border-radius:6px;
+    overflow:hidden;
+    margin-bottom:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,.5);
+  }
+  #field{ display:block; width:100%; height:auto; background:var(--sky-mid);}
+  .msg-overlay{
+    position:absolute; left:0; right:0; top:44%;
+    text-align:center;
+    pointer-events:none;
+  }
+  .msg-overlay .big{
+    font-family:'Press Start 2P', monospace;
+    font-size:20px;
+    color:#fff;
+    text-shadow:0 0 14px rgba(255,183,3,.9), 3px 3px 0 #000;
+    opacity:0;
+    transform:scale(.7);
+  }
+  .msg-overlay .big.show{
+    animation: popIn .45s cubic-bezier(.2,1.5,.4,1) forwards;
+  }
+  @keyframes popIn{
+    0%{opacity:0; transform:scale(.5);}
+    60%{opacity:1; transform:scale(1.12);}
+    100%{opacity:1; transform:scale(1);}
+  }
+
+  /* ---- log ---- */
+  .log{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    padding:8px 12px;
+    font-size:12.5px;
+    color:var(--ink);
+    min-height:40px;
+    margin-bottom:14px;
+    line-height:1.6;
+  }
+  .log .old{ color:var(--sub); font-size:11.5px;}
+
+  /* ---- controls ---- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:8px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .panel h2{
+    font-size:12px;
+    color:var(--amber);
+    margin:0 0 10px;
+    letter-spacing:.5px;
+  }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .zonebtn{
+    flex:1;
+    min-width:90px;
+    padding:12px 6px;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    color:var(--ink);
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .zonebtn:hover{ background:#223163;}
+  .zonebtn.selected{
+    background:var(--amber);
+    color:#241700;
+    border-color:var(--amber);
+    box-shadow:0 0 10px rgba(255,183,3,.5);
+  }
+  .speedbtn{
+    padding:8px 14px;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    color:var(--ink);
+    font-size:12px;
+    cursor:pointer;
+  }
+  .speedbtn.selected{
+    background:#3a6bd1; border-color:#3a6bd1; color:#fff;
+  }
+  .actionbtn{
+    padding:8px 14px;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    color:var(--ink);
+    font-size:12px;
+    cursor:pointer;
+  }
+  .actionbtn.selected{
+    background:var(--amber); border-color:var(--amber); color:#241700;
+  }
+  .grid3{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:4px;
+    max-width:260px;
+    margin:0 auto 6px;
+  }
+  .grid3 .cell{
+    aspect-ratio:1;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:5px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:700;
+    color:var(--sub);
+    user-select:none;
+  }
+  .grid3 .cell.zone-ball{
+    background:#10182c;
+    border-style:dashed;
+    border-color:#3a4570;
+    opacity:.8;
+  }
+  .markdot{
+    width:11px; height:11px; border-radius:50%;
+    background:#fff;
+    box-shadow:0 0 6px rgba(255,255,255,.9), 0 0 2px #000;
+    opacity:0;
+    transform:scale(.4);
+    transition:opacity .15s, transform .15s;
+  }
+  .cell.actual-mark .markdot{ opacity:1; transform:scale(1);}
+  .grid3 .cell.selected{
+    background:var(--red);
+    border-color:var(--red);
+    box-shadow:0 0 10px rgba(232,69,44,.6);
+    opacity:1;
+    color:#fff;
+  }
+  .grid-caption{
+    display:flex;
+    justify-content:space-between;
+    max-width:260px;
+    margin:0 auto 12px;
+    font-size:10px;
+    color:var(--sub);
+  }
+  .bigbtn{
+    display:block;
+    width:100%;
+    padding:16px;
+    font-family:'Press Start 2P', monospace;
+    font-size:13px;
+    color:#1a1300;
+    background:linear-gradient(#ffd166,var(--amber));
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    box-shadow:0 4px 0 var(--amber-dim), 0 6px 14px rgba(0,0,0,.4);
+    letter-spacing:1px;
+  }
+  .bigbtn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--amber-dim);}
+  .bigbtn:disabled{
+    background:#3a3f52; color:#8a8fa3; box-shadow:none; cursor:default;
+  }
+  .hint{ font-size:11px; color:var(--sub); text-align:center; margin-top:8px;}
+
+  .title-screen{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:22px 18px;
+    text-align:center;
+  }
+  .title-screen p{ font-size:13px; color:var(--sub); line-height:1.9; text-align:left; max-width:420px; margin:0 auto 18px;}
+  .title-screen .teams{
+    display:flex; justify-content:center; gap:22px; margin-bottom:18px; font-size:13px;
+  }
+  .title-screen .teams .vs{ color:var(--amber); font-family:'Press Start 2P',monospace; font-size:11px; align-self:center;}
+  .hidden{ display:none !important;}
+  footer{ text-align:center; color:#3d4a72; font-size:10.5px; margin-top:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1 class="title pixel">プロ野球<br>ファミリースタジアム</h1>
+  <div class="subtitle">- Family Stadium Fan Edition -</div>
+
+  <!-- TITLE SCREEN -->
+  <div id="titleScreen" class="title-screen">
+    <div class="teams">
+      <div>🦈 オーシャンズ<br><span style="color:var(--sub); font-size:11px;">(先攻)</span></div>
+      <div class="vs">VS</div>
+      <div>☄️ コメッツ<br><span style="color:var(--sub); font-size:11px;">(後攻・あなた)</span></div>
+    </div>
+    <p>
+      あなたは後攻「コメッツ」を操作します。<br>
+      ・攻撃中：スイングするタイミングと高さ（高め/真ん中/低め）を選んでボールを打ち返そう。<br>
+      ・守備中：投げるコースと球速を選んでバッターを打ち取ろう。<br>
+      9回勝負、先に多く得点した方が勝ちです。
+    </p>
+    <button class="bigbtn" id="startBtn">プレイ開始</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameScreen" class="hidden">
+    <div class="scoreboard">
+      <table class="linescore">
+        <thead><tr id="inningHeader"></tr></thead>
+        <tbody>
+          <tr id="awayRow"></tr>
+          <tr id="homeRow"></tr>
+        </tbody>
+      </table>
+      <div class="board-lower">
+        <div class="inning-tag" id="inningTag"><b>1回表</b></div>
+        <div class="diamond-wrap">
+          <svg viewBox="0 0 66 60">
+            <polygon class="base" id="base2" points="33,6 45,20 33,34 21,20"></polygon>
+            <polygon class="base" id="base3" points="10,42 22,42 22,54 10,54" transform="rotate(45 16 48)"></polygon>
+            <polygon class="base" id="base1" points="44,42 56,42 56,54 44,54" transform="rotate(45 50 48)"></polygon>
+          </svg>
+        </div>
+        <div class="bso">
+          <div class="grp"><span class="lbl">B</span><div class="lights" id="ballLights"></div></div>
+          <div class="grp"><span class="lbl">S</span><div class="lights" id="strikeLights"></div></div>
+          <div class="grp"><span class="lbl">OUT</span><div class="lights" id="outLights"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-frame">
+      <canvas id="field" width="520" height="360"></canvas>
+      <div class="msg-overlay"><div class="big pixel" id="bigMsg"></div></div>
+    </div>
+
+    <div class="log" id="log">プレイ開始ボタンを押して試合を始めよう。</div>
+
+    <!-- Batting controls -->
+    <div class="panel hidden" id="battingPanel">
+      <h2>▶ 打撃 － どこに来るか予測して選び、スタート</h2>
+      <div class="grid3" id="batGrid"></div>
+      <div class="grid-caption"><span>点線＝ボール球ゾーン</span><span>中央＝ストライクゾーン</span></div>
+      <div class="row" style="justify-content:center; margin-bottom:12px;" id="batActionRow">
+        <button class="actionbtn selected" data-action="swing">スイング</button>
+        <button class="actionbtn" data-action="bunt">バント</button>
+        <button class="actionbtn" data-action="take">見送り</button>
+      </div>
+      <button class="bigbtn" id="batStartBtn">スタート</button>
+      <div class="hint">スペースキーでもスタートできます</div>
+    </div>
+
+    <!-- Pitching controls -->
+    <div class="panel hidden" id="pitchingPanel">
+      <h2>▶ 投球 － コースと球速を選んで投げ込もう</h2>
+      <div class="grid3" id="courseGrid"></div>
+      <div class="grid-caption"><span>点線＝ボール球ゾーン</span><span>中央＝ストライクゾーン</span></div>
+      <div class="row" style="justify-content:center; margin-bottom:12px;">
+        <button class="speedbtn selected" data-speed="slow">遅め（正確）</button>
+        <button class="speedbtn" data-speed="fast">速め（打たれにくい）</button>
+      </div>
+      <button class="bigbtn" id="throwBtn">投げる</button>
+    </div>
+
+    <div class="panel hidden" id="continuePanelWrap">
+      <button class="bigbtn" id="continueBtn">次へ</button>
+    </div>
+  </div>
+
+  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v2.1</b></footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- Utility ----------------
+  const $ = (id)=>document.getElementById(id);
+  const rand = (a,b)=>a+Math.random()*(b-a);
+  const randInt = (a,b)=>Math.floor(rand(a,b+1));
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  function weightedPick(items){
+    // items: [[value, weight], ...]
+    const total = items.reduce((s,i)=>s+i[1],0);
+    let r = Math.random()*total;
+    for(const [v,w] of items){ if(r<w) return v; r-=w; }
+    return items[items.length-1][0];
+  }
+
+  const AWAY_NAME = "オーシャンズ";
+  const HOME_NAME = "コメッツ";
+
+  // ---------------- Game State ----------------
+  let G = null;
+
+  function newGame(){
+    G = {
+      inning:1,
+      half:'top', // 'top' = away bats, 'bottom' = home bats (player)
+      outs:0, balls:0, strikes:0,
+      bases:[false,false,false],
+      score:{away:0, home:0},
+      lineAway:[], lineHome:[],
+      curInningRuns:0,
+      over:false,
+      // per-pitch transient
+      batGuess:{col:1,row:1},
+      batAction:'swing',
+      pitchTarget:{col:1,row:1},
+      pitchActual:{col:1,row:1},
+      pitchSpeed:'slow',
+      pitchStart:0,
+      pitchDuration:900,
+      phaseLock:false, // true while animating / waiting for "next"
+    };
+  }
+
+  // ---------------- DOM refs ----------------
+  const titleScreen = $('titleScreen');
+  const gameScreen = $('gameScreen');
+  const battingPanel = $('battingPanel');
+  const pitchingPanel = $('pitchingPanel');
+  const continueWrap = $('continuePanelWrap');
+  const logEl = $('log');
+  const bigMsg = $('bigMsg');
+  const canvas = $('field');
+  const ctx = canvas.getContext('2d');
+
+  // ---------------- Logging ----------------
+  let logHistory = [];
+  function log(msg){
+    logHistory.unshift(msg);
+    logHistory = logHistory.slice(0,4);
+    logEl.innerHTML = logHistory.map((m,i)=> i===0? `<div>${m}</div>` : `<div class="old">${m}</div>`).join('');
+  }
+
+  function showBigMsg(text, ms){
+    bigMsg.textContent = text;
+    bigMsg.classList.remove('show');
+    void bigMsg.offsetWidth;
+    bigMsg.classList.add('show');
+    if(ms){
+      clearTimeout(showBigMsg._t);
+      showBigMsg._t = setTimeout(()=>{ bigMsg.classList.remove('show'); }, ms);
+    }
+  }
+
+  // ---------------- Scoreboard rendering ----------------
+  function totalInnings(){
+    return Math.max(9, G.inning);
+  }
+  function renderScoreboard(){
+    const nInn = totalInnings();
+    let head = '<th>&nbsp;</th>';
+    for(let i=1;i<=nInn;i++) head += `<th>${i}</th>`;
+    head += '<th class="tot">R</th><th class="tot">H</th>';
+    $('inningHeader').innerHTML = head;
+
+    function rowHtml(name, arr, total, isCurrentBattingRow, curIdx){
+      let html = `<td class="teamname">${name}</td>`;
+      for(let i=0;i<nInn;i++){
+        let v = arr[i];
+        let cls='';
+        if(v===undefined){
+          v = (isCurrentBattingRow && i===curIdx) ? '&bull;' : '';
+        } else {
+          cls = 'hi';
+        }
+        html += `<td class="${cls}">${v}</td>`;
+      }
+      html += `<td class="tot">${total}</td><td class="tot">-</td>`;
+      return html;
+    }
+    const curIdx = G.inning-1;
+    $('awayRow').innerHTML = rowHtml(AWAY_NAME, G.lineAway, G.score.away, G.half==='top', curIdx);
+    $('homeRow').innerHTML = rowHtml(HOME_NAME, G.lineHome, G.score.home, G.half==='bottom', curIdx);
+
+    $('inningTag').innerHTML = `<b>${G.inning}回${G.half==='top'?'表':'裏'}</b> ${G.half==='top'?AWAY_NAME+' 攻撃':HOME_NAME+' 攻撃'}`;
+
+    // bases
+    const obColor = offenseColor();
+    function setBase(el, on){
+      el.classList.toggle('on', on);
+      el.style.fill = on ? obColor : '';
+    }
+    setBase($('base1'), G.bases[0]);
+    setBase($('base2'), G.bases[1]);
+    setBase($('base3'), G.bases[2]);
+
+    // balls/strikes/outs lights
+    function lights(container, count, max, cls){
+      let html='';
+      for(let i=0;i<max;i++) html += `<div class="dot ${i<count?cls:''}"></div>`;
+      container.innerHTML = html;
+    }
+    lights($('ballLights'), G.balls, 3, 'on');
+    lights($('strikeLights'), G.strikes, 2, 'on');
+    lights($('outLights'), G.outs, 2, 'out-on');
+  }
+
+  // ---------------- Field geometry (true top-down, correctly proportioned) ----------------
+  // Home-to-2nd is the long diagonal (2 * circumradius); home-to-1st / home-to-3rd is the
+  // shorter square edge (circumradius * sqrt2). This matches real base distances
+  // (127ft vs 90ft, ratio ~0.707) instead of an arbitrary foreshortened layout.
+  function diamondGeom(){
+    const w=canvas.width, h=canvas.height;
+    const cx=w/2;
+    const homeY = h*0.88;
+    const R = h*0.34;      // home-to-2nd distance
+    const rc = R/2;        // circumradius of the square (center-to-vertex)
+    const center = {x:cx, y:homeY-rc};
+    return {
+      w,h,cx,homeY,R,rc,center,
+      home:{x:cx,y:homeY},
+      second:{x:cx,y:homeY-R},
+      first:{x:cx+rc,y:homeY-rc},
+      third:{x:cx-rc,y:homeY-rc},
+      mound:{x:cx,y:homeY-rc*0.95}, // rubber sits just a touch in front of true center
+      catcher:{x:cx,y:homeY+24}     // squats just behind home plate
+    };
+  }
+
+  // ---------------- Team colors ----------------
+  // half==='top': away team (Oceans) bats, so the player's team (Comets) is on defense.
+  const ALLY = '#3a6bd1';   // Comets (player's team)
+  const ENEMY = '#e8452c';  // Oceans (CPU team)
+  function defenseColor(){ return (G && G.half==='top') ? ALLY : ENEMY; }
+  function offenseColor(){ return (G && G.half==='top') ? ENEMY : ALLY; }
+
+  function fielderPositions(geo){
+    function polar(angleDeg, dist){
+      const rad = angleDeg*Math.PI/180;
+      return {x: geo.home.x + Math.sin(rad)*dist, y: geo.home.y - Math.cos(rad)*dist};
+    }
+    const R = geo.R;
+    return [
+      polar(40, R*0.56),   // 1B
+      polar(18, R*0.82),   // 2B
+      polar(-18, R*0.82),  // SS
+      polar(-40, R*0.56),  // 3B
+      polar(-26, R*1.7),   // LF
+      polar(0, R*1.9),     // CF
+      polar(26, R*1.7),    // RF
+    ];
+  }
+
+  // ---------------- Field drawing ----------------
+  function drawField(ballPos){
+    const w=canvas.width, h=canvas.height;
+    const geo = diamondGeom();
+    ctx.clearRect(0,0,w,h);
+    // sky band (atmosphere only)
+    let sky = ctx.createLinearGradient(0,0,0,h*0.22);
+    sky.addColorStop(0,'#04081a');
+    sky.addColorStop(1,'#0b2242');
+    ctx.fillStyle=sky;
+    ctx.fillRect(0,0,w,h*0.22);
+    for(const lx of [w*0.12, w*0.5, w*0.88]){
+      let g = ctx.createRadialGradient(lx,14,2, lx,14,55);
+      g.addColorStop(0,'rgba(255,244,214,.5)');
+      g.addColorStop(1,'rgba(255,244,214,0)');
+      ctx.fillStyle=g; ctx.fillRect(lx-55,-25,110,110);
+    }
+
+    // outfield grass (fills everything below the sky band)
+    const grassY = h*0.20;
+    ctx.fillStyle='#1d6944';
+    ctx.fillRect(0,grassY,w,h-grassY);
+    // mow stripes, arcs centered on home plate
+    for(let r=0; r<9; r++){
+      ctx.beginPath();
+      ctx.fillStyle = r%2===0 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.045)';
+      ctx.moveTo(geo.home.x,geo.home.y);
+      ctx.arc(geo.home.x,geo.home.y, geo.R*2.05 - r*(geo.R*2.05/9), Math.PI*1.24, Math.PI*1.76);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // infield skin (tan arc, foul line to foul line, centered on home)
+    ctx.beginPath();
+    ctx.moveTo(geo.home.x,geo.home.y);
+    ctx.arc(geo.home.x,geo.home.y, geo.R*1.28, Math.PI*1.25, Math.PI*1.75);
+    ctx.closePath();
+    ctx.fillStyle='#b9803f';
+    ctx.fill();
+
+    // infield grass diamond (cut into the skin), true square rotated 45°
+    ctx.beginPath();
+    ctx.moveTo(geo.home.x,geo.home.y);
+    ctx.lineTo(geo.first.x,geo.first.y);
+    ctx.lineTo(geo.second.x,geo.second.y);
+    ctx.lineTo(geo.third.x,geo.third.y);
+    ctx.closePath();
+    ctx.fillStyle='#1d6944';
+    ctx.fill();
+
+    // foul lines: rays from home through 1st / 3rd, extended to the field edge
+    ctx.strokeStyle='#f2efe4';
+    ctx.lineWidth=2;
+    const ext = geo.R*2.3;
+    function extend(pt){
+      const dx=pt.x-geo.home.x, dy=pt.y-geo.home.y;
+      const len=Math.hypot(dx,dy);
+      return {x:geo.home.x+dx/len*ext, y:geo.home.y+dy/len*ext};
+    }
+    const e1=extend(geo.first), e3=extend(geo.third);
+    ctx.beginPath();
+    ctx.moveTo(geo.home.x,geo.home.y); ctx.lineTo(e1.x,e1.y);
+    ctx.moveTo(geo.home.x,geo.home.y); ctx.lineTo(e3.x,e3.y);
+    ctx.stroke();
+
+    // batter's boxes beside home plate
+    ctx.strokeStyle='rgba(242,239,228,.85)';
+    ctx.lineWidth=1.4;
+    ctx.strokeRect(geo.home.x-22, geo.home.y-14, 12, 22);
+    ctx.strokeRect(geo.home.x+10, geo.home.y-14, 12, 22);
+
+    // pitcher's mound + pitcher figure (defense team color)
+    ctx.fillStyle='#8a5a30';
+    ctx.beginPath();
+    ctx.arc(geo.mound.x, geo.mound.y, geo.rc*0.24, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#e9e6da';
+    ctx.fillRect(geo.mound.x-4, geo.mound.y-1.5, 8, 3);
+    ctx.fillStyle = defenseColor();
+    ctx.beginPath();
+    ctx.arc(geo.mound.x, geo.mound.y, 6.5, 0, Math.PI*2);
+    ctx.fill();
+
+    // other fielders (defense team color)
+    ctx.fillStyle = defenseColor();
+    for(const pt of fielderPositions(geo)){
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 5.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // bases (small white squares, diamond-oriented) at 1st / 2nd / 3rd
+    const baseSize = Math.max(8, geo.rc*0.16);
+    function drawBase(pt,on){
+      ctx.save();
+      ctx.translate(pt.x,pt.y);
+      ctx.rotate(Math.PI/4);
+      ctx.fillStyle = on? offenseColor() : '#f2efe4';
+      ctx.strokeStyle='#000'; ctx.lineWidth=1.2;
+      ctx.fillRect(-baseSize/2,-baseSize/2,baseSize,baseSize);
+      ctx.strokeRect(-baseSize/2,-baseSize/2,baseSize,baseSize);
+      ctx.restore();
+    }
+    const basesState = (G && G.bases) ? G.bases : [false,false,false];
+    drawBase(geo.first, basesState[0]);
+    drawBase(geo.second, basesState[1]);
+    drawBase(geo.third, basesState[2]);
+
+    // home plate (pentagon)
+    ctx.fillStyle='#f2efe4';
+    ctx.strokeStyle='#000'; ctx.lineWidth=1.2;
+    const hx=geo.home.x, hy=geo.home.y;
+    ctx.beginPath();
+    ctx.moveTo(hx-8,hy-8); ctx.lineTo(hx+8,hy-8); ctx.lineTo(hx+8,hy);
+    ctx.lineTo(hx,hy+8); ctx.lineTo(hx-8,hy);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // catcher, squatting just behind home plate (defense team color)
+    ctx.fillStyle = defenseColor();
+    ctx.beginPath();
+    ctx.arc(geo.catcher.x, geo.catcher.y, 9, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#c98a4b';
+    ctx.beginPath();
+    ctx.arc(geo.catcher.x, geo.catcher.y-9, 4.5, 0, Math.PI*2);
+    ctx.fill();
+
+    // batter, standing in the box (offense team color)
+    ctx.fillStyle = offenseColor();
+    ctx.beginPath();
+    ctx.arc(geo.home.x-16, geo.home.y-3, 6, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#c98a4b';
+    ctx.beginPath();
+    ctx.arc(geo.home.x-16, geo.home.y-11, 4, 0, Math.PI*2);
+    ctx.fill();
+
+    // ball
+    if(ballPos){
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,.5)';
+      ctx.shadowBlur=4;
+      ctx.fillStyle='#fff';
+      ctx.beginPath();
+      ctx.arc(ballPos.x, ballPos.y, ballPos.r||5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // maps strike-zone col/row (can be out of 0..2 range) to a point just in front of home plate,
+  // used as the "final" pitch location before it either gets hit or not.
+  // Horizontal position is intentionally NOT reflected here (kept centered) so the animation
+  // doesn't telegraph inside/outside location before it matters — only height (row) is shown.
+  function zoneToCanvasPoint(col,row){
+    const geo = diamondGeom();
+    const cRow = clamp(row,-1,3);
+    const x = geo.home.x;
+    const y = geo.catcher.y - 12 + (cRow-1)*8;
+    return {x,y};
+  }
+
+  function pitcherPoint(){
+    const geo = diamondGeom();
+    return {x:geo.mound.x, y:geo.mound.y};
+  }
+
+  // ---------------- Zone / quality math ----------------
+  function isStrike(col,row){
+    return col>=0 && col<=2 && row>=0 && row<=2;
+  }
+
+  function computeMissOffset(speedFast){
+    const weights = speedFast ? [[-1,0.24],[0,0.52],[1,0.24]] : [[-1,0.14],[0,0.72],[1,0.14]];
+    return weightedPick(weights);
+  }
+
+  function classifyContact(quality){
+    // quality 0..1
+    if(quality < 0.16) return 'miss';
+    if(quality < 0.34) return 'foul';
+    if(quality < 0.55) return weightedPick([['groundout',5],['flyout',4],['lineout',2],['single',1.5]]);
+    if(quality < 0.74) return weightedPick([['single',5],['groundout',2.4],['flyout',2],['lineout',1.4],['double',1]]);
+    if(quality < 0.90) return weightedPick([['single',3.4],['double',3],['flyout',1.6],['triple',0.6],['homerun',0.6]]);
+    return weightedPick([['double',3],['homerun',3],['triple',1.6],['single',1.4]]);
+  }
+
+  // ---------------- Flow control ----------------
+  function playerControlsBatting(){ return G.half==='bottom'; }
+
+  function startNewAtBatCount(){
+    G.balls=0; G.strikes=0;
+    renderScoreboard();
+  }
+
+  function beginHalfInning(){
+    G.outs=0; G.bases=[false,false,false]; G.curInningRuns=0;
+    startNewAtBatCount();
+    log(`--- ${G.inning}回${G.half==='top'?'表':'裏'} ${G.half==='top'?AWAY_NAME:HOME_NAME}の攻撃 ---`);
+    setupPanelsForHalf();
+  }
+
+  function setupPanelsForHalf(){
+    drawField(null);
+    if(playerControlsBatting()){
+      battingPanel.classList.remove('hidden');
+      pitchingPanel.classList.add('hidden');
+      $('batStartBtn').disabled = false;
+      $('batStartBtn').textContent = 'スタート';
+    } else {
+      pitchingPanel.classList.remove('hidden');
+      battingPanel.classList.add('hidden');
+    }
+    continueWrap.classList.add('hidden');
+  }
+
+  function endInningsCheckAfterOuts(){
+    // called when outs reached 3
+    if(G.half==='top'){
+      // check if home already winning -> skip bottom (walk-off not needed here, but "no need to bat" rule)
+      if(G.inning>=9 && G.score.home>G.score.away){
+        finishGame();
+        return;
+      }
+      G.half='bottom';
+      beginHalfInning();
+    } else {
+      if(G.inning>=9 && G.score.home !== G.score.away){
+        finishGame();
+        return;
+      }
+      G.inning++;
+      G.half='top';
+      beginHalfInning();
+    }
+  }
+
+  function recordRunsForInning(runs){
+    if(runs<=0) return;
+    G.curInningRuns += runs;
+    if(G.half==='top'){
+      G.score.away += runs;
+      G.lineAway[G.inning-1] = (G.lineAway[G.inning-1]||0) + runs;
+    } else {
+      G.score.home += runs;
+      G.lineHome[G.inning-1] = (G.lineHome[G.inning-1]||0) + runs;
+    }
+  }
+
+  function lockInningNumberIfHalfEndsWithoutBat(){
+    // ensure a 0 shows for a half that completed with no runs
+    if(G.half==='top'){
+      if(G.lineAway[G.inning-1]===undefined) G.lineAway[G.inning-1]=0;
+    } else {
+      if(G.lineHome[G.inning-1]===undefined) G.lineHome[G.inning-1]=0;
+    }
+  }
+
+  function checkWalkoff(){
+    if(G.half==='bottom' && G.inning>=9 && G.score.home>G.score.away){
+      finishGame();
+      return true;
+    }
+    return false;
+  }
+
+  function finishGame(){
+    G.over=true;
+    lockInningNumberIfHalfEndsWithoutBat();
+    renderScoreboard();
+    const winner = G.score.home===G.score.away ? null : (G.score.home>G.score.away? HOME_NAME:AWAY_NAME);
+    if(winner){
+      log(`🏆 試合終了！ ${winner} の勝利！ (${G.score.away}-${G.score.home})`);
+      showBigMsg(winner===HOME_NAME? '勝利！':'敗戦…', 2200);
+    } else {
+      log(`🤝 試合終了！ 引き分け (${G.score.away}-${G.score.home})`);
+      showBigMsg('引き分け', 2200);
+    }
+    battingPanel.classList.add('hidden');
+    pitchingPanel.classList.add('hidden');
+    continueWrap.classList.remove('hidden');
+    $('continueBtn').textContent = 'タイトルに戻る';
+  }
+
+  // ---------------- Outcome application ----------------
+  function applyOutcome(kind, sideIsBottom){
+    // returns text message; mutates state (outs/bases/score/count)
+    let msg = '';
+    const battingTeam = sideIsBottom ? HOME_NAME : AWAY_NAME;
+
+    function outResolved(base){
+      G.outs++;
+      startNewAtBatCount();
+    }
+
+    switch(kind){
+      case 'ball':
+        G.balls++;
+        if(G.balls>=4){
+          walk();
+          msg = `フォアボール！${battingTeam}の打者が出塁。`;
+        } else {
+          msg = `ボール。(${G.balls}-${G.strikes})`;
+        }
+        break;
+      case 'calledStrike':
+      case 'miss':
+        G.strikes++;
+        if(G.strikes>=3){
+          outResolved();
+          msg = kind==='miss' ? `空振り三振！` : `見逃し三振！`;
+        } else {
+          msg = (kind==='miss' ? `空振り。` : `見逃し。`) + `(${G.balls}-${G.strikes})`;
+        }
+        break;
+      case 'foul':
+        if(G.strikes<2) G.strikes++;
+        msg = `ファウル。(${G.balls}-${G.strikes})`;
+        break;
+      case 'groundout': {
+        let dp=false;
+        G.outs++;
+        if(G.bases[0] && G.outs<2 && Math.random()<0.38){
+          G.outs++; G.bases[0]=false; dp=true;
+        } else if(G.bases[0] && Math.random()<0.3){
+          // fielder's choice-ish advance
+          G.bases[1]=true; G.bases[0]=false;
+        }
+        startNewAtBatCount();
+        msg = dp ? `ゲッツー！ダブルプレー！` : `ゴロアウト。`;
+        break;
+      }
+      case 'lineout':
+        G.outs++;
+        startNewAtBatCount();
+        msg = `ライナーアウト。`;
+        break;
+      case 'flyout': {
+        let scored=0;
+        if(G.bases[2] && G.outs<2 && Math.random()<0.65){
+          scored=1; G.bases[2]=false;
+        }
+        G.outs++;
+        recordRunsForInning(scored);
+        startNewAtBatCount();
+        msg = scored ? `犠牲フライ！1点追加！` : `フライアウト。`;
+        break;
+      }
+      case 'single': {
+        let runs=0;
+        if(G.bases[2]){ runs++; G.bases[2]=false; }
+        if(G.bases[1]){
+          if(Math.random()<0.55){ runs++; } else { G.bases[2]=true; }
+          G.bases[1]=false;
+        }
+        if(G.bases[0]){
+          if(Math.random()<0.25){ G.bases[2]=true; } else { G.bases[1]=true; }
+          G.bases[0]=false;
+        }
+        G.bases[0]=true;
+        recordRunsForInning(runs);
+        startNewAtBatCount();
+        msg = `ヒット！` + (runs? ` ${runs}点入る！`:'');
+        break;
+      }
+      case 'double': {
+        let runs=0;
+        if(G.bases[2]){ runs++; G.bases[2]=false; }
+        if(G.bases[1]){ runs++; G.bases[1]=false; }
+        if(G.bases[0]){
+          if(Math.random()<0.5){ runs++; } else { G.bases[2]=true; }
+          G.bases[0]=false;
+        }
+        G.bases[1]=true;
+        recordRunsForInning(runs);
+        startNewAtBatCount();
+        msg = `二塁打！` + (runs? ` ${runs}点入る！`:'');
+        break;
+      }
+      case 'triple': {
+        let runs=0;
+        if(G.bases[0]) runs++;
+        if(G.bases[1]) runs++;
+        if(G.bases[2]) runs++;
+        G.bases=[false,false,true];
+        recordRunsForInning(runs);
+        startNewAtBatCount();
+        msg = `三塁打！` + (runs? ` ${runs}点入る！`:'');
+        break;
+      }
+      case 'homerun': {
+        let runs=1;
+        if(G.bases[0]) runs++;
+        if(G.bases[1]) runs++;
+        if(G.bases[2]) runs++;
+        G.bases=[false,false,false];
+        recordRunsForInning(runs);
+        startNewAtBatCount();
+        msg = runs>1 ? `${runs}ラン ホームラン！！` : `ホームラン！！`;
+        break;
+      }
+    }
+    return msg;
+  }
+
+  function walk(){
+    if(G.bases[0]){
+      if(G.bases[1]){
+        if(G.bases[2]){ recordRunsForInning(1); G.bases[2]=false; }
+        G.bases[2]=true;
+      }
+      G.bases[1]=true;
+    }
+    G.bases[0]=true;
+    startNewAtBatCount();
+  }
+
+  // ---------------- Pitch flow: BATTING (player controls swing) ----------------
+  let flightRAF=null;
+
+  function cpuChoosePitchTarget(){
+    // strategy based on count
+    let col,row;
+    if(G.strikes===2 && Math.random()<0.55){
+      col = weightedPick([[0,1],[1,0.3],[2,1]]);
+      row = weightedPick([[0,1],[1,0.3],[2,1]]);
+    } else if(G.balls===3){
+      col = weightedPick([[0,0.4],[1,1],[2,0.4]]);
+      row = weightedPick([[0,0.4],[1,1],[2,0.4]]);
+    } else {
+      col = weightedPick([[0,1],[1,1.4],[2,1]]);
+      row = weightedPick([[0,1],[1,1.4],[2,1]]);
+    }
+    return {col,row};
+  }
+
+  function clearActualMarkOnBatGrid(){
+    const prev = document.querySelector('#batGrid .cell.actual-mark');
+    if(prev) prev.classList.remove('actual-mark');
+  }
+  function showActualMarkOnBatGrid(col,row){
+    clearActualMarkOnBatGrid();
+    const cRow=clamp(row,-1,3), cCol=clamp(col,-1,3);
+    const cell = document.querySelector(`#batGrid .cell[data-row="${cRow}"][data-col="${cCol}"]`);
+    if(cell) cell.classList.add('actual-mark');
+  }
+
+  function beginPlayerBattingPrompt(){
+    // Just wait for the player to lock in a prediction + action and press start.
+    // No timer, no auto-pitch — the player can take as long as they like.
+    clearActualMarkOnBatGrid();
+    $('batStartBtn').disabled = false;
+    $('batStartBtn').textContent = 'スタート';
+    log(`打席へ… コースと作戦を選んでスタート。(${G.balls}-${G.strikes})`);
+  }
+
+  function commitPlayerBatChoice(){
+    if(!playerControlsBatting()) return;
+    if($('batStartBtn').disabled) return;
+    $('batStartBtn').disabled = true;
+
+    G.pitchTarget = cpuChoosePitchTarget();
+    G.pitchSpeed = Math.random()<0.5 ? 'fast':'slow';
+    const missCol = computeMissOffset(G.pitchSpeed==='fast');
+    const missRow = computeMissOffset(G.pitchSpeed==='fast');
+    G.pitchActual = {col:G.pitchTarget.col+missCol, row:G.pitchTarget.row+missRow};
+    G.pitchDuration = 750;
+
+    runFlightAnimation(()=>{
+      resolvePlayerAction();
+    });
+  }
+
+  function runFlightAnimation(onArrive){
+    const start = performance.now();
+    const dur = G.pitchDuration;
+    const p0 = pitcherPoint();
+    const p1 = zoneToCanvasPoint(G.pitchActual.col, G.pitchActual.row);
+    let arrived=false;
+    function frame(now){
+      let t = (now-start)/dur;
+      const tc = clamp(t,0,1);
+      const x = p0.x + (p1.x-p0.x)*tc;
+      const y = p0.y + (p1.y-p0.y)*tc;
+      const r = 2.5 + 4*tc;
+      drawField({x,y,r});
+      if(t>=1 && !arrived){
+        arrived=true;
+        onArrive && onArrive();
+      }
+      if(t < 1.35){
+        flightRAF = requestAnimationFrame(frame);
+      } else {
+        flightRAF=null;
+      }
+    }
+    flightRAF = requestAnimationFrame(frame);
+    G._pitchAnimStart = start;
+  }
+
+  function resolvePlayerAction(){
+    const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
+    showActualMarkOnBatGrid(G.pitchActual.col, G.pitchActual.row);
+
+    if(G.batAction==='take'){
+      finalizePlay(applyOutcome(strike?'calledStrike':'ball', true));
+      return;
+    }
+
+    if(G.batAction==='bunt'){
+      const distFromCenter = Math.max(Math.abs(G.pitchActual.col-1), Math.abs(G.pitchActual.row-1));
+      const buntBase = strike ? (distFromCenter===0 ? 0.85 : 0.62) : 0.32;
+      const buntQuality = clamp(buntBase + rand(-0.12,0.12), 0, 1);
+      if(buntQuality < 0.24){
+        if(G.strikes>=2){
+          G.outs++; startNewAtBatCount();
+          finalizePlay('バント失敗！ファウルで三振。');
+        } else {
+          G.strikes = Math.min(G.strikes+1,2);
+          finalizePlay(`バント失敗（ファウル）。(${G.balls}-${G.strikes})`);
+        }
+        return;
+      }
+      const kind = buntQuality < 0.58 ? 'groundout'
+                 : weightedPick([['groundout',3],['single',buntQuality<0.82?1:2.2]]);
+      finalizePlay((kind==='single'? 'セーフティーバント成功！' : 'バント。') + ' ' + applyOutcome(kind, true));
+      return;
+    }
+
+    // swing: compare the player's predicted zone against where the pitch actually arrived.
+    // A dead-on read (same cell) is a great swing; one cell off still makes contact
+    // (grounder/fly/foul); only a wide miss (2+ cells away) risks a swing-and-a-miss.
+    const pCol=G.batGuess.col, pRow=G.batGuess.row;
+    const aCol=G.pitchActual.col, aRow=G.pitchActual.row;
+    const matchDist = Math.max(Math.abs(pCol-aCol), Math.abs(pRow-aRow));
+    let matchScore;
+    if(matchDist===0) matchScore=1.0;
+    else if(matchDist===1) matchScore=0.55;
+    else if(matchDist===2) matchScore=0.25;
+    else matchScore=0.05;
+    const factor = strike?1.0:0.45;
+    const quality = clamp(matchScore*factor + rand(-0.08,0.08), 0, 1);
+
+    let kind = classifyContact(quality);
+    if(matchDist<=1 && kind==='miss') kind='foul'; // close reads always make at least contact
+    if(kind==='miss'){
+      finalizePlay(applyOutcome('miss', true));
+    } else if(kind==='foul'){
+      finalizePlay(applyOutcome('foul', true));
+    } else {
+      animateHitThenResolve(kind, true);
+    }
+  }
+
+  // ---------------- Pitch flow: PITCHING (player controls target/speed) ----------------
+  function cpuDecideSwing(){
+    const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
+    let p;
+    if(G.strikes===2) p = strike?0.82:0.34;
+    else if(G.balls===3) p = strike?0.62:0.10;
+    else p = strike?0.58:0.16;
+    return Math.random()<p;
+  }
+
+  function throwPitch_PlayerPitches(){
+    const missCol = computeMissOffset(G.pitchSpeed==='fast');
+    const missRow = computeMissOffset(G.pitchSpeed==='fast');
+    G.pitchActual = {col:G.pitchTarget.col+missCol, row:G.pitchTarget.row+missRow};
+    G.pitchDuration = G.pitchSpeed==='fast' ? 560 : 900;
+
+    pitchingPanel.classList.add('hidden');
+    log(`投球！ コース:${zoneLabel(G.pitchTarget)} / ${G.pitchSpeed==='fast'?'速球':'緩球'}`);
+
+    const willSwing = cpuDecideSwing();
+    let cpuQuality=0;
+    if(willSwing){
+      const timingScore = clamp(rand(0.25,0.95) - (G.pitchSpeed==='fast'?0.16:0), 0,1);
+      const dispRow = clamp(G.pitchActual.row,0,2);
+      const guessRow = weightedPick([[0,1],[1,1.4],[2,1]]);
+      let zoneMatch = guessRow===dispRow?1:(Math.abs(guessRow-dispRow)===1?0.4:0);
+      const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
+      const factor = strike?1.0:0.45;
+      cpuQuality = clamp((0.55*timingScore+0.45*zoneMatch)*factor + rand(-0.08,0.08),0,1);
+    }
+
+    runFlightAnimation(()=>{
+      if(!willSwing){
+        const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
+        finalizePlay(applyOutcome(strike?'calledStrike':'ball', false));
+      } else {
+        const kind = classifyContact(cpuQuality);
+        if(kind==='miss'){
+          finalizePlay(applyOutcome('miss', false));
+        } else if(kind==='foul'){
+          finalizePlay(applyOutcome('foul', false));
+        } else {
+          animateHitThenResolve(kind, false);
+        }
+      }
+    });
+  }
+
+  function zoneLabel(t){
+    const rowLbl = {'-1':'高めボール', '0':'高め', '1':'真ん中', '2':'低め', '3':'低めボール'}[t.row];
+    const colLbl = {'-1':'内角ボール', '0':'内角', '1':'真ん中', '2':'外角', '3':'外角ボール'}[t.col];
+    return `${rowLbl}${colLbl}`;
+  }
+
+  // ---------------- Hit animation ----------------
+  function animateHitThenResolve(kind, sideIsBottom){
+    const geo = diamondGeom();
+    const cx = geo.home.x, homeY = geo.home.y, R = geo.R;
+    const angle = rand(-0.62, 0.62); // radians from center, fair territory
+    const distMap = {
+      groundout: rand(R*0.40, R*0.75),
+      flyout:    rand(R*0.90, R*1.35),
+      lineout:   rand(R*0.70, R*1.05),
+      single:    rand(R*1.00, R*1.50),
+      double:    rand(R*1.50, R*1.90),
+      triple:    rand(R*1.85, R*2.05),
+      homerun:   rand(R*2.00, R*2.15),
+    };
+    const dist = distMap[kind] || R*1.1;
+    const tx = cx + Math.sin(angle)*dist;
+    const ty = homeY - Math.cos(angle)*dist - dist*0.15;
+
+    const start = performance.now();
+    const dur = 650;
+    const p0 = {x:cx,y:homeY-8};
+    function frame(now){
+      const t = clamp((now-start)/dur,0,1);
+      const x = p0.x + (tx-p0.x)*t;
+      const arc = Math.sin(Math.PI*t) * (dist*0.28);
+      const y = p0.y + (ty-p0.y)*t - arc;
+      drawField({x,y,r:6});
+      if(t<1){
+        flightRAF = requestAnimationFrame(frame);
+      } else {
+        const labelMap = {
+          groundout:'ゴロアウト', flyout:'フライアウト', lineout:'ライナーアウト',
+          single:'ヒット！', double:'二塁打！', triple:'三塁打！', homerun:'ホームラン！！'
+        };
+        showBigMsg(labelMap[kind], 1200);
+        setTimeout(()=>{
+          finalizePlay(applyOutcome(kind, sideIsBottom));
+        }, 550);
+      }
+    }
+    flightRAF = requestAnimationFrame(frame);
+  }
+
+  // ---------------- After each resolved pitch/play ----------------
+  function finalizePlay(msg){
+    if(msg) log(msg);
+    if(flightRAF){ cancelAnimationFrame(flightRAF); flightRAF=null; }
+    renderScoreboard();
+
+    if(checkWalkoff()) return;
+
+    if(G.outs>=3){
+      lockInningNumberIfHalfEndsWithoutBat();
+      renderScoreboard();
+      battingPanel.classList.add('hidden');
+      pitchingPanel.classList.add('hidden');
+      continueWrap.classList.remove('hidden');
+      $('continueBtn').textContent = '次の回へ';
+      G._pendingAdvanceHalf = true;
+      return;
+    }
+
+    // continue same half, next pitch
+    if(playerControlsBatting()){
+      battingPanel.classList.remove('hidden');
+      pitchingPanel.classList.add('hidden');
+      beginPlayerBattingPrompt();
+    } else {
+      pitchingPanel.classList.remove('hidden');
+      battingPanel.classList.add('hidden');
+      renderScoreboard();
+    }
+  }
+
+  // ---------------- Controls wiring ----------------
+  $('startBtn').addEventListener('click', ()=>{
+    newGame();
+    titleScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    logHistory=[];
+    resetSelectionUI();
+    renderScoreboard();
+    beginHalfInning();
+    kickOffCurrentHalf();
+  });
+
+  function resetSelectionUI(){
+    document.querySelectorAll('#batGrid .cell').forEach(c=>{
+      c.classList.toggle('selected', c.dataset.row==='1' && c.dataset.col==='1');
+    });
+    document.querySelectorAll('#batActionRow .actionbtn').forEach(b=>{
+      b.classList.toggle('selected', b.dataset.action==='swing');
+    });
+    document.querySelectorAll('#courseGrid .cell').forEach(c=>{
+      c.classList.toggle('selected', c.dataset.row==='1' && c.dataset.col==='1');
+    });
+    document.querySelectorAll('.speedbtn').forEach(b=>{
+      b.classList.toggle('selected', b.dataset.speed==='slow');
+    });
+  }
+
+  function kickOffCurrentHalf(){
+    if(playerControlsBatting()){
+      beginPlayerBattingPrompt();
+    }
+    // if pitching side, wait for user to pick course & press throw
+  }
+
+  // build batting prediction grid (5x5, values -1..3) — same layout as the pitcher's course grid
+  (function buildBatGrid(){
+    const grid = $('batGrid');
+    grid.innerHTML='';
+    for(let row=-1; row<=3; row++){
+      for(let col=-1; col<=3; col++){
+        const isBallZone = (row<0||row>2||col<0||col>2);
+        const cell = document.createElement('div');
+        cell.className='cell'+(isBallZone?' zone-ball':'')+((row===1&&col===1)?' selected':'');
+        cell.dataset.row=row; cell.dataset.col=col;
+        cell.innerHTML='<span class="markdot"></span>';
+        grid.appendChild(cell);
+      }
+    }
+  })();
+  $('batGrid').addEventListener('click',(e)=>{
+    const cell = e.target.closest('.cell');
+    if(!cell) return;
+    document.querySelectorAll('#batGrid .cell').forEach(c=>c.classList.remove('selected'));
+    cell.classList.add('selected');
+    G.batGuess = {row:parseInt(cell.dataset.row,10), col:parseInt(cell.dataset.col,10)};
+  });
+  $('batActionRow').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.actionbtn');
+    if(!btn) return;
+    document.querySelectorAll('#batActionRow .actionbtn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    G.batAction = btn.dataset.action;
+  });
+  $('batStartBtn').addEventListener('click', commitPlayerBatChoice);
+  window.addEventListener('keydown',(e)=>{
+    if(e.code==='Space'){
+      e.preventDefault();
+      if(gameScreen.classList.contains('hidden')) return;
+      if(playerControlsBatting() && !$('batStartBtn').disabled) commitPlayerBatChoice();
+    }
+  });
+
+  // build course grid (5x5, values -1..3) for pitching: the inner 3x3 (0..2) is the strike
+  // zone, the outer ring (-1, 3) lets the pitcher deliberately aim for a ball.
+  (function buildCourseGrid(){
+    const grid = $('courseGrid');
+    grid.innerHTML='';
+    for(let row=-1; row<=3; row++){
+      for(let col=-1; col<=3; col++){
+        const isBallZone = (row<0||row>2||col<0||col>2);
+        const cell = document.createElement('div');
+        cell.className='cell'+(isBallZone?' zone-ball':'')+((row===1&&col===1)?' selected':'');
+        cell.dataset.row=row; cell.dataset.col=col;
+        grid.appendChild(cell);
+      }
+    }
+  })();
+  $('courseGrid').addEventListener('click',(e)=>{
+    const cell = e.target.closest('.cell');
+    if(!cell) return;
+    document.querySelectorAll('#courseGrid .cell').forEach(c=>c.classList.remove('selected'));
+    cell.classList.add('selected');
+    G.pitchTarget = {row:parseInt(cell.dataset.row,10), col:parseInt(cell.dataset.col,10)};
+  });
+  document.querySelectorAll('.speedbtn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.speedbtn').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      G.pitchSpeed = b.dataset.speed;
+    });
+  });
+  $('throwBtn').addEventListener('click', ()=>{
+    if(!G || G.over) return;
+    if(playerControlsBatting()) return;
+    throwPitch_PlayerPitches();
+  });
+
+  $('continueBtn').addEventListener('click', ()=>{
+    if(G.over){
+      titleScreen.classList.remove('hidden');
+      gameScreen.classList.add('hidden');
+      return;
+    }
+    continueWrap.classList.add('hidden');
+    if(G._pendingAdvanceHalf){
+      G._pendingAdvanceHalf=false;
+      endInningsCheckAfterOuts();
+      if(!G.over) kickOffCurrentHalf();
+    }
+  });
+
+  // initial idle field draw
+  drawField(null);
+
+})();
+</script>
+</body>
+</html>

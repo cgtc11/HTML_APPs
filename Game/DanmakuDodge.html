@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>弾幕避けトレーニング</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0a0a12;
+    font-family: 'Segoe UI', 'Meiryo', sans-serif;
+    color: #eee;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #appWrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; width: 100%;
+    box-sizing: border-box;
+    padding: 2px 0;
+  }
+  #wrap {
+    position: relative;
+    width: 480px; height: 640px;
+    flex-shrink: 0;
+  }
+  canvas {
+    background: #05050a;
+    border: 2px solid #444a66;
+    box-sizing: border-box;
+    display: block;
+    box-shadow: 0 0 30px rgba(80,120,255,0.15);
+    width: 100%; height: 100%;
+    touch-action: none;
+  }
+  #hud {
+    position: absolute; top: 8px; left: 10px;
+    font-size: 14px; line-height: 1.5;
+    text-shadow: 0 0 4px #000, 0 0 4px #000;
+    pointer-events: none;
+    user-select: none;
+  }
+  #hud .level { color: #ffd54a; font-weight: bold; }
+  #center-msg {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
+  }
+  #center-msg h1 {
+    font-size: 30px; margin: 0 0 10px; color: #ff5a5a;
+    text-shadow: 0 0 10px #000;
+  }
+  #center-msg p { margin: 4px 0; font-size: 15px; }
+  #restartBtn {
+    margin-top: 14px; padding: 10px 26px; font-size: 16px;
+    background: #3a4270; color: #fff; border: 1px solid #6a76c0;
+    border-radius: 6px; cursor: pointer; pointer-events: auto;
+  }
+  #restartBtn:hover { background: #4a5490; }
+  #howto {
+    position: absolute; bottom: 8px; left: 10px; right: 10px;
+    font-size: 11px; color: #9aa0c0; text-align: center;
+    user-select: none;
+  }
+  #controls {
+    flex-shrink: 0;
+    width: 480px; max-width: 100%;
+    box-sizing: border-box;
+    margin-top: 8px;
+    padding: 8px;
+    background: #12132a;
+    border: 1px solid #333a5c;
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  #bombBtn {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 15px; font-weight: bold;
+    background: linear-gradient(#4a4a6a, #23233c);
+    color: #fff2b0;
+    border: 1px solid #7a7ab0;
+    border-radius: 8px;
+    touch-action: manipulation;
+  }
+  #bombBtn:active { background: #6a6a9a; }
+  #colorButtons {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; width: 100%;
+  }
+  .colorBtn {
+    width: 50px; height: 44px;
+    border-radius: 8px;
+    border: 3px solid rgba(255,255,255,0.15);
+    color: #10101a;
+    font-size: 12px; font-weight: bold;
+    touch-action: manipulation;
+    text-shadow: 0 0 2px rgba(255,255,255,0.4);
+  }
+  .colorBtn.selected {
+    border-color: #fff;
+    box-shadow: 0 0 10px 2px rgba(255,255,255,0.7);
+  }
+</style>
+</head>
+<body>
+<div id="appWrap">
+  <div id="wrap">
+    <canvas id="game" width="480" height="640"></canvas>
+    <div id="hud">
+      <div>LEVEL: <span class="level" id="hudLevel">1</span></div>
+      <div>生存時間: <span id="hudTime">0.0</span>s</div>
+      <div>得点: <span id="hudScore">0</span>点</div>
+      <div>得点倍率: <span id="hudRate">100</span>%</div>
+      <div>ベスト: <span id="hudBest">0</span>点</div>
+      <div>ボム使用: <span id="hudBombCount">0</span>回</div>
+    </div>
+    <div id="center-msg" style="display:none;">
+      <h1 id="msgTitle">GAME OVER</h1>
+      <p id="msgDetail"></p>
+      <button id="restartBtn">もう一度 (R / タップ)</button>
+    </div>
+    <div id="howto">PC: 矢印/WASD移動+Shift低速、またはマウスドラッグでも移動可 ／ スマホ: ドラッグした分だけ移動 ／ 色ボタン:最大5色まで同時ガード可(自機の後を追従)。1回被弾で該当色は解除、再度押すと復活 ／ ガードが多いほど得点倍率が下がる ／ ボム:画面上の弾を全消し(得点だけリセット)</div>
+  </div>
+  <div id="controls">
+    <button id="bombBtn">💥 フラッシュボム</button>
+    <div id="colorButtons"></div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = canvas.width;
+const H = canvas.height; // 縦の論理サイズは固定(弾速・難易度の基準を統一するため)
+const MIN_W = 280, MAX_W = 900;
+
+const hudLevel = document.getElementById('hudLevel');
+const hudTime = document.getElementById('hudTime');
+const hudScore = document.getElementById('hudScore');
+const hudRate = document.getElementById('hudRate');
+const hudBest = document.getElementById('hudBest');
+const hudBombCount = document.getElementById('hudBombCount');
+const centerMsg = document.getElementById('center-msg');
+const msgTitle = document.getElementById('msgTitle');
+const msgDetail = document.getElementById('msgDetail');
+const restartBtn = document.getElementById('restartBtn');
+const bombBtn = document.getElementById('bombBtn');
+const colorButtonsEl = document.getElementById('colorButtons');
+const wrapEl = document.getElementById('wrap');
+const controlsEl = document.getElementById('controls');
+
+let bestScore = 0;
+
+// ---------- レイアウト調整(画面の両端いっぱいまで使う) ----------
+function fitLayout() {
+  const availW = Math.max(240, window.innerWidth - 4);
+  const availH = Math.max(320, window.innerHeight - controlsEl.offsetHeight - 8);
+
+  // 画面のアスペクト比に合わせてゲーム内の横幅(論理座標)自体を変える
+  let newW = Math.round(H * (availW / availH));
+  newW = Math.max(MIN_W, Math.min(MAX_W, newW));
+  if (newW !== W) {
+    W = newW;
+    canvas.width = W;
+  }
+
+  // クランプ後のアスペクト比(W:H)を保ったまま、利用可能領域いっぱいに表示
+  const scale = Math.min(availW / W, availH / H);
+  wrapEl.style.width = (W * scale) + 'px';
+  wrapEl.style.height = (H * scale) + 'px';
+
+  clampPlayer();
+}
+window.addEventListener('resize', fitLayout);
+window.addEventListener('orientationchange', fitLayout);
+
+// ---------- 入力(キーボード) ----------
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === ' ' || e.key.startsWith('Arrow')) e.preventDefault();
+  if ((e.key === 'r' || e.key === 'R') && gameOver) resetGame();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+restartBtn.addEventListener('click', resetGame);
+
+// ---------- 入力(タッチ / マウス 相対ドラッグ) ----------
+let dragActive = false;
+let lastDragPoint = null;
+
+function canvasPointFromClient(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
+  };
+}
+
+function dragStart(clientX, clientY) {
+  if (gameOver) return;
+  dragActive = true;
+  lastDragPoint = canvasPointFromClient(clientX, clientY);
+}
+function dragMove(clientX, clientY) {
+  if (gameOver || !dragActive || !lastDragPoint) return;
+  const p = canvasPointFromClient(clientX, clientY);
+  player.x += (p.x - lastDragPoint.x);
+  player.y += (p.y - lastDragPoint.y);
+  clampPlayer();
+  lastDragPoint = p;
+}
+function dragEnd() {
+  dragActive = false;
+  lastDragPoint = null;
+}
+
+// タッチ
+function handleTouchStart(e) { e.preventDefault(); dragStart(e.touches[0].clientX, e.touches[0].clientY); }
+function handleTouchMove(e) { e.preventDefault(); dragMove(e.touches[0].clientX, e.touches[0].clientY); }
+function handleTouchEnd(e) { e.preventDefault(); dragEnd(); }
+
+canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+centerMsg.addEventListener('touchstart', (e) => {
+  if (gameOver) { e.preventDefault(); resetGame(); }
+}, { passive: false });
+
+// マウス(PCでもドラッグ移動できるように)
+canvas.addEventListener('mousedown', (e) => { dragStart(e.clientX, e.clientY); });
+window.addEventListener('mousemove', (e) => { dragMove(e.clientX, e.clientY); });
+window.addEventListener('mouseup', dragEnd);
+canvas.addEventListener('mouseleave', () => { /* 画面外に出てもドラッグは維持(mouseupまで) */ });
+
+
+// ---------- 色システム ----------
+const COLOR_PALETTE = [
+  { id: 0, hex: '#ff5a5a', name: '赤' },
+  { id: 1, hex: '#4da6ff', name: '青' },
+  { id: 2, hex: '#57e08a', name: '緑' },
+  { id: 3, hex: '#ffe14d', name: '黄' },
+  { id: 4, hex: '#c77dff', name: '紫' },
+  { id: 5, hex: '#ff9a4d', name: '橙' },
+];
+
+const MAX_SHIELD_COLORS = 5; // 6色中5色まで同時ガード可能
+let guardOrder = []; // 選択中の色ID(配列。並び順=オプションの並び順)
+
+function isGuarded(id) { return guardOrder.includes(id); }
+function addGuard(id) {
+  if (isGuarded(id) || guardOrder.length >= MAX_SHIELD_COLORS) return;
+  guardOrder.push(id);
+}
+function removeGuard(id) {
+  const idx = guardOrder.indexOf(id);
+  if (idx >= 0) guardOrder.splice(idx, 1);
+}
+
+function buildColorButtons() {
+  colorButtonsEl.innerHTML = '';
+  for (const c of COLOR_PALETTE) {
+    const btn = document.createElement('button');
+    btn.className = 'colorBtn';
+    btn.style.background = c.hex;
+    btn.textContent = c.name;
+    btn.dataset.colorId = c.id;
+    btn.addEventListener('click', () => {
+      if (isGuarded(c.id)) removeGuard(c.id); else addGuard(c.id);
+      updateColorButtonUI();
+    });
+    colorButtonsEl.appendChild(btn);
+  }
+}
+function updateColorButtonUI() {
+  for (const el of colorButtonsEl.children) {
+    const cid = Number(el.dataset.colorId);
+    el.classList.toggle('selected', isGuarded(cid));
+  }
+}
+
+function activeColorCount(lv) {
+  if (lv <= 1) return 1;
+  if (lv <= 3) return 2;
+  if (lv <= 5) return 3;
+  if (lv <= 7) return 4;
+  if (lv <= 9) return 5;
+  return 6;
+}
+function pickBulletColor(lv) {
+  const n = activeColorCount(lv);
+  return COLOR_PALETTE[Math.floor(Math.random() * n)];
+}
+
+// 今出ている色数のうち、ガードしていない色の割合が得点倍率になる。
+// 例: 出現1色を1色ガード→0% ／ 出現2色中1色ガード→50% ／ 出現3色中1色ガード→約67%
+// 全ての出現色をガードしていれば安全だが得点倍率は0%。
+function scoreMultiplier(lv) {
+  const n = activeColorCount(lv);
+  let guardedActive = 0;
+  for (const id of guardOrder) if (id < n) guardedActive++;
+  return Math.max(0, (n - guardedActive) / n);
+}
+
+// ---------- フラッシュボム ----------
+let bombFlashFrames = 0;
+let bombUseCount = 0;
+bombBtn.addEventListener('click', () => {
+  if (gameOver) return;
+  bullets = [];
+  bombFlashFrames = 12;
+  bombUseCount++;
+  hudBombCount.textContent = bombUseCount;
+  scorePoints = 0; // 使用したら得点だけ0から(生存時間はリセットしない)
+});
+
+// ---------- プレイヤー ----------
+const player = {
+  x: W / 2, y: H / 2,
+  speedNormal: 4.6,
+  speedSlow: 2.1,
+};
+
+function isSlow() { return keys['shift'] || dragActive; }
+
+function clampPlayer() {
+  player.x = Math.max(10, Math.min(W - 10, player.x));
+  player.y = Math.max(10, Math.min(H - 10, player.y));
+}
+
+function updatePlayer() {
+  if (dragActive) return; // ドラッグ中はドラッグハンドラ側で直接動かす
+  let dx = 0, dy = 0;
+  if (keys['arrowleft'] || keys['a']) dx -= 1;
+  if (keys['arrowright'] || keys['d']) dx += 1;
+  if (keys['arrowup'] || keys['w']) dy -= 1;
+  if (keys['arrowdown'] || keys['s']) dy += 1;
+  const len = Math.hypot(dx, dy) || 1;
+  const spd = isSlow() ? player.speedSlow : player.speedNormal;
+  player.x += (dx / len) * spd;
+  player.y += (dy / len) * spd;
+  clampPlayer();
+}
+
+function drawPlayer() {
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.fillStyle = '#7fd0ff';
+  ctx.strokeStyle = '#e8faff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -12);
+  ctx.lineTo(8, 10);
+  ctx.lineTo(0, 5);
+  ctx.lineTo(-8, 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ffe08a';
+  ctx.beginPath();
+  ctx.arc(0, -2, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  if (isSlow()) {
+    ctx.fillStyle = '#ff3b3b';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 9, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+// ---------- ガードオプション(グラディウス風トレイル) ----------
+// フレーム数ではなく「移動距離」で追従位置を決める。
+// これにより自機が止まっていてもオプションが自機に追いついて重なることがない。
+const OPTION_SPACING = 16; // オプション1つあたりの追従距離(px)
+const TRAIL_MAX_DIST = OPTION_SPACING * MAX_SHIELD_COLORS + 40;
+let playerTrail = [{ x: player.x, y: player.y }]; // 実際に動いた軌跡のみを記録
+
+function updatePlayerTrail() {
+  const last = playerTrail[playerTrail.length - 1];
+  const dx = player.x - last.x, dy = player.y - last.y;
+  if (dx * dx + dy * dy < 0.04) return; // ほぼ動いていなければ何も記録しない(=止まっていれば追いつかない)
+  playerTrail.push({ x: player.x, y: player.y });
+
+  // 必要な距離分だけ残して古い軌跡は間引く
+  let dist = 0;
+  for (let i = playerTrail.length - 1; i > 0; i--) {
+    dist += Math.hypot(
+      playerTrail[i].x - playerTrail[i - 1].x,
+      playerTrail[i].y - playerTrail[i - 1].y
+    );
+    if (dist > TRAIL_MAX_DIST) {
+      playerTrail = playerTrail.slice(i - 1);
+      break;
+    }
+  }
+}
+
+// 軌跡上を末尾から距離dだけ遡った座標を返す
+function pointAtDistanceBehind(d) {
+  let dist = 0;
+  for (let i = playerTrail.length - 1; i > 0; i--) {
+    const a = playerTrail[i], b = playerTrail[i - 1];
+    const segLen = Math.hypot(a.x - b.x, a.y - b.y);
+    if (dist + segLen >= d) {
+      const t = segLen > 0 ? (d - dist) / segLen : 0;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+    dist += segLen;
+  }
+  return playerTrail[0];
+}
+
+function drawGuardOptions() {
+  guardOrder.forEach((id, i) => {
+    const pos = pointAtDistanceBehind((i + 1) * OPTION_SPACING);
+    ctx.beginPath();
+    ctx.fillStyle = COLOR_PALETTE[id].hex;
+    ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  });
+}
+
+// ---------- 弾 ----------
+let bullets = [];
+let absorbEffects = [];
+
+function spawnAimed(speedMul) {
+  const sx = Math.random() * (W - 40) + 20;
+  const sy = -10;
+  const ang = Math.atan2(player.y - sy, player.x - sx) + (Math.random() - 0.5) * 0.25;
+  const spd = (2.0 + Math.random() * 0.8) * speedMul;
+  const c = pickBulletColor(level);
+  bullets.push({ x: sx, y: sy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, r: 4, color: c.hex, colorId: c.id });
+}
+
+function spawnRadial(cx, cy, count, speedMul) {
+  const offset = Math.random() * Math.PI * 2;
+  const c = pickBulletColor(level);
+  for (let i = 0; i < count; i++) {
+    const ang = offset + (i / count) * Math.PI * 2;
+    const spd = 2.0 * speedMul;
+    bullets.push({ x: cx, y: cy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, r: 3.5, color: c.hex, colorId: c.id });
+  }
+}
+
+let spiralAngle = 0;
+function spawnSpiralStep(speedMul) {
+  spiralAngle += 0.32;
+  const cx = W / 2, cy = 60;
+  const c = pickBulletColor(level);
+  for (let k = 0; k < 3; k++) {
+    const ang = spiralAngle + k * (Math.PI * 2 / 3);
+    const spd = 2.3 * speedMul;
+    bullets.push({ x: cx, y: cy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, r: 3, color: c.hex, colorId: c.id });
+  }
+}
+
+function spawnWave(speedMul) {
+  const y = -10;
+  const gapX = Math.random() * (W - 100) + 50;
+  const c = pickBulletColor(level);
+  for (let x = 10; x < W - 10; x += 26) {
+    if (Math.abs(x - gapX) < 34) continue;
+    bullets.push({ x, y, vx: 0, vy: 2.6 * speedMul, r: 3.5, color: c.hex, colorId: c.id });
+  }
+}
+
+function updateBullets() {
+  bullets = bullets.filter(b => b.x > -20 && b.x < W + 20 && b.y > -20 && b.y < H + 20);
+  for (const b of bullets) { b.x += b.vx; b.y += b.vy; }
+
+  absorbEffects = absorbEffects.filter(e => e.life > 0);
+  for (const e of absorbEffects) { e.r += 1.6; e.life--; }
+}
+
+function drawBullets() {
+  for (const b of bullets) {
+    ctx.beginPath();
+    ctx.fillStyle = b.color;
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const e of absorbEffects) {
+    ctx.beginPath();
+    ctx.strokeStyle = e.color;
+    ctx.globalAlpha = Math.max(0, e.life / 12);
+    ctx.lineWidth = 2;
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// 当たり判定：自機は「中心1ドット」のみで判定。ガード色と同色の弾は消えるだけで被弾しないが、
+// ガードは1回使うとその色だけ解除される(再度ボタンを押すと復活)。
+function checkCollision() {
+  let died = false;
+  const remaining = [];
+  let uiNeedsUpdate = false;
+  for (const b of bullets) {
+    const dx = player.x - b.x, dy = player.y - b.y;
+    const hit = dx * dx + dy * dy <= b.r * b.r;
+    if (!hit) { remaining.push(b); continue; }
+    if (isGuarded(b.colorId)) {
+      absorbEffects.push({ x: b.x, y: b.y, r: b.r, life: 12, color: b.color });
+      removeGuard(b.colorId); // 1回使ったら解除
+      uiNeedsUpdate = true;
+      continue; // 弾は消える。死なない。
+    }
+    died = true;
+    remaining.push(b);
+  }
+  bullets = remaining;
+  if (uiNeedsUpdate) updateColorButtonUI();
+  return died;
+}
+
+// ---------- レベル / 難易度 ----------
+let level = 1;
+let elapsedFrames = 0; // レベル(難易度)進行用。ボムでもリセットされない
+let scorePoints = 0;   // 得点(浮動小数で加算)。ボム使用でリセットされる(生存時間には影響しない)
+let gameOver = false;
+const LEVEL_UP_SECONDS = 14;
+let timers = {};
+
+function difficultyParams(lv) {
+  return {
+    speedMul: 1 + (lv - 1) * 0.11,
+    aimedInterval: Math.max(9, 34 - lv * 2.2),
+    radialInterval: Math.max(50, 150 - lv * 9),
+    radialCount: Math.min(20, 6 + lv),
+    spiralInterval: Math.max(3, 9 - Math.floor(lv / 2)),
+    waveInterval: Math.max(70, 220 - lv * 12),
+    useSpiral: lv >= 3,
+    useWave: lv >= 5,
+  };
+}
+
+function resetTimers() {
+  timers = { aimed: 0, radial: 0, spiral: 0, wave: 0 };
+}
+
+function updateSpawning() {
+  const p = difficultyParams(level);
+  timers.aimed++; timers.radial++; timers.spiral++; timers.wave++;
+
+  if (timers.aimed >= p.aimedInterval) {
+    timers.aimed = 0;
+    spawnAimed(p.speedMul);
+  }
+  if (timers.radial >= p.radialInterval) {
+    timers.radial = 0;
+    const cx = Math.random() * (W - 100) + 50;
+    const cy = Math.random() * 120 + 40;
+    spawnRadial(cx, cy, p.radialCount, p.speedMul);
+  }
+  if (p.useSpiral && timers.spiral >= p.spiralInterval) {
+    timers.spiral = 0;
+    spawnSpiralStep(p.speedMul);
+  }
+  if (p.useWave && timers.wave >= p.waveInterval) {
+    timers.wave = 0;
+    spawnWave(p.speedMul);
+  }
+}
+
+// ---------- メインループ ----------
+function resetGame() {
+  bullets = [];
+  absorbEffects = [];
+  player.x = W / 2; player.y = H / 2;
+  playerTrail = [{ x: player.x, y: player.y }];
+  dragActive = false;
+  lastDragPoint = null;
+  level = 1;
+  elapsedFrames = 0;
+  scorePoints = 0;
+  bombUseCount = 0;
+  hudBombCount.textContent = '0';
+  spiralAngle = 0;
+  bombFlashFrames = 0;
+  resetTimers();
+  gameOver = false;
+  centerMsg.style.display = 'none';
+  requestAnimationFrame(loop);
+}
+
+function loop() {
+  if (gameOver) return;
+
+  elapsedFrames++;
+  const levelSeconds = elapsedFrames / 60; // 生存時間・レベル進行用(ボムでリセットされない)
+  const newLevel = 1 + Math.floor(levelSeconds / LEVEL_UP_SECONDS);
+  if (newLevel !== level) level = newLevel;
+
+  const multiplier = scoreMultiplier(level);
+  scorePoints += (100 / 60) * multiplier; // 1秒100点 × 倍率
+
+  updatePlayer();
+  updatePlayerTrail();
+  updateSpawning();
+  updateBullets();
+
+  ctx.clearRect(0, 0, W, H);
+  drawBullets();
+  drawGuardOptions();
+  drawPlayer();
+
+  if (bombFlashFrames > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${(bombFlashFrames / 12) * 0.55})`;
+    ctx.fillRect(0, 0, W, H);
+    bombFlashFrames--;
+  }
+
+  hudLevel.textContent = level;
+  hudTime.textContent = levelSeconds.toFixed(1);
+  const score = Math.floor(scorePoints);
+  hudScore.textContent = score;
+  hudRate.textContent = Math.round(multiplier * 100);
+
+  if (checkCollision()) {
+    endGame(levelSeconds, score);
+    return;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function endGame(survivalSeconds, score) {
+  gameOver = true;
+  dragActive = false;
+  if (score > bestScore) bestScore = score;
+  hudBest.textContent = bestScore;
+  msgTitle.textContent = 'GAME OVER';
+  msgDetail.textContent = `得点: ${score}点 / 生存${survivalSeconds.toFixed(1)}秒 / 到達レベル: ${level}`;
+  centerMsg.style.display = 'block';
+}
+
+buildColorButtons();
+resetTimers();
+fitLayout();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
