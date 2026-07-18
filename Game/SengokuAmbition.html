@@ -94,16 +94,22 @@
     transition:box-shadow .15s, border-color .15s;
     font-size:calc(14px * var(--node-scale, 1));
   }
-  .node:hover{filter:brightness(1.15);}
+  .node:hover{filter:brightness(1.15);z-index:4;}
   .node.selected{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,0.3);z-index:3;}
   .node.mine{box-shadow:0 0 0 2px rgba(255,255,255,0.6);}
   .node .pname{
-    position:absolute;top:100%;margin-top:1px;font-size:calc(7px * var(--node-scale, 1));color:var(--text-dim);
+    position:absolute;bottom:100%;margin-bottom:1px;font-size:calc(7px * var(--node-scale, 1));color:var(--text-dim);
     white-space:nowrap;left:50%;transform:translateX(-50%);
     background:rgba(20,23,31,0.75);padding:0px 3px;border-radius:2px;
     pointer-events:none;
   }
   .node.targetable{border-color:var(--danger);animation:pulse 1.2s infinite;z-index:3;}
+  .node.capital{border-width:calc(2.5px * var(--node-scale,1));box-shadow:0 0 0 1px rgba(201,162,74,0.7);}
+  .node .crown{
+    position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+    margin-bottom:calc(15px * var(--node-scale,1));
+    font-size:calc(11px * var(--node-scale,1));pointer-events:none;
+  }
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(192,80,77,0.55);}100%{box-shadow:0 0 0 8px rgba(192,80,77,0);}}
 
   #zoomControls{
@@ -132,6 +138,7 @@
   }
   #provPanel h2{font-family:"Shippori Mincho",serif;margin:0 0 2px 0;font-size:18px;color:var(--gold);}
   #provPanel .ownerLine{font-size:12px;color:var(--text-dim);margin-bottom:10px;}
+  #provPanel .lordLine{font-size:12px;color:var(--gold-dim);margin:-6px 0 10px 0;}
   .statRow{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed rgba(255,255,255,0.06);}
   .statRow b{color:var(--text);}
   .barOuter{background:#0e1017;border-radius:3px;height:6px;overflow:hidden;margin-top:3px;}
@@ -489,6 +496,21 @@ const FACTIONS = [
   {id:"ryuzoji", name:"龍造寺家", lord:"龍造寺隆信", icon:"🐢", color:"#3a6b4a",
    stats:{war:7,gov:6,cha:6}, home:["hizen","higo","iki","tsushima"]},
 ];
+FACTIONS.forEach(function(f){ f.capital = f.home[0]; }); // 本拠地=家臣一覧の最初の国
+
+// 家臣(各国の城主)候補データ。史実の武将名から借用し、国ごとに固定で割り当てる(奪われても居残り、寝返って新しい主に仕える)
+const RETAINER_NAMES = [
+ "佐々成政","柴田勝家","丹羽長秀","滝川一益","池田恒興","森可成","前田利家","蜂屋頼隆",
+ "荒木村重","松永久秀","筒井順慶","細川藤孝","一色義道","波多野秀治","赤井直正","別所長治",
+ "宇喜多直家","浦上宗景","山中鹿介","吉川元春","小早川隆景","河野通直","十河一存","三好義賢",
+ "香宗我部親泰","一条兼定","有馬晴信","大村純忠","松浦隆信","秋月種実","高橋紹運","立花道雪",
+ "相良義陽","伊東義祐","北郷時久","本多正信","石川数正","酒井忠次","榊原康政","井伊直政",
+ "直江兼続","本庄繁長","柿崎景家","甘粕景持","真田幸隆","高坂昌信","馬場信春","内藤昌豊",
+ "山県昌景","小山田信茂","朝倉宗滴","富田長繁","二階堂行光","蘆名盛氏","結城晴朝","那須資胤",
+ "宇都宮広綱","小山秀綱","岩城重隆","相馬盛胤","田村隆顕","畠山義綱","遊佐続光","神保長職",
+ "椎名康胤","長尾政景","上条政繁","村上義清",
+];
+const RETAINER_ICONS = ["🗡️","🛡️","🏹","🎯","🐴","🪖","🥋","👹","🦉","🐗","🦌","🐰","🐢","🦎","🦇","🐿️","🦫","🦡","🐾","🎌"];
 
 /* ============================================================
    状態管理
@@ -497,7 +519,7 @@ let state = null; // ゲーム開始時に initState() で構築
 
 function initState(playerFactionId){
   const provinces = {};
-  PROV_DEFS.forEach(function(p){
+  PROV_DEFS.forEach(function(p, idx){
     let owner = null;
     FACTIONS.forEach(function(f){ if(f.home.indexOf(p.id) !== -1) owner = f.id; });
     provinces[p.id] = {
@@ -507,6 +529,8 @@ function initState(playerFactionId){
       dev: 1 + Math.floor(Math.random()*2),              // 内政レベル 1-2
       troops: 400 + Math.floor(Math.random()*300),
       maxTroops: 2000,
+      retainerName: RETAINER_NAMES[idx % RETAINER_NAMES.length],
+      retainerIcon: RETAINER_ICONS[idx % RETAINER_ICONS.length],
     };
   });
 
@@ -644,11 +668,14 @@ function renderMap(){
     if(state.selected === pid) node.classList.add("selected");
     if(p.owner === state.playerFaction) node.classList.add("mine");
     if(state.attackMode && isTargetable(pid)) node.classList.add("targetable");
+    const isLordHere = f && f.capital === pid;
+    if(isLordHere) node.classList.add("capital");
     node.style.left = p.x + "%";
     node.style.top = p.y + "%";
     node.style.background = f ? f.color : "#2a2f3d";
     node.style.borderColor = f ? f.color : "var(--line)";
-    node.innerHTML = (f ? f.icon : "🏳️") + '<span class="pname">'+p.name+'</span>';
+    const icon = f ? f.icon : "🏳️";
+    node.innerHTML = icon + (isLordHere ? '<span class="crown">👑</span>' : '') + '<span class="pname">'+p.name+'</span>';
     node.addEventListener("click", function(){ onNodeClick(pid); });
     nodesWrap.appendChild(node);
   });
@@ -684,10 +711,18 @@ function renderSidebar(){
   const p = state.provinces[state.selected];
   const f = p.owner ? factionOf(p.owner) : null;
   const mine = p.owner === state.playerFaction;
+  const isLordHere = f && f.capital === p.id;
 
   let html = "";
   html += '<h2>'+p.name+'</h2>';
   html += '<div class="ownerLine">'+(f ? (f.icon+" "+f.name+"（"+f.lord+"）") : "無主の地")+'</div>';
+  if(f){
+    if(isLordHere){
+      html += '<div class="lordLine">👑 本拠地・当主「'+f.lord+'」が在城</div>';
+    } else {
+      html += '<div class="lordLine">🏯 城主: '+p.retainerIcon+' '+p.retainerName+'</div>';
+    }
+  }
 
   html += statRow("石高", p.kokudaka + " 石");
   html += statRow("内政レベル", "Lv."+p.dev);
@@ -799,10 +834,28 @@ function applyCombatResult(attacker, defender, result, attFaction, defFaction){
   const defName = defFaction ? (defFaction.icon+defFaction.name) : "無主の勢力";
   if(result.win){
     const survivors = Math.max(30, Math.round(attacker.troops * Math.min(0.9, result.attPower>0 ? (result.attPower-result.defPower)/result.attPower : 0.3)));
+    const wasCapital = defFaction && defFaction.capital === defender.id;
     defender.owner = attacker.owner;
     defender.troops = Math.max(30, Math.round(survivors*0.6));
     attacker.troops = Math.max(20, attacker.troops - Math.round(result.defPower*0.4/ (1+attFaction.stats.war/20)));
     addLog("⚔️ "+attacker.name+"より出兵した"+attFaction.icon+attFaction.name+"軍が"+defender.name+"を攻略！"+defName+"より奪取した。");
+
+    if(wasCapital){
+      // 本拠地陥落=お家断絶。残る全領地が攻略した大名家に渡る(城主=家臣はそのまま居残り、新しい主に仕える)
+      let fallenCount = 0;
+      Object.keys(state.provinces).forEach(function(pid){
+        const pr = state.provinces[pid];
+        if(pr.owner === defFaction.id){
+          pr.owner = attacker.owner;
+          fallenCount++;
+        }
+      });
+      if(fallenCount > 0){
+        addLog("🏯💥 "+defFaction.icon+defFaction.name+"は当主「"+defFaction.lord+"」の居城を失いお家断絶！残る"+fallenCount+"ヶ国は全て"+attFaction.icon+attFaction.name+"に降った。");
+      } else {
+        addLog("🏯💥 "+defFaction.icon+defFaction.name+"は当主「"+defFaction.lord+"」の居城を失いお家断絶した。");
+      }
+    }
   } else {
     const loss = Math.round(attacker.troops * (0.3 + Math.random()*0.25));
     attacker.troops = Math.max(20, attacker.troops - loss);

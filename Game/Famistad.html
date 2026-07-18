@@ -219,6 +219,28 @@
   .speedbtn.selected{
     background:#3a6bd1; border-color:#3a6bd1; color:#fff;
   }
+  .pitchtype-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:6px;
+    width:100%;
+  }
+  .pitchtypebtn{
+    padding:7px 4px;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    color:var(--ink);
+    font-size:11px;
+    line-height:1.5;
+    cursor:pointer;
+    text-align:center;
+  }
+  .pitchtypebtn .stars{ display:block; color:var(--sub); font-size:10px; letter-spacing:1px;}
+  .pitchtypebtn.selected{
+    background:var(--amber); border-color:var(--amber); color:#241700;
+  }
+  .pitchtypebtn.selected .stars{ color:#5c4200; }
   .actionbtn{
     padding:8px 14px;
     background:#182449;
@@ -230,6 +252,12 @@
   }
   .actionbtn.selected{
     background:var(--amber); border-color:var(--amber); color:#241700;
+  }
+  .actionbtn:disabled{
+    opacity:.35; cursor:default;
+  }
+  .actionbtn.selected:disabled{
+    background:#3a3f52; border-color:#3a3f52; color:#8a8fa3;
   }
   .grid3{
     display:grid;
@@ -314,6 +342,19 @@
     display:flex; justify-content:center; gap:22px; margin-bottom:18px; font-size:13px;
   }
   .title-screen .teams .vs{ color:var(--amber); font-family:'Press Start 2P',monospace; font-size:11px; align-self:center;}
+  .rosters{
+    display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
+    margin:0 auto 20px; max-width:480px; text-align:left;
+  }
+  .rosters .col{ flex:1; min-width:190px;}
+  .rosters h3{
+    font-size:11.5px; color:var(--amber); margin:0 0 6px; text-align:center;
+    letter-spacing:.5px;
+  }
+  .rosters table{ width:100%; border-collapse:collapse; font-size:11.5px;}
+  .rosters td{ padding:2px 3px; color:var(--ink); white-space:nowrap;}
+  .rosters td.ord{ color:var(--sub); width:1.6em;}
+  .rosters td.pos{ color:var(--sub); text-align:right;}
   .hidden{ display:none !important;}
   footer{ text-align:center; color:#3d4a72; font-size:10.5px; margin-top:10px;}
 </style>
@@ -332,10 +373,11 @@
     </div>
     <p>
       あなたは後攻「コメッツ」を操作します。<br>
-      ・攻撃中：スイングするタイミングと高さ（高め/真ん中/低め）を選んでボールを打ち返そう。<br>
-      ・守備中：投げるコースと球速を選んでバッターを打ち取ろう。<br>
+      ・攻撃中：どこに来るか予測して選び、スイング／バント／見送りを決めてスタート。<br>
+      ・守備中：投げるコースと球種（フォーシーム、スライダー、フォークなど13種類）を選んでバッターを打ち取ろう。<br>
       9回勝負、先に多く得点した方が勝ちです。
     </p>
+    <div class="rosters" id="rosters"></div>
     <button class="bigbtn" id="startBtn">プレイ開始</button>
   </div>
 
@@ -383,20 +425,26 @@
         <button class="actionbtn" data-action="bunt">バント</button>
         <button class="actionbtn" data-action="take">見送り</button>
       </div>
+      <div class="row" style="justify-content:center; margin-bottom:12px;">
+        <button class="actionbtn" id="stealBtn">＋盗塁も狙う（ヒットエンドラン可）</button>
+      </div>
       <button class="bigbtn" id="batStartBtn">スタート</button>
       <div class="hint">スペースキーでもスタートできます</div>
     </div>
 
     <!-- Pitching controls -->
     <div class="panel hidden" id="pitchingPanel">
-      <h2>▶ 投球 － コースと球速を選んで投げ込もう</h2>
+      <h2>▶ 投球 － コースと球種を選んで投げ込もう</h2>
       <div class="grid3" id="courseGrid"></div>
       <div class="grid-caption"><span>点線＝ボール球ゾーン</span><span>中央＝ストライクゾーン</span></div>
-      <div class="row" style="justify-content:center; margin-bottom:12px;">
-        <button class="speedbtn selected" data-speed="slow">遅め（正確）</button>
-        <button class="speedbtn" data-speed="fast">速め（打たれにくい）</button>
+      <div class="row" style="justify-content:center; margin-bottom:8px;">
+        <div class="pitchtype-grid" id="pitchTypeGrid"></div>
       </div>
-      <button class="bigbtn" id="throwBtn">投げる</button>
+      <div class="hint" id="pitchTypeDesc" style="margin-bottom:10px;"></div>
+      <div class="row" style="justify-content:center; gap:8px;">
+        <button class="bigbtn" id="throwBtn" style="flex:2;">投げる</button>
+        <button class="bigbtn" id="pickoffBtn" style="flex:1; background:linear-gradient(#7a8bb8,#4a5a8a); box-shadow:0 4px 0 #2a3560, 0 6px 14px rgba(0,0,0,.4); color:#fff;">けん制</button>
+      </div>
     </div>
 
     <div class="panel hidden" id="continuePanelWrap">
@@ -404,7 +452,7 @@
     </div>
   </div>
 
-  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v2.1</b></footer>
+  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v4.3</b></footer>
 </div>
 
 <script>
@@ -427,6 +475,61 @@
   const AWAY_NAME = "オーシャンズ";
   const HOME_NAME = "コメッツ";
 
+  // Fictional rosters (batting order, name, primary position, batting hand)
+  const AWAY_ROSTER = [
+    {order:1, name:'涼風 迅',     pos:'中堅', bat:'左'},
+    {order:2, name:'佐伯 亮太',   pos:'遊撃', bat:'右'},
+    {order:3, name:'黒瀬 大和',   pos:'一塁', bat:'右'},
+    {order:4, name:'御堂 剛',     pos:'三塁', bat:'左'},
+    {order:5, name:'早乙女 蓮',   pos:'右翼', bat:'右'},
+    {order:6, name:'神楽木 隼人', pos:'左翼', bat:'右'},
+    {order:7, name:'桐生 周',     pos:'二塁', bat:'両'},
+    {order:8, name:'氷室 航',     pos:'捕手', bat:'右'},
+    {order:9, name:'朝比奈 陸',   pos:'投手', bat:'右'},
+  ];
+  const HOME_ROSTER = [
+    {order:1, name:'天羽 駿',   pos:'中堅', bat:'左'},
+    {order:2, name:'一ノ瀬 蒼', pos:'遊撃', bat:'右'},
+    {order:3, name:'常盤 大河', pos:'一塁', bat:'右'},
+    {order:4, name:'桜庭 猛',   pos:'三塁', bat:'左'},
+    {order:5, name:'月島 隼',   pos:'右翼', bat:'右'},
+    {order:6, name:'風間 丈',   pos:'左翼', bat:'右'},
+    {order:7, name:'白神 豊',   pos:'二塁', bat:'両'},
+    {order:8, name:'九条 玲',   pos:'捕手', bat:'右'},
+    {order:9, name:'東雲 拓海', pos:'投手', bat:'右'},
+  ];
+
+  // Pitch types: stars = relative velocity/quality, colBias/rowBias = average break direction
+  // (-1..1, horizontal/vertical), wild = extra unpredictability on top of the bias.
+  const PITCH_TYPES = [
+    {key:'fourseam', name:'フォーシーム',   stars:5, desc:'ほぼ変化なし',       colBias:0,    rowBias:0,    wild:0.05},
+    {key:'twoseam',  name:'ツーシーム',     stars:4, desc:'少し沈む・横に動く', colBias:0.3,  rowBias:0.35, wild:0.10},
+    {key:'cutter',   name:'カットボール',   stars:4, desc:'少し横に曲がる',     colBias:-0.4, rowBias:0.1,  wild:0.10},
+    {key:'shuuto',   name:'シュート',       stars:4, desc:'利き腕方向へ曲がる', colBias:0.5,  rowBias:0.1,  wild:0.12},
+    {key:'slider',   name:'スライダー',     stars:3, desc:'横に鋭く曲がる',     colBias:-0.7, rowBias:0.15, wild:0.15},
+    {key:'curve',    name:'カーブ',         stars:2, desc:'大きく落ちる',       colBias:0,    rowBias:0.8,  wild:0.15},
+    {key:'slurve',   name:'スラーブ',       stars:3, desc:'横＋縦に曲がる',     colBias:-0.5, rowBias:0.5,  wild:0.18},
+    {key:'fork',     name:'フォーク',       stars:3, desc:'大きく落ちる',       colBias:0,    rowBias:0.75, wild:0.15},
+    {key:'splitter', name:'スプリット',     stars:4, desc:'鋭く落ちる',         colBias:0,    rowBias:0.7,  wild:0.08},
+    {key:'changeup', name:'チェンジアップ', stars:2, desc:'遅く沈む',           colBias:0,    rowBias:0.4,  wild:0.12},
+    {key:'palm',     name:'パーム',         stars:2, desc:'ゆっくり落ちる',     colBias:0,    rowBias:0.35, wild:0.15},
+    {key:'knuckle',  name:'ナックル',       stars:1, desc:'不規則に揺れる',     colBias:0,    rowBias:0,    wild:0.9},
+    {key:'sweeper',  name:'スイーパー',     stars:3, desc:'横に大きく曲がる',   colBias:0.8,  rowBias:0.1,  wild:0.2},
+  ];
+  function pitchTypeByKey(key){ return PITCH_TYPES.find(p=>p.key===key) || PITCH_TYPES[0]; }
+  function starsStr(n){ return '★'.repeat(n)+'☆'.repeat(5-n); }
+  function speedDurationFromStars(stars){ return 1000 - stars*90; } // 5★=550ms(fast) ... 1★=910ms(slow)
+  function speedPenaltyFromStars(stars){ return (stars-1)*0.05; } // faster pitches are a bit harder for the batter to time
+  function weightedPickPitchType(){
+    return weightedPick(PITCH_TYPES.map(p=>[p, p.stars]));
+  }
+  function computeTypeOffset(bias, wild){
+    const wNeg = 0.15 + Math.max(0,-bias)*0.5 + wild*0.15;
+    const wPos = 0.15 + Math.max(0, bias)*0.5 + wild*0.15;
+    const wZero = Math.max(0.05, 1 - wNeg - wPos);
+    return weightedPick([[-1,wNeg],[0,wZero],[1,wPos]]);
+  }
+
   // ---------------- Game State ----------------
   let G = null;
 
@@ -440,12 +543,15 @@
       lineAway:[], lineHome:[],
       curInningRuns:0,
       over:false,
+      awayBatIdx:0, homeBatIdx:0,
+      _lastAnnouncedBatter:null,
       // per-pitch transient
       batGuess:{col:1,row:1},
       batAction:'swing',
+      stealFlag:false,
       pitchTarget:{col:1,row:1},
       pitchActual:{col:1,row:1},
-      pitchSpeed:'slow',
+      pitchTypeKey:'fourseam',
       pitchStart:0,
       pitchDuration:900,
       phaseLock:false, // true while animating / waiting for "next"
@@ -708,14 +814,17 @@
     ctx.arc(geo.catcher.x, geo.catcher.y-9, 4.5, 0, Math.PI*2);
     ctx.fill();
 
-    // batter, standing in the box (offense team color)
+    // batter, standing in the box (offense team color); left-handed stands on the left,
+    // right-handed and switch-hitters stand on the right
+    const curBat = (typeof currentBatter === 'function' && G) ? currentBatter() : null;
+    const batterX = (curBat && curBat.bat==='左') ? geo.home.x+16 : geo.home.x-16;
     ctx.fillStyle = offenseColor();
     ctx.beginPath();
-    ctx.arc(geo.home.x-16, geo.home.y-3, 6, 0, Math.PI*2);
+    ctx.arc(batterX, geo.home.y-3, 6, 0, Math.PI*2);
     ctx.fill();
     ctx.fillStyle='#c98a4b';
     ctx.beginPath();
-    ctx.arc(geo.home.x-16, geo.home.y-11, 4, 0, Math.PI*2);
+    ctx.arc(batterX, geo.home.y-11, 4, 0, Math.PI*2);
     ctx.fill();
 
     // ball
@@ -753,11 +862,6 @@
     return col>=0 && col<=2 && row>=0 && row<=2;
   }
 
-  function computeMissOffset(speedFast){
-    const weights = speedFast ? [[-1,0.24],[0,0.52],[1,0.24]] : [[-1,0.14],[0,0.72],[1,0.14]];
-    return weightedPick(weights);
-  }
-
   function classifyContact(quality){
     // quality 0..1
     if(quality < 0.16) return 'miss';
@@ -774,6 +878,20 @@
   function startNewAtBatCount(){
     G.balls=0; G.strikes=0;
     renderScoreboard();
+  }
+
+  function advanceBatter(){
+    if(G.half==='top') G.awayBatIdx = (G.awayBatIdx+1)%9;
+    else G.homeBatIdx = (G.homeBatIdx+1)%9;
+  }
+
+  function currentBatter(){
+    return G.half==='top' ? AWAY_ROSTER[G.awayBatIdx] : HOME_ROSTER[G.homeBatIdx];
+  }
+
+  function currentBatterLabel(){
+    const b = currentBatter();
+    return `${b.order}番 ${b.name}（${b.pos}・${b.bat}）`;
   }
 
   function beginHalfInning(){
@@ -793,6 +911,11 @@
     } else {
       pitchingPanel.classList.remove('hidden');
       battingPanel.classList.add('hidden');
+      clearActualMarkOnCourseGrid();
+      $('throwBtn').disabled = false;
+      $('pickoffBtn').disabled = !pickoffCandidate();
+      G._lastAnnouncedBatter = currentBatterLabel();
+      log(`相手打者: ${G._lastAnnouncedBatter}`);
     }
     continueWrap.classList.add('hidden');
   }
@@ -870,10 +993,12 @@
     // returns text message; mutates state (outs/bases/score/count)
     let msg = '';
     const battingTeam = sideIsBottom ? HOME_NAME : AWAY_NAME;
+    const batterName = currentBatter().name;
 
     function outResolved(base){
       G.outs++;
       startNewAtBatCount();
+      advanceBatter();
     }
 
     switch(kind){
@@ -881,7 +1006,7 @@
         G.balls++;
         if(G.balls>=4){
           walk();
-          msg = `フォアボール！${battingTeam}の打者が出塁。`;
+          msg = `フォアボール！${batterName}が出塁。`;
         } else {
           msg = `ボール。(${G.balls}-${G.strikes})`;
         }
@@ -891,7 +1016,7 @@
         G.strikes++;
         if(G.strikes>=3){
           outResolved();
-          msg = kind==='miss' ? `空振り三振！` : `見逃し三振！`;
+          msg = kind==='miss' ? `${batterName}、空振り三振！` : `${batterName}、見逃し三振！`;
         } else {
           msg = (kind==='miss' ? `空振り。` : `見逃し。`) + `(${G.balls}-${G.strikes})`;
         }
@@ -910,13 +1035,15 @@
           G.bases[1]=true; G.bases[0]=false;
         }
         startNewAtBatCount();
-        msg = dp ? `ゲッツー！ダブルプレー！` : `ゴロアウト。`;
+        advanceBatter();
+        msg = dp ? `${batterName}、ゲッツー！ダブルプレー！` : `${batterName}、ゴロアウト。`;
         break;
       }
       case 'lineout':
         G.outs++;
         startNewAtBatCount();
-        msg = `ライナーアウト。`;
+        advanceBatter();
+        msg = `${batterName}、ライナーアウト。`;
         break;
       case 'flyout': {
         let scored=0;
@@ -926,7 +1053,8 @@
         G.outs++;
         recordRunsForInning(scored);
         startNewAtBatCount();
-        msg = scored ? `犠牲フライ！1点追加！` : `フライアウト。`;
+        advanceBatter();
+        msg = scored ? `${batterName}、犠牲フライ！1点追加！` : `${batterName}、フライアウト。`;
         break;
       }
       case 'single': {
@@ -943,7 +1071,8 @@
         G.bases[0]=true;
         recordRunsForInning(runs);
         startNewAtBatCount();
-        msg = `ヒット！` + (runs? ` ${runs}点入る！`:'');
+        advanceBatter();
+        msg = `${batterName}、ヒット！` + (runs? ` ${runs}点入る！`:'');
         break;
       }
       case 'double': {
@@ -957,7 +1086,8 @@
         G.bases[1]=true;
         recordRunsForInning(runs);
         startNewAtBatCount();
-        msg = `二塁打！` + (runs? ` ${runs}点入る！`:'');
+        advanceBatter();
+        msg = `${batterName}、二塁打！` + (runs? ` ${runs}点入る！`:'');
         break;
       }
       case 'triple': {
@@ -968,7 +1098,8 @@
         G.bases=[false,false,true];
         recordRunsForInning(runs);
         startNewAtBatCount();
-        msg = `三塁打！` + (runs? ` ${runs}点入る！`:'');
+        advanceBatter();
+        msg = `${batterName}、三塁打！` + (runs? ` ${runs}点入る！`:'');
         break;
       }
       case 'homerun': {
@@ -979,7 +1110,8 @@
         G.bases=[false,false,false];
         recordRunsForInning(runs);
         startNewAtBatCount();
-        msg = runs>1 ? `${runs}ラン ホームラン！！` : `ホームラン！！`;
+        advanceBatter();
+        msg = runs>1 ? `${batterName}、${runs}ラン ホームラン！！` : `${batterName}、ホームラン！！`;
         break;
       }
     }
@@ -996,6 +1128,56 @@
     }
     G.bases[0]=true;
     startNewAtBatCount();
+    advanceBatter();
+  }
+
+  // ---------------- Stealing / pickoffs ----------------
+  // Only one attempt is modeled per press — the most advanced runner with an open base ahead.
+  function stealCandidate(){
+    if(G.bases[1] && !G.bases[2]) return {from:1, to:2, label:'3塁'};
+    if(G.bases[0] && !G.bases[1]) return {from:0, to:1, label:'2塁'};
+    return null;
+  }
+  function pickoffCandidate(){
+    if(G.bases[0]) return {idx:0, label:'1塁'};
+    if(G.bases[1]) return {idx:1, label:'2塁'};
+    if(G.bases[2]) return {idx:2, label:'3塁'};
+    return null;
+  }
+
+  function resolveStealAttempt(){
+    const cand = stealCandidate();
+    if(!cand) return null;
+    const successChance = clamp(0.68 + rand(-0.12,0.12), 0.2, 0.92);
+    if(Math.random() < successChance){
+      G.bases[cand.from]=false;
+      G.bases[cand.to]=true;
+      return `盗塁成功！${cand.label}へ。`;
+    } else {
+      G.bases[cand.from]=false;
+      G.outs++;
+      return `盗塁失敗…${cand.label}手前でアウト！`;
+    }
+  }
+
+  function attemptPickoff(){
+    const cand = pickoffCandidate();
+    if(!cand) return;
+    $('pickoffBtn').disabled = true;
+    $('throwBtn').disabled = true;
+    const r = Math.random();
+    if(r < 0.22){
+      G.bases[cand.idx]=false;
+      G.outs++;
+      finalizePlay(`けん制成功！${cand.label}走者アウト！`);
+    } else if(r < 0.30){
+      G.bases[cand.idx]=false;
+      const nextIdx = cand.idx+1;
+      if(nextIdx<=2){ G.bases[nextIdx]=true; finalizePlay('けん制、悪送球！走者が進塁。'); }
+      else { recordRunsForInning(1); finalizePlay('けん制、悪送球！生還を許した！'); }
+    } else {
+      finalizePlay(`けん制、セーフ。(${G.balls}-${G.strikes})`);
+    }
   }
 
   // ---------------- Pitch flow: BATTING (player controls swing) ----------------
@@ -1017,37 +1199,58 @@
     return {col,row};
   }
 
-  function clearActualMarkOnBatGrid(){
-    const prev = document.querySelector('#batGrid .cell.actual-mark');
+  function clearActualMark(gridId){
+    const prev = document.querySelector(`#${gridId} .cell.actual-mark`);
     if(prev) prev.classList.remove('actual-mark');
   }
-  function showActualMarkOnBatGrid(col,row){
-    clearActualMarkOnBatGrid();
+  function showActualMark(gridId, col,row){
+    clearActualMark(gridId);
     const cRow=clamp(row,-1,3), cCol=clamp(col,-1,3);
-    const cell = document.querySelector(`#batGrid .cell[data-row="${cRow}"][data-col="${cCol}"]`);
+    const cell = document.querySelector(`#${gridId} .cell[data-row="${cRow}"][data-col="${cCol}"]`);
     if(cell) cell.classList.add('actual-mark');
   }
+  function clearActualMarkOnBatGrid(){ clearActualMark('batGrid'); }
+  function showActualMarkOnBatGrid(col,row){ showActualMark('batGrid',col,row); }
+  function clearActualMarkOnCourseGrid(){ clearActualMark('courseGrid'); }
+  function showActualMarkOnCourseGrid(col,row){ showActualMark('courseGrid',col,row); }
 
   function beginPlayerBattingPrompt(){
     // Just wait for the player to lock in a prediction + action and press start.
     // No timer, no auto-pitch — the player can take as long as they like.
-    clearActualMarkOnBatGrid();
+    // (The previous pitch's actual-location marker is left showing until the next
+    // pitch is actually thrown, so the player has time to see where it came.)
     $('batStartBtn').disabled = false;
     $('batStartBtn').textContent = 'スタート';
-    log(`打席へ… コースと作戦を選んでスタート。(${G.balls}-${G.strikes})`);
+
+    const canSteal = !!stealCandidate();
+    $('stealBtn').disabled = !canSteal;
+    if(!canSteal && G.stealFlag){
+      G.stealFlag = false;
+    }
+    $('stealBtn').classList.toggle('selected', G.stealFlag);
+
+    const label = currentBatterLabel();
+    if(G._lastAnnouncedBatter !== label){
+      G._lastAnnouncedBatter = label;
+      log(`${label} の打席。コースと作戦を選んでスタート。(${G.balls}-${G.strikes})`);
+    } else {
+      log(`コースと作戦を選んでスタート。(${G.balls}-${G.strikes})`);
+    }
   }
 
   function commitPlayerBatChoice(){
     if(!playerControlsBatting()) return;
     if($('batStartBtn').disabled) return;
     $('batStartBtn').disabled = true;
+    clearActualMarkOnBatGrid();
 
     G.pitchTarget = cpuChoosePitchTarget();
-    G.pitchSpeed = Math.random()<0.5 ? 'fast':'slow';
-    const missCol = computeMissOffset(G.pitchSpeed==='fast');
-    const missRow = computeMissOffset(G.pitchSpeed==='fast');
+    const pt = weightedPickPitchType();
+    G.pitchTypeKey = pt.key;
+    const missCol = computeTypeOffset(pt.colBias, pt.wild);
+    const missRow = computeTypeOffset(pt.rowBias, pt.wild);
     G.pitchActual = {col:G.pitchTarget.col+missCol, row:G.pitchTarget.row+missRow};
-    G.pitchDuration = 750;
+    G.pitchDuration = speedDurationFromStars(pt.stars);
 
     runFlightAnimation(()=>{
       resolvePlayerAction();
@@ -1084,9 +1287,16 @@
   function resolvePlayerAction(){
     const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
     showActualMarkOnBatGrid(G.pitchActual.col, G.pitchActual.row);
+    const pt = pitchTypeByKey(G.pitchTypeKey);
+    log(`実際の球:${zoneLabel(G.pitchActual)}（${pt.name} ${starsStr(pt.stars)}）`);
 
     if(G.batAction==='take'){
-      finalizePlay(applyOutcome(strike?'calledStrike':'ball', true));
+      let msg = applyOutcome(strike?'calledStrike':'ball', true);
+      if(G.stealFlag){
+        const sMsg = resolveStealAttempt();
+        if(sMsg) msg += ' ' + sMsg;
+      }
+      finalizePlay(msg);
       return;
     }
 
@@ -1096,8 +1306,9 @@
       const buntQuality = clamp(buntBase + rand(-0.12,0.12), 0, 1);
       if(buntQuality < 0.24){
         if(G.strikes>=2){
-          G.outs++; startNewAtBatCount();
-          finalizePlay('バント失敗！ファウルで三振。');
+          const batterName = currentBatter().name;
+          G.outs++; startNewAtBatCount(); advanceBatter();
+          finalizePlay(`${batterName}、バント失敗！ファウルで三振。`);
         } else {
           G.strikes = Math.min(G.strikes+1,2);
           finalizePlay(`バント失敗（ファウル）。(${G.balls}-${G.strikes})`);
@@ -1127,7 +1338,12 @@
     let kind = classifyContact(quality);
     if(matchDist<=1 && kind==='miss') kind='foul'; // close reads always make at least contact
     if(kind==='miss'){
-      finalizePlay(applyOutcome('miss', true));
+      let msg = applyOutcome('miss', true);
+      if(G.stealFlag){
+        const sMsg = resolveStealAttempt();
+        if(sMsg) msg += ' ' + sMsg;
+      }
+      finalizePlay(msg);
     } else if(kind==='foul'){
       finalizePlay(applyOutcome('foul', true));
     } else {
@@ -1146,18 +1362,21 @@
   }
 
   function throwPitch_PlayerPitches(){
-    const missCol = computeMissOffset(G.pitchSpeed==='fast');
-    const missRow = computeMissOffset(G.pitchSpeed==='fast');
+    const pt = pitchTypeByKey(G.pitchTypeKey);
+    const missCol = computeTypeOffset(pt.colBias, pt.wild);
+    const missRow = computeTypeOffset(pt.rowBias, pt.wild);
     G.pitchActual = {col:G.pitchTarget.col+missCol, row:G.pitchTarget.row+missRow};
-    G.pitchDuration = G.pitchSpeed==='fast' ? 560 : 900;
+    G.pitchDuration = speedDurationFromStars(pt.stars);
 
     pitchingPanel.classList.add('hidden');
-    log(`投球！ コース:${zoneLabel(G.pitchTarget)} / ${G.pitchSpeed==='fast'?'速球':'緩球'}`);
+    clearActualMarkOnCourseGrid();
+    log(`投球！ コース:${zoneLabel(G.pitchTarget)} / ${pt.name}（${starsStr(pt.stars)}）`);
 
     const willSwing = cpuDecideSwing();
     let cpuQuality=0;
     if(willSwing){
-      const timingScore = clamp(rand(0.25,0.95) - (G.pitchSpeed==='fast'?0.16:0), 0,1);
+      const speedPenalty = speedPenaltyFromStars(pt.stars);
+      const timingScore = clamp(rand(0.25,0.95) - speedPenalty, 0,1);
       const dispRow = clamp(G.pitchActual.row,0,2);
       const guessRow = weightedPick([[0,1],[1,1.4],[2,1]]);
       let zoneMatch = guessRow===dispRow?1:(Math.abs(guessRow-dispRow)===1?0.4:0);
@@ -1167,6 +1386,7 @@
     }
 
     runFlightAnimation(()=>{
+      showActualMarkOnCourseGrid(G.pitchActual.col, G.pitchActual.row);
       if(!willSwing){
         const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
         finalizePlay(applyOutcome(strike?'calledStrike':'ball', false));
@@ -1237,6 +1457,7 @@
     if(msg) log(msg);
     if(flightRAF){ cancelAnimationFrame(flightRAF); flightRAF=null; }
     renderScoreboard();
+    drawField(null);
 
     if(checkWalkoff()) return;
 
@@ -1260,6 +1481,13 @@
       pitchingPanel.classList.remove('hidden');
       battingPanel.classList.add('hidden');
       renderScoreboard();
+      $('throwBtn').disabled = false;
+      $('pickoffBtn').disabled = !pickoffCandidate();
+      const label = currentBatterLabel();
+      if(G._lastAnnouncedBatter !== label){
+        G._lastAnnouncedBatter = label;
+        log(`相手打者: ${label}`);
+      }
     }
   }
 
@@ -1285,9 +1513,13 @@
     document.querySelectorAll('#courseGrid .cell').forEach(c=>{
       c.classList.toggle('selected', c.dataset.row==='1' && c.dataset.col==='1');
     });
-    document.querySelectorAll('.speedbtn').forEach(b=>{
-      b.classList.toggle('selected', b.dataset.speed==='slow');
-    });
+    if($('pitchTypeGrid')){
+      updatePitchTypeDesc();
+    }
+    $('stealBtn').disabled = true;
+    $('stealBtn').classList.remove('selected');
+    $('pickoffBtn').disabled = true;
+    $('throwBtn').disabled = false;
   }
 
   function kickOffCurrentHalf(){
@@ -1326,6 +1558,11 @@
     btn.classList.add('selected');
     G.batAction = btn.dataset.action;
   });
+  $('stealBtn').addEventListener('click', ()=>{
+    if($('stealBtn').disabled) return;
+    G.stealFlag = !G.stealFlag;
+    $('stealBtn').classList.toggle('selected', G.stealFlag);
+  });
   $('batStartBtn').addEventListener('click', commitPlayerBatChoice);
   window.addEventListener('keydown',(e)=>{
     if(e.code==='Space'){
@@ -1346,6 +1583,7 @@
         const cell = document.createElement('div');
         cell.className='cell'+(isBallZone?' zone-ball':'')+((row===1&&col===1)?' selected':'');
         cell.dataset.row=row; cell.dataset.col=col;
+        cell.innerHTML='<span class="markdot"></span>';
         grid.appendChild(cell);
       }
     }
@@ -1357,17 +1595,37 @@
     cell.classList.add('selected');
     G.pitchTarget = {row:parseInt(cell.dataset.row,10), col:parseInt(cell.dataset.col,10)};
   });
-  document.querySelectorAll('.speedbtn').forEach(b=>{
-    b.addEventListener('click',()=>{
-      document.querySelectorAll('.speedbtn').forEach(x=>x.classList.remove('selected'));
-      b.classList.add('selected');
-      G.pitchSpeed = b.dataset.speed;
+  // build pitch-type dropdown for the pitching side
+  (function buildPitchTypeGrid(){
+    const grid = $('pitchTypeGrid');
+    grid.innerHTML = PITCH_TYPES.map(p=>
+      `<div class="pitchtypebtn${p.key==='fourseam'?' selected':''}" data-key="${p.key}">${p.name}<span class="stars">${starsStr(p.stars)}</span></div>`
+    ).join('');
+  })();
+  function selectPitchType(key){
+    const pt = pitchTypeByKey(key);
+    document.querySelectorAll('#pitchTypeGrid .pitchtypebtn').forEach(b=>{
+      b.classList.toggle('selected', b.dataset.key===pt.key);
     });
+    $('pitchTypeDesc').textContent = pt.desc;
+    G.pitchTypeKey = pt.key;
+  }
+  function updatePitchTypeDesc(){ selectPitchType('fourseam'); }
+  $('pitchTypeGrid').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.pitchtypebtn');
+    if(!btn) return;
+    selectPitchType(btn.dataset.key);
   });
   $('throwBtn').addEventListener('click', ()=>{
     if(!G || G.over) return;
     if(playerControlsBatting()) return;
     throwPitch_PlayerPitches();
+  });
+  $('pickoffBtn').addEventListener('click', ()=>{
+    if(!G || G.over) return;
+    if(playerControlsBatting()) return;
+    if($('pickoffBtn').disabled) return;
+    attemptPickoff();
   });
 
   $('continueBtn').addEventListener('click', ()=>{
@@ -1384,7 +1642,19 @@
     }
   });
 
+  // build roster lineup display on the title screen
+  (function buildRosterDisplay(){
+    function rosterTable(teamName, roster){
+      const rows = roster.map(p=>
+        `<tr><td class="ord">${p.order}番</td><td>${p.name}</td><td class="pos">${p.pos}・${p.bat}</td></tr>`
+      ).join('');
+      return `<div class="col"><h3>${teamName}</h3><table>${rows}</table></div>`;
+    }
+    $('rosters').innerHTML = rosterTable(AWAY_NAME, AWAY_ROSTER) + rosterTable(HOME_NAME, HOME_ROSTER);
+  })();
+
   // initial idle field draw
+  $('pitchTypeDesc').textContent = pitchTypeByKey('fourseam').desc;
   drawField(null);
 
 })();
