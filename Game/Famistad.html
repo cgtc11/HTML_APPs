@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プロ野球ファミリースタジアム</title>
+<title>草野球カントリースタジアム</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -49,6 +49,10 @@
     text-shadow:0 0 10px rgba(255,183,3,.45), 2px 2px 0 #402400;
     margin:4px 0 14px;
     letter-spacing:1px;
+  }
+  h1.title.ingame-title{
+    font-size:12px;
+    margin:2px 0 8px;
   }
   .subtitle{
     text-align:center;
@@ -259,6 +263,53 @@
   .actionbtn.selected:disabled{
     background:#3a3f52; border-color:#3a3f52; color:#8a8fa3;
   }
+  .col-list{
+    display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
+  }
+  .dirbtn{
+    display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+    padding:10px 14px;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:8px;
+    color:var(--ink);
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    text-align:left;
+  }
+  .dirbtn span{ color:var(--sub); font-size:11px; font-weight:400;}
+  .dirbtn.selected{
+    background:var(--amber); border-color:var(--amber); color:#241700;
+  }
+  .dirbtn.selected span{ color:#5c4200;}
+  .subbtn{
+    padding:5px 10px;
+    background:#2a3563;
+    border:1px solid var(--panel-line);
+    border-radius:5px;
+    color:var(--ink);
+    font-size:11px;
+    cursor:pointer;
+  }
+  .subrow{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 12px;
+    background:#182449;
+    border:1px solid var(--panel-line);
+    border-radius:7px;
+    cursor:pointer;
+    font-size:12px;
+  }
+  .subrow:disabled, .subrow.usedup{
+    opacity:.4; cursor:default;
+  }
+  .subrow .name{ font-weight:700; color:var(--ink);}
+  .subrow .meta{ color:var(--sub); font-size:11px;}
+  .conddot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    margin-right:4px; vertical-align:middle;
+  }
   .grid3{
     display:grid;
     grid-template-columns:repeat(5,1fr);
@@ -329,6 +380,7 @@
     background:#3a3f52; color:#8a8fa3; box-shadow:none; cursor:default;
   }
   .hint{ font-size:11px; color:var(--sub); text-align:center; margin-top:8px;}
+  .pitcher-info-line{ font-size:12px; color:#fff; font-weight:700; margin:0;}
 
   .title-screen{
     background:var(--panel);
@@ -357,15 +409,26 @@
   .rosters td.pos{ color:var(--sub); text-align:right;}
   .hidden{ display:none !important;}
   footer{ text-align:center; color:#3d4a72; font-size:10.5px; margin-top:10px;}
+  @media (min-width: 880px){
+    #app{ max-width:1040px; }
+    #gameLayout{
+      display:grid;
+      grid-template-columns:460px 1fr;
+      gap:22px;
+      align-items:start;
+    }
+    #leftCol{ position:sticky; top:12px; }
+    #rightCol{ min-width:0; }
+    .title-screen{ max-width:760px; margin:0 auto; }
+  }
 </style>
 </head>
 <body>
 <div id="app">
-  <h1 class="title pixel">プロ野球<br>ファミリースタジアム</h1>
-  <div class="subtitle">- Family Stadium Fan Edition -</div>
-
   <!-- TITLE SCREEN -->
   <div id="titleScreen" class="title-screen">
+    <h1 class="title pixel">草野球<br>カントリースタジアム</h1>
+    <div class="subtitle">- Country Stadium Fan Edition -</div>
     <div class="teams">
       <div>🦈 オーシャンズ<br><span style="color:var(--sub); font-size:11px;">(先攻)</span></div>
       <div class="vs">VS</div>
@@ -375,14 +438,24 @@
       あなたは後攻「コメッツ」を操作します。<br>
       ・攻撃中：どこに来るか予測して選び、スイング／バント／見送りを決めてスタート。<br>
       ・守備中：投げるコースと球種（フォーシーム、スライダー、フォークなど13種類）を選んでバッターを打ち取ろう。<br>
-      9回勝負、先に多く得点した方が勝ちです。
+      9回勝負、先に多く得点した方が勝ちです。<br>
+      選手には体調（優/好/普/疲/病）があり、先発投手は投げ込むほど疲れます。代打・継投で選手交代もできます。
     </p>
     <div class="rosters" id="rosters"></div>
+    <div class="row" style="justify-content:center; margin-bottom:14px;" id="modeRow">
+      <button class="actionbtn selected" data-mode="manual">手動プレイ</button>
+      <button class="actionbtn" data-mode="manager">監督モード（半分観戦）</button>
+    </div>
+    <p class="hint" id="modeDesc" style="margin:-6px 0 14px;">1球ずつコースやスイングを自分で選びます。</p>
     <button class="bigbtn" id="startBtn">プレイ開始</button>
   </div>
 
   <!-- GAME SCREEN -->
   <div id="gameScreen" class="hidden">
+   <div id="gameLayout">
+    <div id="leftCol">
+    <h1 class="title pixel ingame-title">草野球<br>カントリースタジアム</h1>
+    <div class="subtitle">- Country Stadium Fan Edition -</div>
     <div class="scoreboard">
       <table class="linescore">
         <thead><tr id="inningHeader"></tr></thead>
@@ -412,12 +485,19 @@
       <canvas id="field" width="520" height="360"></canvas>
       <div class="msg-overlay"><div class="big pixel" id="bigMsg"></div></div>
     </div>
-
     <div class="log" id="log">プレイ開始ボタンを押して試合を始めよう。</div>
+    </div>
+
+    <div id="rightCol">
 
     <!-- Batting controls -->
     <div class="panel hidden" id="battingPanel">
       <h2>▶ 打撃 － どこに来るか予測して選び、スタート</h2>
+      <div class="row" style="justify-content:space-between; margin-bottom:10px;">
+        <span class="pitcher-info-line" id="pitcherInfoLine"></span>
+        <button class="subbtn" id="pinchHitToggleBtn">代打</button>
+      </div>
+      <div class="col-list hidden" id="pinchHitPanel"></div>
       <div class="grid3" id="batGrid"></div>
       <div class="grid-caption"><span>点線＝ボール球ゾーン</span><span>中央＝ストライクゾーン</span></div>
       <div class="row" style="justify-content:center; margin-bottom:12px;" id="batActionRow">
@@ -435,6 +515,11 @@
     <!-- Pitching controls -->
     <div class="panel hidden" id="pitchingPanel">
       <h2>▶ 投球 － コースと球種を選んで投げ込もう</h2>
+      <div class="row" style="justify-content:space-between; margin-bottom:10px;">
+        <span class="pitcher-info-line" id="myPitcherInfoLine"></span>
+        <button class="subbtn" id="pitcherChangeToggleBtn">継投</button>
+      </div>
+      <div class="col-list hidden" id="pitcherChangePanel"></div>
       <div class="grid3" id="courseGrid"></div>
       <div class="grid-caption"><span>点線＝ボール球ゾーン</span><span>中央＝ストライクゾーン</span></div>
       <div class="row" style="justify-content:center; margin-bottom:8px;">
@@ -447,12 +532,49 @@
       </div>
     </div>
 
+    <!-- Manager mode: batting directive -->
+    <div class="panel hidden" id="managerBatPanel">
+      <h2>▶ 監督采配 － この回の攻撃方針</h2>
+      <div class="col-list" id="managerBatOptions">
+        <button class="dirbtn selected" data-dir="balanced">バランス重視<span>状況に応じて標準的に戦う</span></button>
+        <button class="dirbtn" data-dir="aggressive">積極打法<span>強振・盗塁を多めに仕掛ける</span></button>
+        <button class="dirbtn" data-dir="patient">じっくり選球<span>甘い球だけ振り、四球を狙う</span></button>
+        <button class="dirbtn" data-dir="bunt_focus">送りバント重視<span>とにかく送りバントで進める</span></button>
+        <button class="dirbtn" data-dir="steal_focus">盗塁重視<span>走者がいれば積極的に盗塁</span></button>
+      </div>
+      <button class="bigbtn" id="managerBatStartBtn">この方針で戦う</button>
+    </div>
+
+    <!-- Manager mode: pitching directive -->
+    <div class="panel hidden" id="managerPitchPanel">
+      <h2>▶ 監督采配 － この回の投球方針</h2>
+      <div class="col-list" id="managerPitchOptions">
+        <button class="dirbtn selected" data-dir="balanced">バランス重視<span>状況に応じて標準的に攻める</span></button>
+        <button class="dirbtn" data-dir="strike_first">ストライク先行<span>打たせて取る、四球を避ける</span></button>
+        <button class="dirbtn" data-dir="careful">慎重勝負<span>コーナーを攻めて際どく勝負</span></button>
+        <button class="dirbtn" data-dir="pickoff_heavy">けん制多用<span>走者がいれば積極的にけん制</span></button>
+        <button class="dirbtn" data-dir="mix_pitches">球種を散らす<span>同じ球を続けず的を絞らせない</span></button>
+      </div>
+      <button class="bigbtn" id="managerPitchStartBtn">この方針で戦う</button>
+    </div>
+
+    <!-- Manager mode: autoplay status -->
+    <div class="panel hidden" id="managerAutoPanel">
+      <h2>▶ 観戦中…</h2>
+      <p class="hint" id="managerAutoStatus" style="text-align:center; margin-bottom:12px;">方針に沿ってAIが進めています。</p>
+      <div class="row" style="justify-content:center;">
+        <button class="actionbtn" id="fastForwardBtn">早送りON</button>
+      </div>
+    </div>
+
     <div class="panel hidden" id="continuePanelWrap">
       <button class="bigbtn" id="continueBtn">次へ</button>
     </div>
+    </div>
+   </div>
   </div>
 
-  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v4.3</b></footer>
+  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v6.2</b></footer>
 </div>
 
 <script>
@@ -499,6 +621,48 @@
     {order:9, name:'東雲 拓海', pos:'投手', bat:'右'},
   ];
 
+  // Bench batters (available for pinch-hitting)
+  const AWAY_BENCH = [
+    {name:'波留 真斗', pos:'内野手', bat:'右'},
+    {name:'汐見 丈',   pos:'外野手', bat:'左'},
+    {name:'磯部 翔',   pos:'捕手',   bat:'右'},
+  ];
+  const HOME_BENCH = [
+    {name:'立花 湊',   pos:'内野手', bat:'右'},
+    {name:'水無月 蒼', pos:'外野手', bat:'左'},
+    {name:'城戸 大和', pos:'捕手',   bat:'右'},
+  ];
+
+  // Pitching staffs: 1 starter + 4 relievers each, mixed handedness.
+  // The starter is the same person as the #9 lineup spot above (no-DH convention).
+  const AWAY_PITCHERS = [
+    {name:'朝比奈 陸', hand:'右', role:'先発'},
+    {name:'潮田 樹',   hand:'左', role:'中継ぎ'},
+    {name:'波多野 蒼', hand:'右', role:'中継ぎ'},
+    {name:'干潟 航平', hand:'右', role:'セットアッパー'},
+    {name:'礁 一颯',   hand:'左', role:'抑え'},
+  ];
+  const HOME_PITCHERS = [
+    {name:'東雲 拓海',   hand:'右', role:'先発'},
+    {name:'星野 礼',     hand:'左', role:'中継ぎ'},
+    {name:'高積 陣',     hand:'右', role:'中継ぎ'},
+    {name:'夜叉神 大空', hand:'右', role:'セットアッパー'},
+    {name:'三日月 渡',   hand:'左', role:'抑え'},
+  ];
+
+  const CONDITION_LABELS = ['優','好','普','疲','病'];
+  const CONDITION_COLORS = ['#4ade80','#60a5fa','#93a0c4','#f4a340','#e8452c'];
+  function rollCondition(){
+    return weightedPick([[0,35],[1,30],[2,22],[3,9],[4,4]]);
+  }
+  function pitcherEffectiveCondition(p){
+    const inningsPitched = p.outsRecorded/3;
+    const fatigue = Math.min(3, Math.floor(inningsPitched/3));
+    return Math.min(4, p.baseCondition + fatigue);
+  }
+  function conditionLabel(idx){ return CONDITION_LABELS[idx]; }
+  function conditionColor(idx){ return CONDITION_COLORS[idx]; }
+
   // Pitch types: stars = relative velocity/quality, colBias/rowBias = average break direction
   // (-1..1, horizontal/vertical), wild = extra unpredictability on top of the bias.
   const PITCH_TYPES = [
@@ -532,6 +696,7 @@
 
   // ---------------- Game State ----------------
   let G = null;
+  let selectedMode = 'manual'; // 'manual' | 'manager' — chosen on the title screen
 
   function newGame(){
     G = {
@@ -545,6 +710,10 @@
       over:false,
       awayBatIdx:0, homeBatIdx:0,
       _lastAnnouncedBatter:null,
+      mode: selectedMode,
+      managerBatDirective:'balanced',
+      managerPitchDirective:'balanced',
+      fastForward:false,
       // per-pitch transient
       batGuess:{col:1,row:1},
       batAction:'swing',
@@ -556,6 +725,17 @@
       pitchDuration:900,
       phaseLock:false, // true while animating / waiting for "next"
     };
+    // Mutable per-game copies (substitutions must not affect the base roster data)
+    G.awayLineup = AWAY_ROSTER.map(p=>({...p}));
+    G.homeLineup = HOME_ROSTER.map(p=>({...p}));
+    G.awayBench = AWAY_BENCH.map(p=>({...p, condition:rollCondition(), used:false}));
+    G.homeBench = HOME_BENCH.map(p=>({...p, condition:rollCondition(), used:false}));
+    G.awayPitchers = AWAY_PITCHERS.map(p=>({...p, baseCondition:rollCondition(), outsRecorded:0, used:false}));
+    G.homePitchers = HOME_PITCHERS.map(p=>({...p, baseCondition:rollCondition(), outsRecorded:0, used:false}));
+    G.awayPitchers[0].used = true; // the starter is already "in the game"
+    G.homePitchers[0].used = true;
+    G.awayCurrentPitcherIdx = 0;
+    G.homeCurrentPitcherIdx = 0;
   }
 
   // ---------------- DOM refs ----------------
@@ -564,6 +744,9 @@
   const battingPanel = $('battingPanel');
   const pitchingPanel = $('pitchingPanel');
   const continueWrap = $('continuePanelWrap');
+  const managerBatPanel = $('managerBatPanel');
+  const managerPitchPanel = $('managerPitchPanel');
+  const managerAutoPanel = $('managerAutoPanel');
   const logEl = $('log');
   const bigMsg = $('bigMsg');
   const canvas = $('field');
@@ -886,13 +1069,116 @@
   }
 
   function currentBatter(){
-    return G.half==='top' ? AWAY_ROSTER[G.awayBatIdx] : HOME_ROSTER[G.homeBatIdx];
+    return G.half==='top' ? G.awayLineup[G.awayBatIdx] : G.homeLineup[G.homeBatIdx];
   }
 
   function currentBatterLabel(){
     const b = currentBatter();
-    return `${b.order}番 ${b.name}（${b.pos}・${b.bat}）`;
+    const cond = (b.condition!==undefined) ? `・${conditionLabel(b.condition)}` : '';
+    return `${b.order}番 ${b.name}（${b.pos}・${b.bat}${cond}）`;
   }
+
+  // The pitcher currently on the mound is on the team NOT currently batting.
+  function currentPitcher(){
+    return G.half==='top' ? G.homePitchers[G.homeCurrentPitcherIdx] : G.awayPitchers[G.awayCurrentPitcherIdx];
+  }
+  function currentPitcherLabel(){
+    const p = currentPitcher();
+    if(!p) return '';
+    const cond = pitcherEffectiveCondition(p);
+    return `${p.name}（${p.hand}投・${p.role}・${conditionLabel(cond)}）`;
+  }
+  function bumpCurrentPitcherFatigue(){
+    const p = currentPitcher();
+    if(p) p.outsRecorded++;
+  }
+  function recordOut(){
+    G.outs++;
+    bumpCurrentPitcherFatigue();
+  }
+
+  function updatePitcherInfoLines(){
+    const label = currentPitcherLabel();
+    if($('pitcherInfoLine')) $('pitcherInfoLine').textContent = `相手投手: ${label}`;
+    if($('myPitcherInfoLine')) $('myPitcherInfoLine').textContent = `自チーム投手: ${label}`;
+  }
+
+  // CPU (away team) auto-relieves its own pitcher once fatigue is severe; the player
+  // only manages substitutions for their own team (Comets).
+  function maybeAutoSwapCpuPitcher(){
+    if(G.half!=='bottom') return; // away team only pitches during the bottom half
+    const cur = G.awayPitchers[G.awayCurrentPitcherIdx];
+    if(!cur || pitcherEffectiveCondition(cur) < 4) return;
+    const nextIdx = G.awayPitchers.findIndex(p=>!p.used);
+    if(nextIdx===-1) return; // no one left in the bullpen
+    G.awayCurrentPitcherIdx = nextIdx;
+    G.awayPitchers[nextIdx].used = true;
+    log(`オーシャンズが継投:${G.awayPitchers[nextIdx].name}（${G.awayPitchers[nextIdx].role}）`);
+  }
+
+  function renderPinchHitPanel(){
+    const wrap = $('pinchHitPanel');
+    if(G.homeBench.length===0 || G.homeBench.every(p=>p.used)){
+      wrap.innerHTML = '<div class="hint">代打可能な選手がいません</div>';
+      return;
+    }
+    wrap.innerHTML = G.homeBench.map((p,i)=>{
+      const usedUp = p.used;
+      return `<div class="subrow${usedUp?' usedup':''}" data-idx="${i}">
+        <span class="name">${p.name}<span class="meta">（${p.pos}・${p.bat}）</span></span>
+        <span><span class="conddot" style="background:${conditionColor(p.condition)}"></span>${conditionLabel(p.condition)}${usedUp?'・起用済':''}</span>
+      </div>`;
+    }).join('');
+  }
+  $('pinchHitToggleBtn').addEventListener('click', ()=>{
+    renderPinchHitPanel();
+    $('pinchHitPanel').classList.toggle('hidden');
+  });
+  $('pinchHitPanel').addEventListener('click',(e)=>{
+    const row = e.target.closest('.subrow');
+    if(!row || row.classList.contains('usedup')) return;
+    const idx = parseInt(row.dataset.idx,10);
+    const sub = G.homeBench[idx];
+    if(sub.used) return;
+    const outgoing = currentBatter();
+    sub.used = true;
+    G.homeLineup[G.homeBatIdx] = {order:outgoing.order, name:sub.name, pos:sub.pos, bat:sub.bat, condition:sub.condition};
+    log(`代打:${sub.name}（${outgoing.name}に代わって）`);
+    G._lastAnnouncedBatter = null;
+    $('pinchHitPanel').classList.add('hidden');
+    beginPlayerBattingPrompt();
+  });
+
+  function renderPitcherChangePanel(){
+    const wrap = $('pitcherChangePanel');
+    wrap.innerHTML = G.homePitchers.map((p,i)=>{
+      const isCurrent = i===G.homeCurrentPitcherIdx;
+      const disabled = isCurrent || p.used;
+      const cond = pitcherEffectiveCondition(p);
+      return `<div class="subrow${disabled?' usedup':''}" data-idx="${i}">
+        <span class="name">${p.name}<span class="meta">（${p.hand}投・${p.role}）</span></span>
+        <span><span class="conddot" style="background:${conditionColor(cond)}"></span>${conditionLabel(cond)}${isCurrent?'・登板中':(p.used?'・登板済':'')}</span>
+      </div>`;
+    }).join('');
+  }
+  $('pitcherChangeToggleBtn').addEventListener('click', ()=>{
+    renderPitcherChangePanel();
+    $('pitcherChangePanel').classList.toggle('hidden');
+  });
+  $('pitcherChangePanel').addEventListener('click',(e)=>{
+    const row = e.target.closest('.subrow');
+    if(!row || row.classList.contains('usedup')) return;
+    const idx = parseInt(row.dataset.idx,10);
+    const incoming = G.homePitchers[idx];
+    if(incoming.used || idx===G.homeCurrentPitcherIdx) return;
+    const outgoing = G.homePitchers[G.homeCurrentPitcherIdx];
+    incoming.used = true;
+    G.homeCurrentPitcherIdx = idx;
+    log(`継投:${incoming.name}（${outgoing.name}に代わって登板）`);
+    $('pitcherChangePanel').classList.add('hidden');
+    $('pickoffBtn').disabled = !pickoffCandidate();
+    updatePitcherInfoLines();
+  });
 
   function beginHalfInning(){
     G.outs=0; G.bases=[false,false,false]; G.curInningRuns=0;
@@ -901,23 +1187,44 @@
     setupPanelsForHalf();
   }
 
+  function hideAllActionPanels(){
+    battingPanel.classList.add('hidden');
+    pitchingPanel.classList.add('hidden');
+    managerBatPanel.classList.add('hidden');
+    managerPitchPanel.classList.add('hidden');
+    managerAutoPanel.classList.add('hidden');
+    continueWrap.classList.add('hidden');
+  }
+
   function setupPanelsForHalf(){
     drawField(null);
+    hideAllActionPanels();
+    $('pinchHitPanel').classList.add('hidden');
+    $('pitcherChangePanel').classList.add('hidden');
+    if(G.half==='bottom') maybeAutoSwapCpuPitcher();
+    updatePitcherInfoLines();
+    if(G.mode==='manager'){
+      if(playerControlsBatting()){
+        managerBatPanel.classList.remove('hidden');
+      } else {
+        managerPitchPanel.classList.remove('hidden');
+        G._lastAnnouncedBatter = currentBatterLabel();
+        log(`相手打者: ${G._lastAnnouncedBatter}`);
+      }
+      return;
+    }
     if(playerControlsBatting()){
       battingPanel.classList.remove('hidden');
-      pitchingPanel.classList.add('hidden');
       $('batStartBtn').disabled = false;
       $('batStartBtn').textContent = 'スタート';
     } else {
       pitchingPanel.classList.remove('hidden');
-      battingPanel.classList.add('hidden');
       clearActualMarkOnCourseGrid();
       $('throwBtn').disabled = false;
       $('pickoffBtn').disabled = !pickoffCandidate();
       G._lastAnnouncedBatter = currentBatterLabel();
       log(`相手打者: ${G._lastAnnouncedBatter}`);
     }
-    continueWrap.classList.add('hidden');
   }
 
   function endInningsCheckAfterOuts(){
@@ -996,7 +1303,7 @@
     const batterName = currentBatter().name;
 
     function outResolved(base){
-      G.outs++;
+      recordOut();
       startNewAtBatCount();
       advanceBatter();
     }
@@ -1027,9 +1334,9 @@
         break;
       case 'groundout': {
         let dp=false;
-        G.outs++;
+        recordOut();
         if(G.bases[0] && G.outs<2 && Math.random()<0.38){
-          G.outs++; G.bases[0]=false; dp=true;
+          recordOut(); G.bases[0]=false; dp=true;
         } else if(G.bases[0] && Math.random()<0.3){
           // fielder's choice-ish advance
           G.bases[1]=true; G.bases[0]=false;
@@ -1040,7 +1347,7 @@
         break;
       }
       case 'lineout':
-        G.outs++;
+        recordOut();
         startNewAtBatCount();
         advanceBatter();
         msg = `${batterName}、ライナーアウト。`;
@@ -1050,7 +1357,7 @@
         if(G.bases[2] && G.outs<2 && Math.random()<0.65){
           scored=1; G.bases[2]=false;
         }
-        G.outs++;
+        recordOut();
         recordRunsForInning(scored);
         startNewAtBatCount();
         advanceBatter();
@@ -1155,7 +1462,7 @@
       return `盗塁成功！${cand.label}へ。`;
     } else {
       G.bases[cand.from]=false;
-      G.outs++;
+      recordOut();
       return `盗塁失敗…${cand.label}手前でアウト！`;
     }
   }
@@ -1168,7 +1475,7 @@
     const r = Math.random();
     if(r < 0.22){
       G.bases[cand.idx]=false;
-      G.outs++;
+      recordOut();
       finalizePlay(`けん制成功！${cand.label}走者アウト！`);
     } else if(r < 0.30){
       G.bases[cand.idx]=false;
@@ -1199,6 +1506,89 @@
     return {col,row};
   }
 
+  // ---------------- Manager mode: AI decision-making ----------------
+  function aiChooseBatDecision(directive){
+    const canSteal = !!stealCandidate();
+    let action, stealFlag=false;
+    const r = Math.random();
+    switch(directive){
+      case 'aggressive':
+        action = r<0.8 ? 'swing' : (r<0.92 ? 'take' : 'bunt');
+        stealFlag = canSteal && Math.random()<0.55;
+        break;
+      case 'patient':
+        action = r<0.45 ? 'swing' : (r<0.85 ? 'take' : 'bunt');
+        stealFlag = canSteal && Math.random()<0.15;
+        break;
+      case 'bunt_focus':
+        action = 'bunt';
+        stealFlag = canSteal && Math.random()<0.2;
+        break;
+      case 'steal_focus':
+        action = r<0.65 ? 'swing' : (r<0.85 ? 'take' : 'bunt');
+        stealFlag = canSteal;
+        break;
+      default: // balanced
+        action = r<0.62 ? 'swing' : (r<0.85 ? 'take' : 'bunt');
+        stealFlag = canSteal && Math.random()<0.25;
+    }
+    const col = weightedPick([[0,1],[1,1.4],[2,1]]);
+    const row = weightedPick([[0,1],[1,1.4],[2,1]]);
+    return {guess:{col,row}, action, steal:stealFlag};
+  }
+
+  function aiChoosePitchDecision(directive){
+    const canPickoff = !!pickoffCandidate();
+    let pickoff=false;
+    if(canPickoff){
+      pickoff = directive==='pickoff_heavy' ? Math.random()<0.5 : Math.random()<0.12;
+    }
+    let col,row;
+    if(directive==='strike_first'){
+      col = weightedPick([[0,0.7],[1,1.6],[2,0.7]]);
+      row = weightedPick([[0,0.7],[1,1.6],[2,0.7]]);
+    } else if(directive==='careful'){
+      col = weightedPick([[-1,0.6],[0,1],[1,0.5],[2,1],[3,0.6]]);
+      row = weightedPick([[-1,0.6],[0,1],[1,0.5],[2,1],[3,0.6]]);
+    } else {
+      const t = cpuChoosePitchTarget();
+      col = t.col; row = t.row;
+    }
+    let pt;
+    if(directive==='mix_pitches' && G._lastAiPitchType){
+      const pool = PITCH_TYPES.filter(p=>p.key!==G._lastAiPitchType);
+      pt = weightedPick(pool.map(p=>[p,p.stars]));
+    } else {
+      pt = weightedPickPitchType();
+    }
+    G._lastAiPitchType = pt.key;
+    return {target:{col,row}, typeKey:pt.key, pickoff};
+  }
+
+  function autoPlayPitch(){
+    if(!G || G.over || G.mode!=='manager') return;
+    const delay = G.fastForward ? 40 : 650;
+    setTimeout(()=>{
+      if(!G || G.over || G.mode!=='manager') return;
+      if(playerControlsBatting()){
+        const dec = aiChooseBatDecision(G.managerBatDirective);
+        G.batGuess = dec.guess;
+        G.batAction = dec.action;
+        G.stealFlag = dec.steal;
+        startBattingPitch();
+      } else {
+        const dec = aiChoosePitchDecision(G.managerPitchDirective);
+        if(dec.pickoff){
+          attemptPickoff();
+        } else {
+          G.pitchTarget = dec.target;
+          G.pitchTypeKey = dec.typeKey;
+          throwPitch_PlayerPitches();
+        }
+      }
+    }, delay);
+  }
+
   function clearActualMark(gridId){
     const prev = document.querySelector(`#${gridId} .cell.actual-mark`);
     if(prev) prev.classList.remove('actual-mark');
@@ -1222,6 +1612,9 @@
     $('batStartBtn').disabled = false;
     $('batStartBtn').textContent = 'スタート';
 
+    maybeAutoSwapCpuPitcher();
+    updatePitcherInfoLines();
+
     const canSteal = !!stealCandidate();
     $('stealBtn').disabled = !canSteal;
     if(!canSteal && G.stealFlag){
@@ -1238,23 +1631,25 @@
     }
   }
 
-  function commitPlayerBatChoice(){
-    if(!playerControlsBatting()) return;
-    if($('batStartBtn').disabled) return;
-    $('batStartBtn').disabled = true;
+  function startBattingPitch(){
     clearActualMarkOnBatGrid();
-
     G.pitchTarget = cpuChoosePitchTarget();
     const pt = weightedPickPitchType();
     G.pitchTypeKey = pt.key;
     const missCol = computeTypeOffset(pt.colBias, pt.wild);
     const missRow = computeTypeOffset(pt.rowBias, pt.wild);
     G.pitchActual = {col:G.pitchTarget.col+missCol, row:G.pitchTarget.row+missRow};
-    G.pitchDuration = speedDurationFromStars(pt.stars);
-
+    G.pitchDuration = G.fastForward ? 30 : speedDurationFromStars(pt.stars);
     runFlightAnimation(()=>{
       resolvePlayerAction();
     });
+  }
+
+  function commitPlayerBatChoice(){
+    if(!playerControlsBatting()) return;
+    if($('batStartBtn').disabled) return;
+    $('batStartBtn').disabled = true;
+    startBattingPitch();
   }
 
   function runFlightAnimation(onArrive){
@@ -1307,7 +1702,7 @@
       if(buntQuality < 0.24){
         if(G.strikes>=2){
           const batterName = currentBatter().name;
-          G.outs++; startNewAtBatCount(); advanceBatter();
+          recordOut(); startNewAtBatCount(); advanceBatter();
           finalizePlay(`${batterName}、バント失敗！ファウルで三振。`);
         } else {
           G.strikes = Math.min(G.strikes+1,2);
@@ -1366,7 +1761,7 @@
     const missCol = computeTypeOffset(pt.colBias, pt.wild);
     const missRow = computeTypeOffset(pt.rowBias, pt.wild);
     G.pitchActual = {col:G.pitchTarget.col+missCol, row:G.pitchTarget.row+missRow};
-    G.pitchDuration = speedDurationFromStars(pt.stars);
+    G.pitchDuration = G.fastForward ? 30 : speedDurationFromStars(pt.stars);
 
     pitchingPanel.classList.add('hidden');
     clearActualMarkOnCourseGrid();
@@ -1428,7 +1823,7 @@
     const ty = homeY - Math.cos(angle)*dist - dist*0.15;
 
     const start = performance.now();
-    const dur = 650;
+    const dur = G.fastForward ? 60 : 650;
     const p0 = {x:cx,y:homeY-8};
     function frame(now){
       const t = clamp((now-start)/dur,0,1);
@@ -1443,10 +1838,10 @@
           groundout:'ゴロアウト', flyout:'フライアウト', lineout:'ライナーアウト',
           single:'ヒット！', double:'二塁打！', triple:'三塁打！', homerun:'ホームラン！！'
         };
-        showBigMsg(labelMap[kind], 1200);
+        showBigMsg(labelMap[kind], G.fastForward ? 150 : 1200);
         setTimeout(()=>{
           finalizePlay(applyOutcome(kind, sideIsBottom));
-        }, 550);
+        }, G.fastForward ? 30 : 550);
       }
     }
     flightRAF = requestAnimationFrame(frame);
@@ -1464,8 +1859,7 @@
     if(G.outs>=3){
       lockInningNumberIfHalfEndsWithoutBat();
       renderScoreboard();
-      battingPanel.classList.add('hidden');
-      pitchingPanel.classList.add('hidden');
+      hideAllActionPanels();
       continueWrap.classList.remove('hidden');
       $('continueBtn').textContent = '次の回へ';
       G._pendingAdvanceHalf = true;
@@ -1473,6 +1867,11 @@
     }
 
     // continue same half, next pitch
+    if(G.mode==='manager'){
+      renderScoreboard();
+      autoPlayPitch();
+      return;
+    }
     if(playerControlsBatting()){
       battingPanel.classList.remove('hidden');
       pitchingPanel.classList.add('hidden');
@@ -1492,6 +1891,19 @@
   }
 
   // ---------------- Controls wiring ----------------
+  const MODE_DESC = {
+    manual: '1球ずつコースやスイングを自分で選びます。',
+    manager: '回ごとに方針を選ぶだけ。あとはAIが自動でプレイを進めます（半分観戦）。',
+  };
+  $('modeRow').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.actionbtn');
+    if(!btn) return;
+    document.querySelectorAll('#modeRow .actionbtn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedMode = btn.dataset.mode;
+    $('modeDesc').textContent = MODE_DESC[selectedMode];
+  });
+
   $('startBtn').addEventListener('click', ()=>{
     newGame();
     titleScreen.classList.add('hidden');
@@ -1520,9 +1932,18 @@
     $('stealBtn').classList.remove('selected');
     $('pickoffBtn').disabled = true;
     $('throwBtn').disabled = false;
+    document.querySelectorAll('#managerBatOptions .dirbtn').forEach(b=>{
+      b.classList.toggle('selected', b.dataset.dir==='balanced');
+    });
+    document.querySelectorAll('#managerPitchOptions .dirbtn').forEach(b=>{
+      b.classList.toggle('selected', b.dataset.dir==='balanced');
+    });
+    $('fastForwardBtn').textContent = '早送りON';
+    $('fastForwardBtn').classList.remove('selected');
   }
 
   function kickOffCurrentHalf(){
+    if(G.mode==='manager') return; // waits for the directive-start button instead
     if(playerControlsBatting()){
       beginPlayerBattingPrompt();
     }
@@ -1564,6 +1985,38 @@
     $('stealBtn').classList.toggle('selected', G.stealFlag);
   });
   $('batStartBtn').addEventListener('click', commitPlayerBatChoice);
+
+  // Manager mode wiring
+  $('managerBatOptions').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.dirbtn');
+    if(!btn) return;
+    document.querySelectorAll('#managerBatOptions .dirbtn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    G.managerBatDirective = btn.dataset.dir;
+  });
+  $('managerPitchOptions').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.dirbtn');
+    if(!btn) return;
+    document.querySelectorAll('#managerPitchOptions .dirbtn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    G.managerPitchDirective = btn.dataset.dir;
+  });
+  $('managerBatStartBtn').addEventListener('click', ()=>{
+    managerBatPanel.classList.add('hidden');
+    managerAutoPanel.classList.remove('hidden');
+    autoPlayPitch();
+  });
+  $('managerPitchStartBtn').addEventListener('click', ()=>{
+    managerPitchPanel.classList.add('hidden');
+    managerAutoPanel.classList.remove('hidden');
+    autoPlayPitch();
+  });
+  $('fastForwardBtn').addEventListener('click', ()=>{
+    G.fastForward = !G.fastForward;
+    $('fastForwardBtn').textContent = G.fastForward ? '早送りOFF' : '早送りON';
+    $('fastForwardBtn').classList.toggle('selected', G.fastForward);
+  });
+
   window.addEventListener('keydown',(e)=>{
     if(e.code==='Space'){
       e.preventDefault();
