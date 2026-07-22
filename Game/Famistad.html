@@ -396,17 +396,32 @@
   .title-screen .teams .vs{ color:var(--amber); font-family:'Press Start 2P',monospace; font-size:11px; align-self:center;}
   .rosters{
     display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
-    margin:0 auto 20px; max-width:480px; text-align:left;
+    margin:0 auto 14px; max-width:520px; text-align:left;
   }
-  .rosters .col{ flex:1; min-width:190px;}
+  .rosters .col{ flex:1; min-width:210px;}
+  .rosters .col.your-team{
+    border:1px solid var(--amber);
+    border-radius:8px;
+    padding:6px 8px;
+    background:rgba(255,183,3,.06);
+  }
+  .rosters .col.your-team h3{ color:#fff; text-shadow:0 0 6px rgba(255,183,3,.6);}
   .rosters h3{
     font-size:11.5px; color:var(--amber); margin:0 0 6px; text-align:center;
     letter-spacing:.5px;
   }
   .rosters table{ width:100%; border-collapse:collapse; font-size:11.5px;}
-  .rosters td{ padding:2px 3px; color:var(--ink); white-space:nowrap;}
+  .rosters td{ padding:3px 3px; color:var(--ink); white-space:nowrap;}
   .rosters td.ord{ color:var(--sub); width:1.6em;}
   .rosters td.pos{ color:var(--sub); text-align:right;}
+  .rosterrow{ cursor:pointer;}
+  .rosterrow:hover td{ color:var(--amber);}
+  .bullpen-label{ font-size:10px; color:var(--sub); margin:8px 0 4px;}
+  .bullpen-list{ margin-bottom:4px;}
+  .bullpen-list .subrow{ padding:6px 10px; font-size:11px;}
+  .bullpen-list .subrow.current{ border-color:var(--amber);}
+  .bullpen-list .subrow.current .name::before{ content:'★ '; color:var(--amber);}
+  #titleSwapPanel{ margin-top:4px;}
   .hidden{ display:none !important;}
   footer{ text-align:center; color:#3d4a72; font-size:10.5px; margin-top:10px;}
   @media (min-width: 880px){
@@ -429,19 +444,24 @@
   <div id="titleScreen" class="title-screen">
     <h1 class="title pixel">草野球<br>カントリースタジアム</h1>
     <div class="subtitle">- Country Stadium Fan Edition -</div>
-    <div class="teams">
-      <div>🦈 オーシャンズ<br><span style="color:var(--sub); font-size:11px;">(先攻)</span></div>
+    <div class="teams" id="teamsDisplay">
+      <div>🗼 関東<br><span style="color:var(--sub); font-size:11px;">(先攻)</span></div>
       <div class="vs">VS</div>
-      <div>☄️ コメッツ<br><span style="color:var(--sub); font-size:11px;">(後攻・あなた)</span></div>
+      <div>⛩️ 関西<br><span style="color:var(--sub); font-size:11px;">(後攻)</span></div>
     </div>
-    <p>
-      あなたは後攻「コメッツ」を操作します。<br>
+    <div class="row" style="justify-content:center; margin-bottom:12px;" id="sideRow">
+      <button class="actionbtn" data-side="away">関東（先攻）を操作</button>
+      <button class="actionbtn selected" data-side="home">関西（後攻）を操作</button>
+    </div>
+    <p id="instructionsText">
+      あなたは後攻「関西」を操作します。<br>
       ・攻撃中：どこに来るか予測して選び、スイング／バント／見送りを決めてスタート。<br>
       ・守備中：投げるコースと球種（フォーシーム、スライダー、フォークなど13種類）を選んでバッターを打ち取ろう。<br>
       9回勝負、先に多く得点した方が勝ちです。<br>
       選手には体調（優/好/普/疲/病）があり、先発投手は投げ込むほど疲れます。代打・継投で選手交代もできます。
     </p>
     <div class="rosters" id="rosters"></div>
+    <div class="col-list hidden" id="titleSwapPanel" style="max-width:480px; margin:0 auto 14px;"></div>
     <div class="row" style="justify-content:center; margin-bottom:14px;" id="modeRow">
       <button class="actionbtn selected" data-mode="manual">手動プレイ</button>
       <button class="actionbtn" data-mode="manager">監督モード（半分観戦）</button>
@@ -574,7 +594,7 @@
    </div>
   </div>
 
-  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v6.2</b></footer>
+  <footer>© Fan-made browser baseball game — no official affiliation ・ <b id="verTag">v7.0</b></footer>
 </div>
 
 <script>
@@ -594,8 +614,8 @@
     return items[items.length-1][0];
   }
 
-  const AWAY_NAME = "オーシャンズ";
-  const HOME_NAME = "コメッツ";
+  const AWAY_NAME = "関東";
+  const HOME_NAME = "関西";
 
   // Fictional rosters (batting order, name, primary position, batting hand)
   const AWAY_ROSTER = [
@@ -697,6 +717,7 @@
   // ---------------- Game State ----------------
   let G = null;
   let selectedMode = 'manual'; // 'manual' | 'manager' — chosen on the title screen
+  let selectedSide = 'home'; // 'home' (関西) | 'away' (関東) — chosen on the title screen
 
   function newGame(){
     G = {
@@ -711,6 +732,7 @@
       awayBatIdx:0, homeBatIdx:0,
       _lastAnnouncedBatter:null,
       mode: selectedMode,
+      playerSide: selectedSide,
       managerBatDirective:'balanced',
       managerPitchDirective:'balanced',
       fastForward:false,
@@ -726,16 +748,17 @@
       phaseLock:false, // true while animating / waiting for "next"
     };
     // Mutable per-game copies (substitutions must not affect the base roster data)
-    G.awayLineup = AWAY_ROSTER.map(p=>({...p}));
-    G.homeLineup = HOME_ROSTER.map(p=>({...p}));
-    G.awayBench = AWAY_BENCH.map(p=>({...p, condition:rollCondition(), used:false}));
-    G.homeBench = HOME_BENCH.map(p=>({...p, condition:rollCondition(), used:false}));
-    G.awayPitchers = AWAY_PITCHERS.map(p=>({...p, baseCondition:rollCondition(), outsRecorded:0, used:false}));
-    G.homePitchers = HOME_PITCHERS.map(p=>({...p, baseCondition:rollCondition(), outsRecorded:0, used:false}));
-    G.awayPitchers[0].used = true; // the starter is already "in the game"
-    G.homePitchers[0].used = true;
-    G.awayCurrentPitcherIdx = 0;
-    G.homeCurrentPitcherIdx = 0;
+    if(!pregame) rollPregame();
+    G.awayLineup = pregame.awayLineup.map(p=>({...p}));
+    G.homeLineup = pregame.homeLineup.map(p=>({...p}));
+    G.awayBench = pregame.awayBench.map(p=>({...p, used:false}));
+    G.homeBench = pregame.homeBench.map(p=>({...p, used:false}));
+    G.awayPitchers = pregame.awayPitchers.map(p=>({...p, used:false}));
+    G.homePitchers = pregame.homePitchers.map(p=>({...p, used:false}));
+    G.awayCurrentPitcherIdx = pregame.awayCurrentPitcherIdx;
+    G.homeCurrentPitcherIdx = pregame.homeCurrentPitcherIdx;
+    G.awayPitchers[G.awayCurrentPitcherIdx].used = true; // the starter is already "in the game"
+    G.homePitchers[G.homeCurrentPitcherIdx].used = true;
   }
 
   // ---------------- DOM refs ----------------
@@ -850,8 +873,8 @@
   // half==='top': away team (Oceans) bats, so the player's team (Comets) is on defense.
   const ALLY = '#3a6bd1';   // Comets (player's team)
   const ENEMY = '#e8452c';  // Oceans (CPU team)
-  function defenseColor(){ return (G && G.half==='top') ? ALLY : ENEMY; }
-  function offenseColor(){ return (G && G.half==='top') ? ENEMY : ALLY; }
+  function defenseColor(){ return (G && playerControlsBatting()) ? ENEMY : ALLY; }
+  function offenseColor(){ return (G && playerControlsBatting()) ? ALLY : ENEMY; }
 
   function fielderPositions(geo){
     function polar(angleDeg, dist){
@@ -1056,7 +1079,9 @@
   }
 
   // ---------------- Flow control ----------------
-  function playerControlsBatting(){ return G.half==='bottom'; }
+  function playerControlsBatting(){
+    return (G.playerSide==='home' && G.half==='bottom') || (G.playerSide==='away' && G.half==='top');
+  }
 
   function startNewAtBatCount(){
     G.balls=0; G.strikes=0;
@@ -1106,23 +1131,37 @@
   // CPU (away team) auto-relieves its own pitcher once fatigue is severe; the player
   // only manages substitutions for their own team (Comets).
   function maybeAutoSwapCpuPitcher(){
-    if(G.half!=='bottom') return; // away team only pitches during the bottom half
-    const cur = G.awayPitchers[G.awayCurrentPitcherIdx];
+    // Called when it's the player's turn to bat — the CPU-controlled team's pitcher
+    // (whichever team that is) might need relief.
+    const cpuIsHome = (G.playerSide==='away');
+    const staff = cpuIsHome ? G.homePitchers : G.awayPitchers;
+    const curIdx = cpuIsHome ? G.homeCurrentPitcherIdx : G.awayCurrentPitcherIdx;
+    const cur = staff[curIdx];
     if(!cur || pitcherEffectiveCondition(cur) < 4) return;
-    const nextIdx = G.awayPitchers.findIndex(p=>!p.used);
+    const nextIdx = staff.findIndex(p=>!p.used);
     if(nextIdx===-1) return; // no one left in the bullpen
-    G.awayCurrentPitcherIdx = nextIdx;
-    G.awayPitchers[nextIdx].used = true;
-    log(`オーシャンズが継投:${G.awayPitchers[nextIdx].name}（${G.awayPitchers[nextIdx].role}）`);
+    if(cpuIsHome) G.homeCurrentPitcherIdx = nextIdx; else G.awayCurrentPitcherIdx = nextIdx;
+    staff[nextIdx].used = true;
+    const teamName = cpuIsHome ? HOME_NAME : AWAY_NAME;
+    log(`${teamName}が継投:${staff[nextIdx].name}（${staff[nextIdx].role}）`);
   }
+
+  // Accessors for "the player's own team" data, regardless of which side (home/away) was chosen.
+  function playerLineup(){ return G.playerSide==='home' ? G.homeLineup : G.awayLineup; }
+  function playerBatIdxGet(){ return G.playerSide==='home' ? G.homeBatIdx : G.awayBatIdx; }
+  function playerBench(){ return G.playerSide==='home' ? G.homeBench : G.awayBench; }
+  function playerPitchers(){ return G.playerSide==='home' ? G.homePitchers : G.awayPitchers; }
+  function playerCurPitcherIdx(){ return G.playerSide==='home' ? G.homeCurrentPitcherIdx : G.awayCurrentPitcherIdx; }
+  function setPlayerCurPitcherIdx(idx){ if(G.playerSide==='home') G.homeCurrentPitcherIdx=idx; else G.awayCurrentPitcherIdx=idx; }
 
   function renderPinchHitPanel(){
     const wrap = $('pinchHitPanel');
-    if(G.homeBench.length===0 || G.homeBench.every(p=>p.used)){
+    const bench = playerBench();
+    if(bench.length===0 || bench.every(p=>p.used)){
       wrap.innerHTML = '<div class="hint">代打可能な選手がいません</div>';
       return;
     }
-    wrap.innerHTML = G.homeBench.map((p,i)=>{
+    wrap.innerHTML = bench.map((p,i)=>{
       const usedUp = p.used;
       return `<div class="subrow${usedUp?' usedup':''}" data-idx="${i}">
         <span class="name">${p.name}<span class="meta">（${p.pos}・${p.bat}）</span></span>
@@ -1138,11 +1177,12 @@
     const row = e.target.closest('.subrow');
     if(!row || row.classList.contains('usedup')) return;
     const idx = parseInt(row.dataset.idx,10);
-    const sub = G.homeBench[idx];
+    const bench = playerBench();
+    const sub = bench[idx];
     if(sub.used) return;
     const outgoing = currentBatter();
     sub.used = true;
-    G.homeLineup[G.homeBatIdx] = {order:outgoing.order, name:sub.name, pos:sub.pos, bat:sub.bat, condition:sub.condition};
+    playerLineup()[playerBatIdxGet()] = {order:outgoing.order, name:sub.name, pos:sub.pos, bat:sub.bat, condition:sub.condition};
     log(`代打:${sub.name}（${outgoing.name}に代わって）`);
     G._lastAnnouncedBatter = null;
     $('pinchHitPanel').classList.add('hidden');
@@ -1151,8 +1191,10 @@
 
   function renderPitcherChangePanel(){
     const wrap = $('pitcherChangePanel');
-    wrap.innerHTML = G.homePitchers.map((p,i)=>{
-      const isCurrent = i===G.homeCurrentPitcherIdx;
+    const staff = playerPitchers();
+    const curIdx = playerCurPitcherIdx();
+    wrap.innerHTML = staff.map((p,i)=>{
+      const isCurrent = i===curIdx;
       const disabled = isCurrent || p.used;
       const cond = pitcherEffectiveCondition(p);
       return `<div class="subrow${disabled?' usedup':''}" data-idx="${i}">
@@ -1169,11 +1211,13 @@
     const row = e.target.closest('.subrow');
     if(!row || row.classList.contains('usedup')) return;
     const idx = parseInt(row.dataset.idx,10);
-    const incoming = G.homePitchers[idx];
-    if(incoming.used || idx===G.homeCurrentPitcherIdx) return;
-    const outgoing = G.homePitchers[G.homeCurrentPitcherIdx];
+    const staff = playerPitchers();
+    const curIdx = playerCurPitcherIdx();
+    const incoming = staff[idx];
+    if(incoming.used || idx===curIdx) return;
+    const outgoing = staff[curIdx];
     incoming.used = true;
-    G.homeCurrentPitcherIdx = idx;
+    setPlayerCurPitcherIdx(idx);
     log(`継投:${incoming.name}（${outgoing.name}に代わって登板）`);
     $('pitcherChangePanel').classList.add('hidden');
     $('pickoffBtn').disabled = !pickoffCandidate();
@@ -1201,7 +1245,7 @@
     hideAllActionPanels();
     $('pinchHitPanel').classList.add('hidden');
     $('pitcherChangePanel').classList.add('hidden');
-    if(G.half==='bottom') maybeAutoSwapCpuPitcher();
+    if(playerControlsBatting()) maybeAutoSwapCpuPitcher();
     updatePitcherInfoLines();
     if(G.mode==='manager'){
       if(playerControlsBatting()){
@@ -1728,7 +1772,9 @@
     else if(matchDist===2) matchScore=0.25;
     else matchScore=0.05;
     const factor = strike?1.0:0.45;
-    const quality = clamp(matchScore*factor + rand(-0.08,0.08), 0, 1);
+    let quality = clamp(matchScore*factor + rand(-0.08,0.08), 0, 1);
+    const condMod = [0.12, 0.05, 0, -0.08, -0.18][currentBatter().condition] || 0;
+    quality = clamp(quality + condMod, 0, 1);
 
     let kind = classifyContact(quality);
     if(matchDist<=1 && kind==='miss') kind='foul'; // close reads always make at least contact
@@ -1778,6 +1824,9 @@
       const strike = isStrike(G.pitchActual.col,G.pitchActual.row);
       const factor = strike?1.0:0.45;
       cpuQuality = clamp((0.55*timingScore+0.45*zoneMatch)*factor + rand(-0.08,0.08),0,1);
+      // batter's condition: good form forgives an imprecise pitch, poor form hurts even a good one
+      const condMod = [0.12, 0.05, 0, -0.08, -0.18][currentBatter().condition] || 0;
+      cpuQuality = clamp(cpuQuality + condMod, 0, 1);
     }
 
     runFlightAnimation(()=>{
@@ -1902,6 +1951,31 @@
     btn.classList.add('selected');
     selectedMode = btn.dataset.mode;
     $('modeDesc').textContent = MODE_DESC[selectedMode];
+  });
+
+  const SIDE_INSTRUCTIONS = {
+    home: `あなたは後攻「${HOME_NAME}」を操作します。`,
+    away: `あなたは先攻「${AWAY_NAME}」を操作します。`,
+  };
+  function updateSideDisplay(){
+    const awayDiv = document.querySelector('#teamsDisplay > div:nth-child(1)');
+    const homeDiv = document.querySelector('#teamsDisplay > div:nth-child(3)');
+    awayDiv.innerHTML = `🗼 ${AWAY_NAME}<br><span style="color:var(--sub); font-size:11px;">(先攻${selectedSide==='away'?'・あなた':''})</span>`;
+    homeDiv.innerHTML = `⛩️ ${HOME_NAME}<br><span style="color:var(--sub); font-size:11px;">(後攻${selectedSide==='home'?'・あなた':''})</span>`;
+    $('instructionsText').innerHTML = SIDE_INSTRUCTIONS[selectedSide] + `<br>
+      ・攻撃中：どこに来るか予測して選び、スイング／バント／見送りを決めてスタート。<br>
+      ・守備中：投げるコースと球種（フォーシーム、スライダー、フォークなど13種類）を選んでバッターを打ち取ろう。<br>
+      9回勝負、先に多く得点した方が勝ちです。<br>
+      選手には体調（優/好/普/疲/病）があり、先発投手は投げ込むほど疲れます。代打・継投で選手交代もできます。`;
+  }
+  $('sideRow').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.actionbtn');
+    if(!btn) return;
+    document.querySelectorAll('#sideRow .actionbtn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedSide = btn.dataset.side;
+    updateSideDisplay();
+    renderTitleRosters();
   });
 
   $('startBtn').addEventListener('click', ()=>{
@@ -2083,6 +2157,8 @@
 
   $('continueBtn').addEventListener('click', ()=>{
     if(G.over){
+      rollPregame();
+      renderTitleRosters();
       titleScreen.classList.remove('hidden');
       gameScreen.classList.add('hidden');
       return;
@@ -2096,15 +2172,125 @@
   });
 
   // build roster lineup display on the title screen
-  (function buildRosterDisplay(){
-    function rosterTable(teamName, roster){
-      const rows = roster.map(p=>
-        `<tr><td class="ord">${p.order}番</td><td>${p.name}</td><td class="pos">${p.pos}・${p.bat}</td></tr>`
+  // ---------------- Pregame roster (conditions rolled before the title screen shows) ----------------
+  let pregame = null;
+  function rollPregame(){
+    pregame = {
+      awayLineup: AWAY_ROSTER.map(p=>({...p, condition:rollCondition()})),
+      homeLineup: HOME_ROSTER.map(p=>({...p, condition:rollCondition()})),
+      awayBench: AWAY_BENCH.map(p=>({...p, condition:rollCondition()})),
+      homeBench: HOME_BENCH.map(p=>({...p, condition:rollCondition()})),
+      awayPitchers: AWAY_PITCHERS.map(p=>({...p, baseCondition:rollCondition(), outsRecorded:0})),
+      homePitchers: HOME_PITCHERS.map(p=>({...p, baseCondition:rollCondition(), outsRecorded:0})),
+      awayCurrentPitcherIdx: 0,
+      homeCurrentPitcherIdx: 0,
+    };
+  }
+
+  function condDotHtml(idx){
+    return `<span class="conddot" style="background:${conditionColor(idx)}"></span>`;
+  }
+
+  function renderTitleRosters(){
+    $('titleSwapPanel').classList.add('hidden');
+    $('titleSwapPanel').innerHTML='';
+    function lineupTable(teamKey, lineup){
+      const rows = lineup.map((p,i)=>
+        `<tr class="rosterrow" data-kind="bat" data-team="${teamKey}" data-idx="${i}">
+          <td class="ord">${p.order}番</td><td>${p.name}</td>
+          <td class="pos">${p.pos}・${p.bat}</td>
+          <td class="pos">${condDotHtml(p.condition)}${conditionLabel(p.condition)}</td>
+        </tr>`
       ).join('');
-      return `<div class="col"><h3>${teamName}</h3><table>${rows}</table></div>`;
+      return `<table>${rows}</table>`;
     }
-    $('rosters').innerHTML = rosterTable(AWAY_NAME, AWAY_ROSTER) + rosterTable(HOME_NAME, HOME_ROSTER);
-  })();
+    function bullpenList(teamKey, staff, curIdx){
+      return staff.map((p,i)=>
+        `<div class="subrow${i===curIdx?' current':''}" data-kind="pitch" data-team="${teamKey}" data-idx="${i}">
+          <span class="name">${p.name}<span class="meta">（${p.hand}投・${p.role}）</span></span>
+          <span>${condDotHtml(p.baseCondition)}${conditionLabel(p.baseCondition)}</span>
+        </div>`
+      ).join('');
+    }
+    $('rosters').innerHTML = `
+      <div class="col${selectedSide==='away'?' your-team':''}">
+        <h3>${AWAY_NAME}${selectedSide==='away'?' (あなた)':''}</h3>
+        ${lineupTable('away', pregame.awayLineup)}
+        <div class="bullpen-label">投手陣（タップで先発交代）</div>
+        <div class="bullpen-list">${bullpenList('away', pregame.awayPitchers, pregame.awayCurrentPitcherIdx)}</div>
+      </div>
+      <div class="col${selectedSide==='home'?' your-team':''}">
+        <h3>${HOME_NAME}${selectedSide==='home'?' (あなた)':''}</h3>
+        ${lineupTable('home', pregame.homeLineup)}
+        <div class="bullpen-label">投手陣（タップで先発交代）</div>
+        <div class="bullpen-list">${bullpenList('home', pregame.homePitchers, pregame.homeCurrentPitcherIdx)}</div>
+      </div>
+    `;
+  }
+
+  function openTitleSwapPanel(kind, team, idx){
+    const panel = $('titleSwapPanel');
+    if(kind==='bat'){
+      const bench = team==='away' ? pregame.awayBench : pregame.homeBench;
+      const lineup = team==='away' ? pregame.awayLineup : pregame.homeLineup;
+      const starter = lineup[idx];
+      if(bench.length===0){
+        panel.innerHTML = '<div class="hint">交代できる控え選手がいません</div>';
+      } else {
+        panel.innerHTML = `<div class="hint" style="margin-bottom:6px;">${starter.order}番 ${starter.name} と交代する選手を選択:</div>` +
+          bench.map((p,bi)=>
+            `<div class="subrow" data-swap="bat" data-team="${team}" data-lineupidx="${idx}" data-benchidx="${bi}">
+              <span class="name">${p.name}<span class="meta">（${p.pos}・${p.bat}）</span></span>
+              <span>${condDotHtml(p.condition)}${conditionLabel(p.condition)}</span>
+            </div>`
+          ).join('');
+      }
+    } else {
+      const staff = team==='away' ? pregame.awayPitchers : pregame.homePitchers;
+      const curIdx = team==='away' ? pregame.awayCurrentPitcherIdx : pregame.homeCurrentPitcherIdx;
+      if(idx===curIdx){
+        panel.classList.add('hidden');
+        return;
+      }
+      panel.innerHTML = `<div class="hint" style="margin-bottom:6px;">${staff[idx].name} を先発にしますか？</div>
+        <div class="subrow" data-swap="pitch" data-team="${team}" data-newidx="${idx}">
+          <span class="name">${staff[idx].name}<span class="meta">（${staff[idx].hand}投・${staff[idx].role}）</span></span>
+          <span>${condDotHtml(staff[idx].baseCondition)}${conditionLabel(staff[idx].baseCondition)}</span>
+        </div>`;
+    }
+    panel.classList.remove('hidden');
+  }
+
+  $('rosters').addEventListener('click',(e)=>{
+    const row = e.target.closest('.rosterrow, .bullpen-list .subrow');
+    if(!row) return;
+    openTitleSwapPanel(row.dataset.kind, row.dataset.team, parseInt(row.dataset.idx,10));
+  });
+  $('titleSwapPanel').addEventListener('click',(e)=>{
+    const row = e.target.closest('.subrow');
+    if(!row || !row.dataset.swap) return;
+    if(row.dataset.swap==='bat'){
+      const team = row.dataset.team;
+      const lineupIdx = parseInt(row.dataset.lineupidx,10);
+      const benchIdx = parseInt(row.dataset.benchidx,10);
+      const lineup = team==='away' ? pregame.awayLineup : pregame.homeLineup;
+      const bench = team==='away' ? pregame.awayBench : pregame.homeBench;
+      const outgoing = lineup[lineupIdx];
+      const incoming = bench[benchIdx];
+      lineup[lineupIdx] = {order:outgoing.order, name:incoming.name, pos:incoming.pos, bat:incoming.bat, condition:incoming.condition};
+      bench[benchIdx] = {name:outgoing.name, pos:outgoing.pos, bat:outgoing.bat, condition:outgoing.condition};
+    } else {
+      const team = row.dataset.team;
+      const newIdx = parseInt(row.dataset.newidx,10);
+      if(team==='away') pregame.awayCurrentPitcherIdx = newIdx;
+      else pregame.homeCurrentPitcherIdx = newIdx;
+    }
+    renderTitleRosters();
+  });
+
+  rollPregame();
+  renderTitleRosters();
+  updateSideDisplay();
 
   // initial idle field draw
   $('pitchTypeDesc').textContent = pitchTypeByKey('fourseam').desc;
