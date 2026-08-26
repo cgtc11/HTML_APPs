@@ -800,6 +800,7 @@ select{background:var(--p2);border:1px solid var(--bdr);color:var(--tx);padding:
   <div class="fmitem" onclick="applyFlip('v')">上下反転</div>
   <div class="fmitem" onclick="applyInvert()">階調の反転</div>
   <div class="fmitem" onclick="openFilter('resize')">解像度変更</div>
+  <div class="fmitem" onclick="cropToSel()">現在の選択範囲でトリミング</div>
   <div class="fmitem" onclick="openFilter('trim')">トリミング（位置指定）</div>
 </div>
 <div id="mouseCfgModal" style="display:none" class="moverlay" onclick="if(event.target===this)this.style.display='none'">
@@ -1115,7 +1116,27 @@ function setSz(w,h){
 // ─── ブラシカーソル描画 ───────────────────────────
 function drawBrushCursor(cx, cy){
   bcx.clearRect(0,0,W,H);
+  // 選択系ツールはOSカーソルではなく、実際の操作点を中心に十字を描く
+  if(['select','lasso','wand'].includes(tool)){
+    const arm=7/zoom;
+    bcx.save();
+    bcx.lineWidth=3/zoom;bcx.strokeStyle='rgba(0,0,0,1)';
+    bcx.beginPath();bcx.moveTo(cx-arm,cy);bcx.lineTo(cx+arm,cy);bcx.moveTo(cx,cy-arm);bcx.lineTo(cx,cy+arm);bcx.stroke();
+    bcx.lineWidth=1/zoom;bcx.strokeStyle='rgba(255,255,255,1)';
+    bcx.beginPath();bcx.moveTo(cx-arm,cy);bcx.lineTo(cx+arm,cy);bcx.moveTo(cx,cy-arm);bcx.lineTo(cx,cy+arm);bcx.stroke();
+    bcx.restore();
+    return;
+  }
   if(!G('showBrushCursor')?.checked) return;
+  if(tool==='dotpen'){
+    const size=Math.max(1,Math.round(bSz));
+    const x=Math.round(cx-size/2),y=Math.round(cy-size/2);
+    bcx.save();
+    bcx.lineWidth=3/zoom;bcx.strokeStyle='rgba(0,0,0,1)';bcx.strokeRect(x,y,size,size);
+    bcx.lineWidth=1/zoom;bcx.strokeStyle='rgba(255,255,255,1)';bcx.strokeRect(x,y,size,size);
+    bcx.restore();
+    return;
+  }
   const r=bSz; // 実際のブラシ半径と同じ
   bcx.save();
   bcx.strokeStyle='rgba(255,255,255,0.9)';
@@ -2238,16 +2259,16 @@ function applyStamp(ctx,x0,y0,x1,y1){
 function applyBrush(ctx,x0,y0,x1,y1,col){
   const isDot=tool==='dotpen';
   if(isDot){
-    // ドットペン: ピクセル単位
+    // ドットペン: サイズどおりの正方形ピクセル。不透明度・筆圧の影響を受けない
     const dist=Math.hypot(x1-x0,y1-y0);
     const step=Math.max(1,bSz*.5);
     const n=Math.max(1,Math.ceil(dist/step));
     wClip(ctx,()=>{
-      ctx.globalAlpha=bOp/100;ctx.fillStyle=c2s(col);
+      ctx.globalAlpha=1;ctx.fillStyle=`rgb(${col.r},${col.g},${col.b})`;
       for(let i=0;i<=n;i++){
         const t=i/n,x=x0+(x1-x0)*t,y=y0+(y1-y0)*t;
-        const r=Math.max(1,Math.round(bSz/2));
-        ctx.fillRect(Math.floor(x)-Math.floor(r/2),Math.floor(y)-Math.floor(r/2),r,r);
+        const size=Math.max(1,Math.round(bSz));
+        ctx.fillRect(Math.round(x-size/2),Math.round(y-size/2),size,size);
       }
     });
     return;
@@ -2403,6 +2424,24 @@ function applyBrush(ctx,x0,y0,x1,y1,col){
       const t=i/n;
       const x=x0+(x1-x0)*t,y=y0+(y1-y0)*t;
       ctx.drawImage(stamp,x-stamp.width/2,y-stamp.height/2);
+    }
+    ctx.restore();
+  });
+}
+// ドットペンの右クリック用。透明度に関係なく正方形のピクセルを完全消去する
+function applyDotErase(ctx,x0,y0,x1,y1){
+  if(!ctx)return;
+  const size=Math.max(1,Math.round(bSz));
+  const dist=Math.hypot(x1-x0,y1-y0);
+  const step=Math.max(1,size*.5);
+  const n=Math.max(1,Math.ceil(dist/step));
+  wClip(ctx,()=>{
+    ctx.save();
+    ctx.globalCompositeOperation='destination-out';
+    ctx.globalAlpha=1;
+    for(let i=0;i<=n;i++){
+      const t=i/n,x=x0+(x1-x0)*t,y=y0+(y1-y0)*t;
+      ctx.fillRect(Math.round(x-size/2),Math.round(y-size/2),size,size);
     }
     ctx.restore();
   });
@@ -2692,16 +2731,37 @@ function applyTrimFilter(){
   _filterOrig=null;G('filterModal').style.display='none';
 }
 
-// UIのトリミングボタン（選択範囲ベース）はアンカー設定を反映しない（左上固定）
+// 現在の選択範囲の外接矩形でキャンバス全体をトリミングする
 function cropToSel(){
-  if(!sel.active||sel.type!=='rect'||sel.w<1||sel.h<1)return;
-  const{x,y,w,h}=sel;saveH();
+  G('filterMenu').style.display='none';
+  if(!sel.active||sel.w<1||sel.h<1){
+    alert('トリミングする範囲を選択してください');
+    return;
+  }
+  const x=Math.max(0,Math.floor(sel.x));
+  const y=Math.max(0,Math.floor(sel.y));
+  const w=Math.min(W-x,Math.ceil(sel.x+sel.w)-x);
+  const h=Math.min(H-y,Math.ceil(sel.y+sel.h)-y);
+  if(w<1||h<1){
+    alert('有効な選択範囲がありません');
+    return;
+  }
+  saveH();
   layers=layers.map(l=>{
     const ncv=document.createElement('canvas');ncv.width=w;ncv.height=h;
-    ncv.getContext('2d').drawImage(l.cv,x,y,w,h,0,0,w,h);
-    return{...l,cv:ncv,ctx:ncv.getContext('2d')};
+    const nctx=ncv.getContext('2d');
+    nctx.drawImage(l.cv,x,y,w,h,0,0,w,h);
+    let nmask=null;
+    if(l.mask){
+      nmask=document.createElement('canvas');nmask.width=w;nmask.height=h;
+      nmask.getContext('2d').drawImage(l.mask,x,y,w,h,0,0,w,h);
+    }
+    return{...l,cv:ncv,ctx:nctx,mask:nmask};
   });
-  setSz(w,h);clearSel();comp();renderLL();fitView();
+  setSz(w,h);
+  sel=mkE();
+  G('cropBtn').style.display='none';
+  comp();renderLL();fitView();
 }
 
 // ═══ TEXT
@@ -3021,18 +3081,24 @@ function updateUI(){
   G('selInvertOpts').style.display=['select','lasso','wand'].includes(tool)?'block':'none';
   G('wandOpts').style.display=tool==='wand'?'flex':'none';
   G('fillOpts').style.display=tool==='fill'?'block':'none';
-  const isBrush=['brush','dotpen','stamp'].includes(tool);
+  const isBrush=tool==='brush';
+  const isDot=tool==='dotpen';
   const isErase=tool==='eraser';
   const isStamp=tool==='stamp';
-  G('brushTypeRow').style.display=isBrush?'flex':'none';
+  G('brushTypeRow').style.display=(isBrush||isStamp)?'flex':'none';
   G('eraserOpts').style.display=isErase?'block':'none';
   G('pressureOpts').style.display=(isBrush||isStamp)?'flex':'none';
   const sh=isBrush||isErase||isStamp;
   ['hLbl','sHd','nHd'].forEach(id=>{const e=G(id);if(e)e.style.display=sh?'':'none';});
+  ['sOp','nOp'].forEach(id=>{
+    const e=G(id);if(!e)return;
+    e.disabled=isDot;e.style.opacity=isDot?'.4':'';
+    e.title=isDot?'ドットペンは常に不透明です':'';
+  });
 }
 function updCur(c){
   if(c){eC.style.cursor=c;return;}
-  eC.style.cursor={text:'text',move:'grab',rotate:'crosshair',scale:'crosshair',eyedrop:'crosshair',select:'crosshair',lasso:'crosshair',wand:'crosshair'}[tool]||'crosshair';
+  eC.style.cursor=['dotpen','select','lasso','wand'].includes(tool)?'none':({text:'text',move:'grab',rotate:'crosshair',scale:'crosshair',eyedrop:'crosshair'}[tool]||'crosshair');
 }
 function syncO(t,v){
   v=parseInt(v);
@@ -3083,7 +3149,7 @@ let _lastBrushX=0, _lastBrushY=0;
 eC.addEventListener('pointermove',e=>{
   const cp=cPos(e);
   _lastBrushX=cp.x; _lastBrushY=cp.y;
-  if(['brush','dotpen','eraser','blur','stamp'].includes(tool)){
+  if(['brush','dotpen','eraser','blur','stamp','select','lasso','wand'].includes(tool)){
     drawBrushCursor(cp.x,cp.y);
   } else { clearBrushCursor(); }
 });
@@ -3175,7 +3241,9 @@ function onDown(e){
   const useCol=action==='bg'?bg:fg;
   // オーバーライドツール（ボタン設定が描画系のとき）
   const overTool={eraser:'eraser',blur:'blur',lasso:'lasso',line:'line'}[action]||null;
-  const actTool=overTool||tool;
+  // ドットペンの右クリックは設定に関係なく、完全消去のドット消しゴムにする
+  const isRightButton=e.button===2||(e.buttons&2)===2;
+  const actTool=(tool==='dotpen'&&isRightButton)?'dotEraser':(overTool||tool);
 
   // スポイトツール
   if(actTool==='eyedrop'||tool==='eyedrop'){
@@ -3221,13 +3289,16 @@ function onDown(e){
     saveH();
     const dc=getDrawCol(useCol);
     // Shift+クリックで前回終点から直線（e.shiftKeyで確実に取得）
-    if(e.shiftKey&&lastStrokeX!==null&&(actTool==='brush'||actTool==='dotpen'||actTool==='eraser')){
+    if(e.shiftKey&&lastStrokeX!==null&&(actTool==='brush'||actTool==='dotpen'||actTool==='eraser'||actTool==='dotEraser')){
       if(actTool==='eraser') withPressure(()=>applyErase(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y));
+      else if(actTool==='dotEraser') applyDotErase(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y);
+      else if(actTool==='dotpen')applyBrushTiled(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y,dc);
       else withPressure(()=>applyBrushTiled(aC2(),lastStrokeX,lastStrokeY,cp.x,cp.y,dc));
       lastStrokeX=cp.x;lastStrokeY=cp.y;
       comp();drawing=false;return;
     }
     if(actTool==='eraser')withPressure(()=>applyErase(aC2(),cp.x,cp.y,cp.x,cp.y));
+    else if(actTool==='dotEraser')applyDotErase(aC2(),cp.x,cp.y,cp.x,cp.y);
     else if(actTool==='blur')applyBlur(aC2(),cp.x,cp.y);
     else if(actTool==='stamp'){
       if(_stampSrcX===null){comp();drawing=false;return;} // サンプリング元未設定
@@ -3236,6 +3307,7 @@ function onDown(e){
     }
     else{
       if(useWet()&&!maskEditMode){initWet();addWetPt(cp.x,cp.y,bSz,bOp/100);}
+      else if(actTool==='dotpen')applyBrushTiled(aC2(),cp.x,cp.y,cp.x,cp.y,dc);
       else withPressure(()=>applyBrushTiled(aC2(),cp.x,cp.y,cp.x,cp.y,dc));
     }
     comp();
@@ -3272,7 +3344,7 @@ function onMove(e){
     const h=hitHnd(cp.x,cp.y);
     if(h){eC.style.cursor=h==='float-rot'?'grab':(hndCur[h]||'crosshair');}
     else if(tool==='move'&&sel.w>0&&cp.x>=sel.x&&cp.x<=sel.x+sel.w&&cp.y>=sel.y&&cp.y<=sel.y+sel.h){eC.style.cursor='grab';}
-    else eC.style.cursor={text:'text',move:'grab'}[tool]||'crosshair';
+    else eC.style.cursor=['dotpen','select','lasso','wand'].includes(tool)?'none':({text:'text',move:'grab'}[tool]||'crosshair');
   }
   if(!drawing)return;
   const actTool=eC._actTool||tool;
@@ -3282,13 +3354,16 @@ function onMove(e){
   if(actTool==='select'){
     let ex=cp.x,ey=cp.y;
     if(_shiftDown){const s=Math.min(Math.abs(ex-startX),Math.abs(ey-startY));ex=startX+(ex>=startX?s:-s);ey=startY+(ey>=startY?s:-s);}
-    px.clearRect(0,0,W,H);px.save();px.strokeStyle='rgba(100,160,255,.9)';px.lineWidth=1/zoom;
-    px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;
-    px.strokeRect(Math.min(startX,ex),Math.min(startY,ey),Math.abs(ex-startX),Math.abs(ey-startY));px.restore();
+    const rx=Math.min(startX,ex),ry=Math.min(startY,ey),rw=Math.abs(ex-startX),rh=Math.abs(ey-startY);
+    px.clearRect(0,0,W,H);px.save();
+    px.strokeStyle='rgba(0,0,0,1)';px.lineWidth=3/zoom;px.setLineDash([]);px.strokeRect(rx,ry,rw,rh);
+    px.strokeStyle='rgba(255,255,255,1)';px.lineWidth=1/zoom;px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;px.strokeRect(rx,ry,rw,rh);px.restore();
   }else if(actTool==='lasso'){
     const last=lassoPts[lassoPts.length-1];if(Math.hypot(cp.x-last.x,cp.y-last.y)>2)lassoPts.push({x:cp.x,y:cp.y});
-    px.clearRect(0,0,W,H);px.save();px.strokeStyle='rgba(100,160,255,.9)';px.lineWidth=1.5/zoom;
-    px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;
+    px.clearRect(0,0,W,H);px.save();
+    px.strokeStyle='rgba(0,0,0,1)';px.lineWidth=3/zoom;px.setLineDash([]);
+    px.beginPath();px.moveTo(lassoPts[0].x,lassoPts[0].y);lassoPts.forEach(p=>px.lineTo(p.x,p.y));px.stroke();
+    px.strokeStyle='rgba(255,255,255,1)';px.lineWidth=1/zoom;px.setLineDash([5/zoom,4/zoom]);px.lineDashOffset=-dashOff/zoom;
     px.beginPath();px.moveTo(lassoPts[0].x,lassoPts[0].y);lassoPts.forEach(p=>px.lineTo(p.x,p.y));px.stroke();px.restore();
   }else if(actTool==='move'){
     if(_movingSelOnly){
@@ -3312,11 +3387,13 @@ function onMove(e){
       px.save();px.drawImage(wetCv,0,0);px.restore();
       scheduleComp();
     }else{
-      withPressure(()=>{applyBrushTiled(ctx,prevX,prevY,cp.x,cp.y,dc);});
+      if(actTool==='dotpen')applyBrushTiled(ctx,prevX,prevY,cp.x,cp.y,dc);
+      else withPressure(()=>{applyBrushTiled(ctx,prevX,prevY,cp.x,cp.y,dc);});
       prevX=cp.x;prevY=cp.y;scheduleComp();
     }
   }}
   else if(actTool==='eraser'){if(ctx){withPressure(()=>{applyErase(ctx,prevX,prevY,cp.x,cp.y);});prevX=cp.x;prevY=cp.y;scheduleComp();}}
+  else if(actTool==='dotEraser'){if(ctx){applyDotErase(ctx,prevX,prevY,cp.x,cp.y);prevX=cp.x;prevY=cp.y;scheduleComp();}}
   else if(actTool==='blur'){if(ctx){applyBlur(ctx,cp.x,cp.y);prevX=cp.x;prevY=cp.y;scheduleComp();}}
   else if(actTool==='stamp'){if(ctx&&_stampOffX!==null){withPressure(()=>applyStamp(ctx,prevX,prevY,cp.x,cp.y));prevX=cp.x;prevY=cp.y;scheduleComp();}}
 }
@@ -3355,7 +3432,7 @@ function onUp(e){
   }
   else{
     // ブラシ・消しゴムのストローク終点を記録
-    if(actTool==='brush'||actTool==='dotpen'||actTool==='eraser'){
+    if(actTool==='brush'||actTool==='dotpen'||actTool==='eraser'||actTool==='dotEraser'){
       lastStrokeX=prevX;lastStrokeY=prevY;
     }
     if(maskEditMode)renderLL();
@@ -3810,7 +3887,7 @@ function drawSelOv(){
     const fcx=float_.x+float_.w/2,fcy=float_.y+float_.h/2;
     sx.translate(fcx,fcy);
     sx.rotate(float_.angle||0);
-    sx.strokeStyle='rgba(0,0,0,.6)';sx.lineWidth=lw*3;sx.setLineDash([]);
+    sx.strokeStyle='rgba(0,0,0,1)';sx.lineWidth=lw*4;sx.setLineDash([]);
     sx.strokeRect(-float_.w/2,-float_.h/2,float_.w,float_.h);
     sx.strokeStyle='rgba(255,255,255,.95)';sx.lineWidth=lw;sx.setLineDash([6/zoom,4/zoom]);sx.lineDashOffset=-dashOff/zoom;
     sx.strokeRect(-float_.w/2,-float_.h/2,float_.w,float_.h);
@@ -3818,7 +3895,7 @@ function drawSelOv(){
     sx.resetTransform();sx.scale(1,1); // resetTransformが使えない場合の代替
     sx.restore();sx.save();
   }else{
-    sx.strokeStyle='rgba(0,0,0,.6)';sx.lineWidth=lw*3;sx.setLineDash([]);
+    sx.strokeStyle='rgba(0,0,0,1)';sx.lineWidth=lw*4;sx.setLineDash([]);
     if(sel.path)sx.stroke(sel.path);else if(sel.type==='rect')sx.strokeRect(sel.x,sel.y,sel.w,sel.h);
     sx.strokeStyle='rgba(255,255,255,.95)';sx.lineWidth=lw;sx.setLineDash([6/zoom,4/zoom]);sx.lineDashOffset=-dashOff/zoom;
     if(sel.path)sx.stroke(sel.path);else if(sel.type==='rect')sx.strokeRect(sel.x,sel.y,sel.w,sel.h);
