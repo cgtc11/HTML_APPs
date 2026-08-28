@@ -1129,11 +1129,14 @@ function drawBrushCursor(cx, cy){
   }
   if(!G('showBrushCursor')?.checked) return;
   if(tool==='dotpen'){
-    const size=Math.max(1,Math.round(bSz));
-    const x=Math.round(cx-size/2),y=Math.round(cy-size/2);
+    // ドット絵用: 周囲を囲む3×3風の枠ではなく、操作点の1ピクセルだけを表示する。
+    // differenceで反転させるため、明るい背景でも暗い背景でも見失いにくい。
+    const x=Math.max(0,Math.min(W-1,Math.floor(cx)));
+    const y=Math.max(0,Math.min(H-1,Math.floor(cy)));
     bcx.save();
-    bcx.lineWidth=3/zoom;bcx.strokeStyle='rgba(0,0,0,1)';bcx.strokeRect(x,y,size,size);
-    bcx.lineWidth=1/zoom;bcx.strokeStyle='rgba(255,255,255,1)';bcx.strokeRect(x,y,size,size);
+    bcx.globalCompositeOperation='difference';
+    bcx.fillStyle='#fff';
+    bcx.fillRect(x,y,1,1);
     bcx.restore();
     return;
   }
