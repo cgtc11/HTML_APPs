@@ -108,8 +108,8 @@ MD編集
 <td align="center">
 <a href="https://cgtc11.github.io/HTML_APPs/PPTXViewer/PPTXViewer.html">
 <img src="https://github.com/cgtc11/image/blob/main/10_ico.png" width="120"><br>
-<b>OneFileText</b></a><br>
-複数テキストを1つにまとめる
+<b>PPTXViewer</b></a><br>
+PPTXViewer To PDF
 </td>
 
 <td>
